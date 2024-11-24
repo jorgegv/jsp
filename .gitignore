@@ -1,0 +1,9 @@
+*.lis
+*.bin
+*.tap
+*.map
+*.o
+*.dep
+*.sym
+*.c.asm
+main
