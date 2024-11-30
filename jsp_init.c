@@ -40,10 +40,3 @@ void jsp_init( void ) {
     jsp_init_dtt();
 }
 
-///////////////////////////////////
-// DTT functions
-///////////////////////////////////
-
-void jsp_dtt_mark_dirty( uint8_t row, uint8_t col ) {
-    jsp_dtt[ ( ( row * 32 ) + col ) / 8 ] |= ( 1 << ( col % 8 ) );
-}

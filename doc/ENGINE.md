@@ -23,7 +23,7 @@ A "tile" is an 8x8 UDG stored top to down in memory (8 consecutive bytes)
 
 ## WORKFLOW FOR DRAWING BACKGROUND TILES
 
-- For drawing a tile, copy it's address (8-byte data) in its corresponding
+- For drawing a tile, copy it's address (pointer to 8-byte data) in its corresponding
   position in the BTT
 
 - For removing a tile, set the corresponding position in the BTT to NULL (0)
