@@ -1,6 +1,7 @@
 	section code_compiler
 
-	extern _jsp_draw_tile
+	extern _jsp_draw_screen_tile
+	extern _jsp_dtt_mark_clean
 	extern _jsp_drt
 	extern _jsp_dtt
 
@@ -39,7 +40,8 @@ _jsp_redraw:
 
 next_cell_group:
 	ld a,(hl)
-	call nz,process_dirty_cells	;; go to process them
+	and a				;; update Z flag
+	call nz,process_dirty_cells	;; if any dirty cell, go to process them
 
 	inc hl				;; prepare next 8 cells
 
@@ -54,10 +56,7 @@ next_cell_group:
 	ld e,0				;; and continue
 
 inc_update_ctr:
-	ld a,b				;; counter -= 8
-	sub 8
-	ld b,a
-	jp nz,next_cell_group		;; if != 0 process next group
+	djnz next_cell_group		;; loop to process next group
 
 	ret				;; finished processing all DTT
 
@@ -73,7 +72,7 @@ process_dirty_cells:
 	ld c,0				;; C = bit index
 
 dirty_loop:
-	rrca
+	rrca				;; bit 0 -> CF
 	call c,dirty_cell
 	inc c				;; next bit index
 	djnz dirty_loop
@@ -103,25 +102,43 @@ dirty_cell:
 
 	ld a,e				;; A = start col
 	add a,c				;; A = real col
+	push af				;; save real col for later
 
-	or l				;; add the top bits of L
+	or l				;; add the top bits of L (5 lower bits are 0)
 	ld l,a				;; HL = cell index (0-767)
 
 	add hl,hl			;; multiply by 2 to get offset into DRT table
-	push de
-	ld de,_jsp_drt
-	add hl,de			;; HL = _jsp_drt[ cell_index ]
-	pop de				;; D = row, E = col
 
+	push de
+	ld de,_jsp_drt			;; index into DRT pointer table
+	add hl,de			;; HL = _jsp_drt[ cell_index ]
+	pop de				;; D = row, E = start col
+
+	pop af				;; recover real col into A
 	ld b,0
 	ld c,d				;; BC = row
-	push bc				;; push row
-	ld c,a				;; BC = real col (A still contains real col)
-	push bc				;; push real col
-	push hl				;; push drt record address
 
-	call _jsp_draw_tile		;; jsp_draw_tile( row, col, jsp_drt[ i ] )
-					;; no cleanup - it's _z88dk_callee
+	push bc				;; save BC = row
+	push af				;; save A = real col
+
+	push bc				;; param: row
+	ld c,a				;; BC = real col
+	push bc				;; param: real col
+	ld c,(hl)			;; get DRT record address to BC
+	inc hl
+	ld b,(hl)
+	push bc				;; param: DRT record address
+	call _jsp_draw_screen_tile	;; jsp_draw_tile( row, col, jsp_drt[ i ] )
+					;; no cleanup, __z88dk_callee
+
+	pop af				;; A = real col
+	pop bc				;; BC = row
+
+	push bc				;; param: row
+	ld c,a				;; BC = real col
+	push bc				;; param: real col
+	call _jsp_dtt_mark_clean	;; jsp_dtt_mark_clean( row, col )
+					;; no cleanup, __z88dk_callee
 
 	pop de
 	pop bc

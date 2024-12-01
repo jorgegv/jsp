@@ -1,8 +1,11 @@
+;; some utility functions
+
 	section code_compiler
 
 	public _jsp_memzero
 
 ;; void jsp_memzero( void *dst, uint16_t numbytes ) __smallc __z88dk_callee;
+;; trashes a,bc,de,hl
 _jsp_memzero:
 	pop af		;; save ret addr
 
@@ -18,3 +21,4 @@ _jsp_memzero:
 	dec bc
 	ldir
 	ret
+
