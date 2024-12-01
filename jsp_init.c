@@ -7,8 +7,6 @@
 // Initialization functions
 /////////////////////////////////////////////////////////////////////
 
-void jsp_memzero( void *dst, uint16_t numbytes ) __smallc __z88dk_callee;
-
 // initialize all btt pointers to NULL
 void jsp_init_btt( void ) {
     jsp_memzero( jsp_btt, 768 * 2 );
@@ -25,6 +23,11 @@ void jsp_init_dtt( void ) {
 }
 
 // initialize rotation tables
+// this could be done fast in asm, but we have the addresses of the rotation
+// tables defined in C code and they are different for 48K and 128K modes.
+// It's not worth to do all ASM/C integration to get some minimal speed
+// increase and save some bytes for something that is used only once at the
+// beginning of the program
 void jsp_init_rottbl( void ) {
     uint8_t i;
     uint16_t val;
