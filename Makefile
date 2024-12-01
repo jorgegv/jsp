@@ -1,11 +1,11 @@
 ZCC		= zcc +zx -compiler=sdcc
-CFLAGS		= -vn -SO3 --opt-code-size --max-allocs-per-node200000 --list -s -m --c-code-in-asm
+CFLAGS		= -vn -SO3 --opt-code-size --max-allocs-per-node200000 --list -s --c-code-in-asm
 LDFLAGS		= -lndos -m
 
 # for a minimal size, replace the above by these:
 #ZCC		= zcc +zx -compiler=sdcc -clib=sdcc_iy
-#CFLAGS		= -vn -SO3 --opt-code-size --max-allocs-per-node200000 --list -s -m --c-code-in-asm
-#LDFLAGS	= -clib=sdcc_iy -startup=31
+#CFLAGS		= -vn -SO3 --opt-code-size --max-allocs-per-node200000 --list -s --c-code-in-asm
+#LDFLAGS	= -clib=sdcc_iy -startup=31 -m
 
 BIN		= main
 TAP		=$(BIN).tap

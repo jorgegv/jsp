@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <spectrum.h>
 
 #include "jsp.h"
 
@@ -7,9 +8,10 @@ void main( void ) {
     uint8_t i;
 
     jsp_init();
-    puts("Hello world\n");
 
-    for ( i=0; i< 24; i++ ) {
+    zx_cls();
+
+    for ( i = 0; i < 24; i++ ) {
         jsp_dtt_mark_dirty( i, i );
         jsp_dtt_mark_dirty( i, 31 );
     }

@@ -48,6 +48,9 @@ jsp_dtt_mark_dirty_clean_test:
 
 	push af			;; push back retaddr
 
+	ld h,0			;; ensure no garbage in H
+	ld d,h			;; ensure no garbage in D
+
 	add hl,hl		;; HL = row * 32
 	add hl,hl
 	add hl,hl
