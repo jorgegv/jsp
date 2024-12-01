@@ -83,12 +83,11 @@ smc_bit_set_res_bit:
 	xor a			;; reset flags, Z=1
 
 smc_bit_number:
-	set 0,(hl)		;; SMC: the bit number is modified by
-				;; previous code, operation can be SET, RES
-				;; or BIT.  If it is BIT, the Z flag will
-				;; show the bit checked.  If it is SET or
-				;; RES, the Z flag is not affected and we
-				;; always return 0
+	set 0,(hl)		;; SMC: the operation (SET/RES/BIT) and bit
+				;; number is modified by previous code.  If
+				;; it is BIT, the Z flag will show the bit
+				;; checked.  If it is SET or RES, the Z flag
+				;; is not affected and we always return 0
 	jp z,return_0
 
 	ld l,1			;; z88dk expects 8-bit return value in L
@@ -97,4 +96,3 @@ smc_bit_number:
 return_0:
 	ld l,0			;; z88dk expects 8-bit return value in L
 	ret
-	
