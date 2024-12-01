@@ -11,6 +11,9 @@ extern uint16_t *jsp_btt[];
 extern uint16_t *jsp_drt[];
 extern uint8_t jsp_dtt[];
 
+// some utility functions
+void jsp_memzero( void *dst, uint16_t numbytes ) __smallc __z88dk_callee;
+
 //////////////////////////
 // engine functions
 //////////////////////////
@@ -30,6 +33,6 @@ uint8_t jsp_dtt_is_dirty( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 void jsp_draw_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee;
 
 // draw 8x8 tile to screen with attribute
-void jsp_draw_tile_attr( uint8_t row, uint8_t col, uint8_t *pix, uint8_t attr );
+void jsp_draw_tile_attr( uint8_t row, uint8_t col, uint8_t *pix, uint8_t attr ) __smallc __z88dk_callee;
 
 #endif // _JSP_H

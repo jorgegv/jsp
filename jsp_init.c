@@ -7,19 +7,21 @@
 // Initialization functions
 /////////////////////////////////////////////////////////////////////
 
+void jsp_memzero( void *dst, uint16_t numbytes ) __smallc __z88dk_callee;
+
 // initialize all btt pointers to NULL
 void jsp_init_btt( void ) {
-    memset( jsp_btt, 0, 768 * 2 );
+    jsp_memzero( jsp_btt, 768 * 2 );
 }
 
 // initialize all drt pointers to NULL
 void jsp_init_drt( void ) {
-    memset( jsp_drt, 0, 768 * 2 );
+    jsp_memzero( jsp_drt, 768 * 2 );
 }
 
 // set all cells to clean
 void jsp_init_dtt( void ) {
-    memset( jsp_dtt, 0, 768 / 8 );
+    jsp_memzero( jsp_dtt, 768 / 8 );
 }
 
 // initialize rotation tables
