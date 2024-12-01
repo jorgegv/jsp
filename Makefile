@@ -1,5 +1,5 @@
 ZCC		= zcc +zx -compiler=sdcc
-CFLAGS		= -vn -SO3 --opt-code-size --max-allocs-per-node200000 --list -s --c-code-in-asm
+CFLAGS		= -vn -SO3 --opt-code-size --max-allocs-per-node200000 --list -s --c-code-in-asm -I$(INCLUDE_DIR)
 LDFLAGS		= -lndos -m
 
 # for a minimal size, replace the above by these:
@@ -10,8 +10,10 @@ LDFLAGS		= -lndos -m
 BIN		= main
 TAP		=$(BIN).tap
 
-C_SRCS		= $(wildcard *.c)
-ASM_SRCS	= $(wildcard *.asm)
+INCLUDE_DIR	= include
+
+C_SRCS		= $(wildcard lib/*.c) $(wildcard *.c)
+ASM_SRCS	= $(wildcard lib/*.asm) $(wildcard *.asm)
 
 C_OBJS		= $(C_SRCS:.c=.o)
 ASM_OBJS	= $(ASM_SRCS:.asm=.o)
@@ -27,21 +29,26 @@ ASM_OBJS	= $(ASM_SRCS:.asm=.o)
 	echo Assembling $*.asm...
 	$(ZCC) $(CFLAGS) -c $*.asm
 
+default: $(BIN)
+
 # full build
-build: clean $(BIN).bin
+build: clean $(TAP)
 	echo Build successful
 
 # clean
 clean:
 	echo Cleaning up...
-	-rm -f $(BIN) $(TAP) *.map *.lst *.o *.lis *.sym *.bin 2>/dev/null
+	-rm -f $(BIN) $(TAP) *.{map,lst,o,lis,sym,bin} 2>/dev/null
+	-rm -f lib/*.{map,lst,o,lis,sym,bin} 2>/dev/null
 
 # binary
-$(BIN).bin: $(ASM_OBJS) $(C_OBJS)
+$(BIN): $(ASM_OBJS) $(C_OBJS)
 	echo Linking $@...
 	$(ZCC) $(LDFLAGS) $(ASM_OBJS) $(C_OBJS) -o $(BIN) -create-app
 	echo Created $(TAP)
 
+$(TAP): $(BIN)
+
 # run it
-run:
+run: $(TAP)
 	fuse $(TAP)
