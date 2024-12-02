@@ -50,8 +50,8 @@ void test_btt_contents( void ) {
     printf( "ball: $%04X\n", tile_ball );
     printf( "btt 20 16: $%04X\n", jsp_btt[ 20 * 32 + 16 ] );
     printf( "btt 21 18: $%04X\n", jsp_btt[ 21 * 32 + 18 ] );
-    printf( "dtt 20 16: $%02X\n", jsp_dtt[ ( 20 * 32 + 16 ) / 8 ] );
-    printf( "dtt 21 18: $%02X\n", jsp_dtt[ ( 21 * 32 + 18 ) / 8 ] );
+    printf( "dtt 20 16: $%02X D:%s\n", jsp_dtt[ ( 20 * 32 + 16 ) / 8 ], jsp_dtt_is_dirty( 20,16 ) ? "yes" : "no" );
+    printf( "dtt 21 18: $%02X D:%s\n", jsp_dtt[ ( 21 * 32 + 18 ) / 8 ], jsp_dtt_is_dirty( 21,18 ) ? "yes" : "no" );
 
     // ditto
     jsp_redraw();
@@ -59,8 +59,8 @@ void test_btt_contents( void ) {
     // since we have redrawn, now the DTT bits should be cleared
     printf( "btt 20 16: $%04X\n", jsp_btt[ 20 * 32 + 16 ] );
     printf( "btt 21 18: $%04X\n", jsp_btt[ 21 * 32 + 18 ] );
-    printf( "dtt 20 16: $%02X\n", jsp_dtt[ ( 20 * 32 + 16 ) / 8 ] );
-    printf( "dtt 21 18: $%02X\n", jsp_dtt[ ( 21 * 32 + 18 ) / 8 ] );
+    printf( "dtt 20 16: $%02X D:%s\n", jsp_dtt[ ( 20 * 32 + 16 ) / 8 ], jsp_dtt_is_dirty( 20,16 ) ? "yes" : "no" );
+    printf( "dtt 21 18: $%02X D:%s\n", jsp_dtt[ ( 21 * 32 + 18 ) / 8 ], jsp_dtt_is_dirty( 21,18 ) ? "yes" : "no" );
 }
 
 void test_btt_redraw( void ) {
