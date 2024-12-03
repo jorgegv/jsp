@@ -24,3 +24,9 @@ void jsp_draw_background_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc
     jsp_btt[ row * 32 + col ] = jsp_drt[ row * 32 + col ] = pix;
     jsp_dtt_mark_dirty( row, col );
 }
+
+extern uint8_t *jsp_default_bg_tile;	// from jsp_init.c
+void jsp_delete_background_tile( uint8_t row, uint8_t col ) __smallc __z88dk_callee {
+    jsp_btt[ row * 32 + col ] = jsp_drt[ row * 32 + col ] = jsp_default_bg_tile;
+    jsp_dtt_mark_dirty( row, col );
+}

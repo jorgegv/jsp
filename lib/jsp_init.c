@@ -3,6 +3,16 @@
 
 #include "jsp.h"
 
+///////////////////////////
+// Private data
+///////////////////////////
+
+// blank tile
+uint8_t jsp_blank_tile[ 8 ] = { 0,0,0,0,0,0,0,0 };
+
+// default background tile after initialization
+uint8_t *jsp_default_bg_tile;
+
 /////////////////////////////////////////////////////////////////////
 // Initialization functions
 /////////////////////////////////////////////////////////////////////
@@ -37,11 +47,18 @@ void jsp_init_rottbl( void ) {
     }
 }
 
+void jsp_init_background( uint8_t *default_bg_tile ) {
+    uint16_t i;
+    for ( i = 0; i < 768; i++ )
+        jsp_btt[ i ] = default_bg_tile;
+    jsp_default_bg_tile = default_bg_tile;
+}
+
 // run all jsp initializations
-void jsp_init( void ) {
+void jsp_init( uint8_t *bgtile ) {
     jsp_init_rottbl();
     jsp_init_btt();
     jsp_init_drt();
     jsp_init_dtt();
+    jsp_init_background( bgtile != NULL ? bgtile : jsp_blank_tile );
 }
-
