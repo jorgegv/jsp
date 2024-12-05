@@ -2,49 +2,34 @@
 ; DRAW MASK SPRITE 2 BYTE DEFINITION ROTATED
 ; 01.2006 aralbrec, Sprite Pack v3.0
 ; sinclair spectrum version
-
-;INCLUDE "config_private.inc"
-
-;SECTION code_clib
-;SECTION code_temp_sp1
+; 12.2024 adapted by zxjogv (zx@jogv.es) for JSP
 
 	section code_compiler
 
-PUBLIC _SP1_DRAW_MASK2
+	public _SP1_DRAW_MASK2
 
-EXTERN _SP1_DRAW_MASK2NR
-EXTERN SP1RETSPRDRAW
+	extern _SP1_DRAW_MASK2NR
 	extern _jsp_rottbl
-	defc SP1V_ROTTBL=_jsp_rottbl
 
-; following data segment copied into struct sp1_cs
-
-;   ld hl,0
-;   ld ix,0
-;   call _SP1_DRAW_MASK2
-
-; following draw code called by way of SP1UpdateNow
-;
 ;  a = hor rot table
 ; bc = graphic disp
 ; hl = graphic def ptr
 ; ix = left graphic def ptr
-;
-; 51 + 146*8 - 6 + 10 = 1223 cycles
 
 _SP1_DRAW_MASK2:
 
-   cp SP1V_ROTTBL/256
+   cp _jsp_rottbl/256
    jp z, _SP1_DRAW_MASK2NR
 
-   add hl,bc
-   add ix,bc
    ex de,hl
+   push bc
+   pop iy
    ld h,a
 
    ;  h = shift table
    ; de = sprite def (mask,graph) pairs
    ; ix = left sprite def
+   ; iy = dst buf
 
 _SP1Mask2Rotate:
 
@@ -64,11 +49,11 @@ _SP1Mask2Rotate:
    ld a,(de)
    inc de
    ld l,a
-   ld a,(SP1V_PIXELBUFFER+0) ; get background graphic
+   ld a,(iy+0) ; get background graphic
    and b                   ; mask it
    or c                    ; or graph rotated from left
    or (hl)                 ; or spr graph rotated right
-   ld (SP1V_PIXELBUFFER+0),a ; store to current background
+   ld (iy+0),a ; store to current background
 
    ; 1
 
@@ -86,11 +71,11 @@ _SP1Mask2Rotate:
    ld a,(de)
    inc de
    ld l,a
-   ld a,(SP1V_PIXELBUFFER+1)
+   ld a,(iy+1)
    and b
    or c
    or (hl)
-   ld (SP1V_PIXELBUFFER+1),a
+   ld (iy+1),a
 
    ; 2
 
@@ -108,11 +93,11 @@ _SP1Mask2Rotate:
    ld a,(de)
    inc de
    ld l,a
-   ld a,(SP1V_PIXELBUFFER+2)
+   ld a,(iy+2)
    and b
    or c
    or (hl)
-   ld (SP1V_PIXELBUFFER+2),a
+   ld (iy+2),a
 
    ; 3
 
@@ -130,11 +115,11 @@ _SP1Mask2Rotate:
    ld a,(de)
    inc de
    ld l,a
-   ld a,(SP1V_PIXELBUFFER+3)
+   ld a,(iy+3)
    and b
    or c
    or (hl)
-   ld (SP1V_PIXELBUFFER+3),a
+   ld (iy+3),a
 
    ; 4
 
@@ -152,11 +137,11 @@ _SP1Mask2Rotate:
    ld a,(de)
    inc de
    ld l,a
-   ld a,(SP1V_PIXELBUFFER+4)
+   ld a,(iy+4)
    and b
    or c
    or (hl)
-   ld (SP1V_PIXELBUFFER+4),a
+   ld (iy+4),a
 
    ; 5
 
@@ -174,11 +159,11 @@ _SP1Mask2Rotate:
    ld a,(de)
    inc de
    ld l,a
-   ld a,(SP1V_PIXELBUFFER+5)
+   ld a,(iy+5)
    and b
    or c
    or (hl)
-   ld (SP1V_PIXELBUFFER+5),a
+   ld (iy+5),a
 
    ; 6
 
@@ -196,11 +181,11 @@ _SP1Mask2Rotate:
    ld a,(de)
    inc de
    ld l,a
-   ld a,(SP1V_PIXELBUFFER+6)
+   ld a,(iy+6)
    and b
    or c
    or (hl)
-   ld (SP1V_PIXELBUFFER+6),a
+   ld (iy+6),a
 
    ; 7
 
@@ -217,11 +202,10 @@ _SP1Mask2Rotate:
    dec h
    ld a,(de)
    ld l,a
-   ld a,(SP1V_PIXELBUFFER+7)
+   ld a,(iy+7)
    and b
    or c
    or (hl)
-   ld (SP1V_PIXELBUFFER+7),a
+   ld (iy+7),a
 
-;   jp SP1RETSPRDRAW
    ret

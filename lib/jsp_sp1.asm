@@ -24,48 +24,53 @@ _sp1_draw_mask2:
 
 	push de		;; restore ret addr
 
-	jp _SP1_DRAW_MASK2
+	push iy
+	call _SP1_DRAW_MASK2
+	pop iy
+	ret
 
 ;; void sp1_draw_mask2nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 
 _sp1_draw_mask2nr:
-	pop af		; save ret addr
+	pop ix		; save ret addr
 
+	ld a,0		; a = rot table
+	ld de,0		; de = unused
 	pop hl		; hl = graphic def ptr
 	pop bc		; bc = graphic disp
 
-	push af		;; restore ret addr
+	push ix		;; restore ret addr
 
 	jp _SP1_DRAW_MASK2NR
 
 ;; void sp1_draw_mask2lb( uint8_t *dst, uint8_t *graph, uint8_t *graph_left, uint8_t *rottbl ) __smallc __z88dk_callee;
 
 _sp1_draw_mask2lb:
-	pop de		; save ret addr
+	pop ix		; save ret addr
 
 	pop bc
 	ld a,b		; a = hor rot table
 
-	pop ix		; ix = left graphic def ptr
+	pop de		; de = left graphic def ptr
 	pop hl		; hl = graphic def ptr
 	pop bc		; bc = graphic disp
 
-	push de		;; restore ret addr
+	push ix		;; restore ret addr
 
 	jp _SP1_DRAW_MASK2LB
 
 ;; void sp1_draw_mask2rb( uint8_t *dst, uint8_t *graph, uint8_t *graph_left, uint8_t *rottbl ) __smallc __z88dk_callee;
 
 _sp1_draw_mask2rb:
-	pop de		; save ret addr
+	pop ix		; save ret addr
 
 	pop bc
 	ld a,b		; a = hor rot table
 
-	pop ix		; ix = left graphic def ptr
-	pop hl		; hl = graphic def ptr
+	pop hl		; hl = left graphic def ptr
+	pop de		; de = graphic def ptr
 	pop bc		; bc = graphic disp
 
-	push de		;; restore ret addr
+	push ix		;; restore ret addr
 
 	jp _SP1_DRAW_MASK2RB
