@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-// #define SPECTRUM_128 to use the 128K mode memory layout.  If not
-// defined, 48K layout will be used by default
+// #define SPECTRUM_128 to use the 128K memory layout.  If not
+// defined, 48K memory layout will be used by default
 
 /////////////////////////////////////////
 // Engine functions
@@ -23,6 +23,42 @@ void jsp_redraw( void );
 void jsp_draw_background_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee;
 // resotres default background
 void jsp_delete_background_tile( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
+
+/////////////////////////////////////////
+// Sprite functions and data structures
+/////////////////////////////////////////
+
+// All sprites in the game are the same size.  You can just change these
+// values and recompile, the engine will reconfigure for the given sizes
+
+#define JSP_SPRITE_WIDTH_CHARS	2
+#define JSP_SPRITE_HEIGHT_CHARS	2
+
+///////////////////////////////////////
+
+// sprite data structure
+struct jsp_sprite_s {
+    // pointer to pixel data - they can be changed at any moment, for
+    // animations, etc.
+    uint8_t *pixels;
+
+    // Private Drawing Buffer of (m+1)x(n+1) chars
+    uint8_t pdbuf[ ( JSP_SPRITE_WIDTH_CHARS + 1 ) * ( JSP_SPRITE_HEIGHT_CHARS + 1 ) * 8 ];
+
+    // sprite size is not stored, it's fixed at compile time (see above)
+    // sprite current position
+    uint8_t xpos;
+    uint8_t ypos;
+
+    // sprite flags
+    struct {
+        int initialized:1;
+    } flags;
+};
+
+void jsp_init_sprite( struct jsp_sprite_s *sp, uint8_t *pixels ) __smallc __z88dk_callee;
+void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
+void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
 
 /////////////////////////////////////////
 // Internal functions and library data
@@ -47,5 +83,11 @@ void jsp_draw_screen_tile_attr( uint8_t row, uint8_t col, uint8_t *pix, uint8_t 
 
 // some utility functions
 void jsp_memzero( void *dst, uint16_t numbytes ) __smallc __z88dk_callee;
+
+// drawing wrappers for hijacked SP1 functions (thanks Alvin ;-) )
+void sp1_draw_mask2( uint8_t *dst, uint8_t *graph, uint8_t *graph_left, uint8_t *rottbl ) __smallc __z88dk_callee;
+void sp1_draw_mask2nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
+void sp1_draw_mask2lb( uint8_t *dst, uint8_t *graph, uint8_t *graph_left, uint8_t *rottbl ) __smallc __z88dk_callee;
+void sp1_draw_mask2rb( uint8_t *dst, uint8_t *graph, uint8_t *graph_left, uint8_t *rottbl ) __smallc __z88dk_callee;
 
 #endif // _JSP_H
