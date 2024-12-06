@@ -21,6 +21,8 @@ _SP1_DRAW_MASK2:
    cp _jsp_rottbl/256
    jp z, _SP1_DRAW_MASK2NR
 
+   push iy	; save
+
    ex de,hl
    push bc
    pop iy
@@ -208,4 +210,5 @@ _SP1Mask2Rotate:
    or (hl)
    ld (iy+7),a
 
+   pop iy	; restore
    ret

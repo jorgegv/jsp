@@ -42,9 +42,6 @@ struct jsp_sprite_s {
     // animations, etc.
     uint8_t *pixels;
 
-    // Private Drawing Buffer of (m+1)x(n+1) chars
-    uint8_t pdbuf[ ( JSP_SPRITE_WIDTH_CHARS + 1 ) * ( JSP_SPRITE_HEIGHT_CHARS + 1 ) * 8 ];
-
     // sprite size is not stored, it's fixed at compile time (see above)
     // sprite current position
     uint8_t xpos;
@@ -54,6 +51,11 @@ struct jsp_sprite_s {
     struct {
         int initialized:1;
     } flags;
+
+    // Private Drawing Buffer of (m+1)x(n+1) chars
+    // Last element in struct, so previous elements can be accessed with
+    // short offsets (i.e.  ix+n, etc.)
+    uint8_t pdbuf[ ( JSP_SPRITE_WIDTH_CHARS + 1 ) * ( JSP_SPRITE_HEIGHT_CHARS + 1 ) * 8 ];
 };
 
 void jsp_init_sprite( struct jsp_sprite_s *sp, uint8_t *pixels ) __smallc __z88dk_callee;

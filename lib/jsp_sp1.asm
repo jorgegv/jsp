@@ -24,10 +24,7 @@ _sp1_draw_mask2:
 
 	push de		;; restore ret addr
 
-	push iy
-	call _SP1_DRAW_MASK2
-	pop iy
-	ret
+	jp _SP1_DRAW_MASK2
 
 ;; void sp1_draw_mask2nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 
