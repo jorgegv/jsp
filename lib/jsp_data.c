@@ -6,18 +6,18 @@
 
 #ifdef SPECTRUM_128
     #define ROTTBL_ADDR		0xB200
-    #define BTT_ADDR		0xAF00
-    #define DRT_ADDR		0xAC00
-    #define DTT_ADDR		0xAB4B
+    #define BTT_ADDR		0xAC00
+    #define DRT_ADDR		0xA600
+    #define DTT_ADDR		0xA545
 #else
     #define ROTTBL_ADDR		0xF200
-    #define BTT_ADDR		0xEF00
-    #define DRT_ADDR		0xEC00
-    #define DTT_ADDR		0xEB8B
+    #define BTT_ADDR		0xEC00
+    #define DRT_ADDR		0xE600
+    #define DTT_ADDR		0xE585
 #endif
 
 // rotation tables
-__at( ROTTBL_ADDR ) uint16_t jsp_rottbl[ 7 * 256 ];
+__at( ROTTBL_ADDR ) uint8_t jsp_rottbl[ 7 * 2 * 256 ];
 
 // Background Tiles Table: array of pointers to uint8_t
 __at( BTT_ADDR ) uint8_t *jsp_btt[ 768 ];

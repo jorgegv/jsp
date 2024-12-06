@@ -88,14 +88,14 @@ been reset for the next drawing cycle.
 | Range     | Contents                                          |
 |-----------|---------------------------------------------------|
 | F200-FFFF | Rotation tables (3.5 kB, 256-aligned)             |
-| EF00-F199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
-| EC00-EE99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
-| EBEE-EBFF | Unused (18 bytes)                                 |
-| EBEB-EBED | "JP <isr>" opcodes (3 bytes)                      |
-| EB8B-EBEA | Dirty Tiles Table, DTT (96 bytes)                 |
-| EB01-EB8A | Stack (138 bytes)                                 |
-| EA00-EB00 | IV table with value 0xEB (257 bytes)              |
-| 5D00-E9FF | Program code and data (36096 bytes)               |
+| EC00-F199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
+| E600-EB99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
+| E5E8-E5FF | Unused (18 bytes)                                 |
+| E5E5-E5E7 | "JP <isr>" opcodes (3 bytes)                      |
+| E585-E5E4 | Dirty Tiles Table, DTT (96 bytes)                 |
+| E501-E584 | Stack (132 bytes)                                 |
+| E400-E500 | IV table with value 0xE5 (257 bytes)              |
+| 5D00-E3FF | Program code and data (34560 bytes)               |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
 - SP should be initialized at startup to 0xEB8B
@@ -109,14 +109,14 @@ The layout is similar to 48K mode, but down 16K, in order to free up the C000-FF
 | Range     | Contents                                          |
 |-----------|---------------------------------------------------|
 | B200-BFFF | Rotation tables (3.5 kB, 256-aligned)             |
-| AF00-B199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
-| AC00-AE99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
-| ABAE-ABFF | Stack (82 bytes)                                  |
-| ABAB-ABAD | "JP <isr>" opcodes (3 bytes)                      |
-| AB4B-ABAA | Dirty Tiles Table, DTT (96 bytes)                 |
-| AB01-AB4A | Unused (74 bytes)                                 |
-| AA00-AB00 | IV table with value 0xAB (257 bytes)              |
-| 5D00-A9FF | Program code and data (19712 bytes)               |
+| AC00-B199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
+| A600-AB99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
+| A5A7-A5FF | Stack (89 bytes)                                  |
+| A5A5-A5A7 | "JP <isr>" opcodes (3 bytes)                      |
+| A545-A5A4 | Dirty Tiles Table, DTT (96 bytes)                 |
+| A501-A544 | Unused (68 bytes)                                 |
+| A400-A500 | IV table with value 0xA5 (257 bytes)              |
+| 5D00-A3FF | Program code and data (18176 bytes)               |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
 - SP should be initialized at startup to 0xAC00
