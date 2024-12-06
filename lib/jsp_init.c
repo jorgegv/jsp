@@ -42,8 +42,10 @@ void jsp_init_rottbl( void ) {
     uint8_t i;
     uint16_t val;
     for ( i = 1; i <= 7; i++ ) {
-        for ( val = 0; val <= 255; val++ )
-            jsp_rottbl[ 256 * ( i - 1 ) + val ] = ( 256 * val ) >> i;
+        for ( val = 0; val <= 255; val++ ) {
+            jsp_rottbl[ 512 * ( i - 1 ) + val ] = ( ( 256 * val ) >> i ) / 256;
+            jsp_rottbl[ 512 * ( i - 1 ) + val +256 ] = ( ( 256 * val ) >> i ) % 256;
+        }
     }
 }
 

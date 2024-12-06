@@ -90,6 +90,42 @@ void test_btt_redraw( void ) {
     jsp_redraw();
 }
 
+struct jsp_sprite_s test_sprite;
+extern uint8_t test_sprite_pixels[];
+extern uint8_t test_bg1tile_pixels[];
+void test_sprite_draw( void ) {
+    uint8_t i,j;
+
+    // draw some tiles
+    for ( i = 0; i < 17; i++ ) {
+        for ( j = 0; j < 32; j++ ) {
+            if ( ( i + j ) % 2 )
+                jsp_draw_background_tile( i, j, test_bg1tile_pixels );
+            else
+                jsp_draw_background_tile( i, j, tile_ball );
+        }
+    }
+    // update screen
+    jsp_redraw();
+
+    // play with sprite
+    jsp_init_sprite( &test_sprite, test_sprite_pixels );
+
+    jsp_draw_sprite( &test_sprite, 10, 6 );
+
+    jsp_draw_screen_tile( 19, 2, &test_sprite.pdbuf[0] );
+    jsp_draw_screen_tile( 19, 3, &test_sprite.pdbuf[8] );
+    jsp_draw_screen_tile( 19, 4, &test_sprite.pdbuf[16] );
+    jsp_draw_screen_tile( 20, 2, &test_sprite.pdbuf[24] );
+    jsp_draw_screen_tile( 20, 3, &test_sprite.pdbuf[32] );
+    jsp_draw_screen_tile( 20, 4, &test_sprite.pdbuf[40] );
+    jsp_draw_screen_tile( 21, 2, &test_sprite.pdbuf[48] );
+    jsp_draw_screen_tile( 21, 3, &test_sprite.pdbuf[56] );
+    jsp_draw_screen_tile( 21, 4, &test_sprite.pdbuf[64] );
+
+//    jsp_redraw();
+}
+
 void main( void ) {
     zx_cls();
     jsp_init( NULL );
@@ -99,5 +135,6 @@ void main( void ) {
 
 //    test_dtt();
 //    test_btt_contents();
-    test_btt_redraw();
+//    test_btt_redraw();
+    test_sprite_draw();
 }

@@ -40,7 +40,7 @@ _sp1_draw_mask2nr:
 
 	jp _SP1_DRAW_MASK2NR
 
-;; void sp1_draw_mask2lb( uint8_t *dst, uint8_t *graph, uint8_t *graph_left, uint8_t *rottbl ) __smallc __z88dk_callee;
+;; void sp1_draw_mask2lb( uint8_t *dst, uint8_t *graph, uint8_t *rottbl ) __smallc __z88dk_callee;
 
 _sp1_draw_mask2lb:
 	pop ix		; save ret addr
@@ -48,7 +48,6 @@ _sp1_draw_mask2lb:
 	pop bc
 	ld a,b		; a = hor rot table
 
-	pop de		; de = left graphic def ptr
 	pop hl		; hl = graphic def ptr
 	pop bc		; bc = graphic disp
 
