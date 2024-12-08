@@ -96,6 +96,7 @@ extern uint8_t test_bg1tile_pixels[];
 void test_sprite_draw( void ) {
     uint8_t i,j;
 
+/*
     // draw some tiles
     for ( i = 0; i < 17; i++ ) {
         for ( j = 0; j < 32; j++ ) {
@@ -107,11 +108,23 @@ void test_sprite_draw( void ) {
     }
     // update screen
     jsp_redraw();
+*/
+
+    jsp_draw_background_tile( 0, 0, (void *)0x3d80 );
+    jsp_draw_background_tile( 0, 1, (void *)0x3d88 );
+    jsp_draw_background_tile( 0, 2, (void *)0x3d90 );
+    jsp_draw_background_tile( 1, 0, (void *)0x3d98 );
+    jsp_draw_background_tile( 1, 1, (void *)0x3da0 );
+    jsp_draw_background_tile( 1, 2, (void *)0x3da8 );
+    jsp_draw_background_tile( 2, 0, (void *)0x3db0 );
+    jsp_draw_background_tile( 2, 1, (void *)0x3db8 );
+    jsp_draw_background_tile( 2, 2, (void *)0x3dc0 );
+    jsp_redraw();
 
     // play with sprite
     jsp_init_sprite( &test_sprite, test_sprite_pixels );
 
-    jsp_draw_sprite( &test_sprite, 10, 6 );
+    jsp_draw_sprite( &test_sprite, 4, 4 );
 
     jsp_draw_screen_tile( 19, 2, &test_sprite.pdbuf[0] );
     jsp_draw_screen_tile( 19, 3, &test_sprite.pdbuf[8] );
@@ -129,7 +142,6 @@ void test_sprite_draw( void ) {
 void main( void ) {
     zx_cls();
     jsp_init( NULL );
-
     // only one of the tests below can be run, they interfere with each
     // other
 
@@ -137,4 +149,5 @@ void main( void ) {
 //    test_btt_contents();
 //    test_btt_redraw();
     test_sprite_draw();
+    while ( 1 );
 }

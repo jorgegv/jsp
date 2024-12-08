@@ -24,11 +24,17 @@ _SP1_DRAW_MASK2LB:
 
    ld d,a
 
+_SP1_DRAW_MASK2LB_ALT:
+
+   push ix	; save!
+
+   push bc
+   pop ix
+
    ;  d = shift table
    ; hl = sprite def (mask,graph) pairs
    ; ix = dst buf  
 
-_SP1_DRAW_MASK2LB_ALT:
    ld e,$ff
    ld a,(de)
    cpl
@@ -161,4 +167,5 @@ _SP1Mask2LBRotate:
    or b
    ld (ix+7),a
 
+   pop ix	; restore!
    ret

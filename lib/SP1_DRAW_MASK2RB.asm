@@ -26,6 +26,7 @@ _SP1_DRAW_MASK2RB:
 
    ;  d = shift table
    ; hl = left sprite def (mask,graph) pairs
+   ; bc = graphic disp
 
 _SP1Mask2RBRotate:
 

@@ -14,7 +14,7 @@
 ;  a = hor rot table
 ; bc = graphic disp
 ; hl = graphic def ptr
-; ix = left graphic def ptr
+; de = left graphic def ptr
 
 _SP1_DRAW_MASK2:
 
@@ -22,6 +22,10 @@ _SP1_DRAW_MASK2:
    jp z, _SP1_DRAW_MASK2NR
 
    push iy	; save
+   push ix	; save
+
+   push de
+   pop ix
 
    ex de,hl
    push bc
@@ -210,5 +214,6 @@ _SP1Mask2Rotate:
    or (hl)
    ld (iy+7),a
 
+   pop ix	; restore
    pop iy	; restore
    ret

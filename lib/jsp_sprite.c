@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <spectrum.h>
+#include <stdio.h>
 
 #include "jsp.h"
 
@@ -11,31 +12,60 @@ void jsp_init_sprite( struct jsp_sprite_s *sp, uint8_t *pixels ) __smallc __z88d
 
 void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee {
     uint8_t i,j,start_row,start_col;
+    uint8_t *bg_ptr,*pix_ptr,*pix_ptr_left,*rottbl;
 
     start_row = ypos / 8;
     start_col = xpos / 8;
+
+    rottbl = &jsp_rottbl[ 512 * ( ( xpos % 8 ) - 1 ) ];
 
     // fill the sprite PDB with the current background
     // cell by cell
     for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ )
         for ( j = 0; j < JSP_SPRITE_WIDTH_CHARS + 1; j++ )
             jsp_memcpy( &sp->pdbuf[ ( i * ( JSP_SPRITE_WIDTH_CHARS + 1 ) + j ) * 8 ], jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ], 8 );
-
-    return;
+    
+    // initialize pointers for drawing
+    bg_ptr = sp->pdbuf;
+    pix_ptr = sp->pixels - ( ypos % 8 );
 
     // draw left column
-    for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ )
-        sp1_draw_mask2lb(
-            &sp->pdbuf[ i * ( JSP_SPRITE_WIDTH_CHARS + 1 ) * 8 ],	// dst buf
-            &sp->pixels[ i * 2 * 8 - ( ypos % 8 ) ],			// sprite data
-            &jsp_rottbl[ 512 * ( ( xpos % 8 ) - 1 ) ]			// rot tbl
-        );
-
+    for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ ) {
+        sp1_draw_mask2lb( bg_ptr, pix_ptr, rottbl );
+        bg_ptr += ( JSP_SPRITE_WIDTH_CHARS + 1 ) * 8;
+        pix_ptr += 16;
+    }
+            
     // draw middle columns if they exist
     #if JSP_SPRITE_WIDTH_CHARS > 2
+    bg_ptr = &sp->pdbuf[ 8 ];
+    pix_ptr_left = sp->pixels - ( ypos % 8 );
+    for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ ) {
+        sp1_draw_mask2( bg_ptr, pix_ptr, pix_ptr_left, rottbl );
+        bg_ptr += ( JSP_SPRITE_WIDTH_CHARS + 1 ) * 8;
+        pix_ptr += 16;
+        pix_ptr_left += 16;
+    }
     #endif
 
     // draw right column
+    bg_ptr = &sp->pdbuf[ JSP_SPRITE_WIDTH_CHARS * 8 ];
+    for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ ) {
+        sp1_draw_mask2rb( bg_ptr, pix_ptr, rottbl );
+        bg_ptr += ( JSP_SPRITE_WIDTH_CHARS + 1 ) * 8;
+        pix_ptr += 16;
+    }
+
+/*
+    for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ ) {
+        sp1_draw_mask2rb(
+            &sp->pdbuf[ JSP_SPRITE_WIDTH_CHARS * 8 + i * ( JSP_SPRITE_WIDTH_CHARS + 1 ) * 8 ],	// dst buf
+            &sp->pixels[ JSP_SPRITE_WIDTH_CHARS * ( JSP_SPRITE_HEIGHT_CHARS + 1 ) * 8 + i * 2 * 8 ] - ( ypos % 8 ),			// sprite data
+            &sp->pixels[ ( JSP_SPRITE_WIDTH_CHARS - 1 ) * ( JSP_SPRITE_HEIGHT_CHARS + 1 ) * 8 + i * 2 * 8 ] - ( ypos % 8 ),			// sprite data
+            &jsp_rottbl[ 512 * ( ( xpos % 8 ) - 1 ) ]			// rot tbl
+        );
+    }
+*/
 }
 
 void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee {
