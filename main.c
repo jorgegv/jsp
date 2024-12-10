@@ -110,7 +110,7 @@ void test_sprite_draw( void ) {
     jsp_redraw();
 */
 
-    uint16_t character = 0x3d80;
+    uint16_t character = 0x3d80;	// '0' at ROM
     // draw some tiles
     for ( i = 0; i < 17; i++ ) {
         for ( j = 0; j < 32; j++ ) {
@@ -137,18 +137,17 @@ void test_sprite_draw( void ) {
     // play with sprite
     jsp_init_sprite( &test_sprite, test_sprite_pixels );
 
-    jsp_draw_sprite( &test_sprite, 4, 4 );
+    jsp_draw_sprite( &test_sprite, 8, 8 );
 
-    jsp_draw_screen_tile( 19, 2, &test_sprite.pdbuf[0] );
-    jsp_draw_screen_tile( 19, 3, &test_sprite.pdbuf[8] );
-    jsp_draw_screen_tile( 19, 4, &test_sprite.pdbuf[16] );
-    jsp_draw_screen_tile( 20, 2, &test_sprite.pdbuf[24] );
-    jsp_draw_screen_tile( 20, 3, &test_sprite.pdbuf[32] );
-    jsp_draw_screen_tile( 20, 4, &test_sprite.pdbuf[40] );
-    jsp_draw_screen_tile( 21, 2, &test_sprite.pdbuf[48] );
-    jsp_draw_screen_tile( 21, 3, &test_sprite.pdbuf[56] );
-    jsp_draw_screen_tile( 21, 4, &test_sprite.pdbuf[64] );
-
+    jsp_draw_screen_tile( 19, 2, &test_sprite.pdbuf[0] ); *zx_cxy2aaddr( 2, 19 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 19, 3, &test_sprite.pdbuf[8] ); *zx_cxy2aaddr( 3, 19 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 19, 4, &test_sprite.pdbuf[16] ); *zx_cxy2aaddr( 4, 19 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 20, 2, &test_sprite.pdbuf[24] ); *zx_cxy2aaddr( 2, 20 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 20, 3, &test_sprite.pdbuf[32] ); *zx_cxy2aaddr( 3, 20 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 20, 4, &test_sprite.pdbuf[40] ); *zx_cxy2aaddr( 4, 20 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 21, 2, &test_sprite.pdbuf[48] ); *zx_cxy2aaddr( 2, 21 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 21, 3, &test_sprite.pdbuf[56] ); *zx_cxy2aaddr( 3, 21 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 21, 4, &test_sprite.pdbuf[64] ); *zx_cxy2aaddr( 4, 21 ) = PAPER_YELLOW | BRIGHT;
 //    jsp_redraw();
 }
 

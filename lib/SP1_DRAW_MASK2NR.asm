@@ -11,80 +11,81 @@
 ;  a = hor rot table
 ; bc = graphic disp
 ; hl = graphic def ptr
-; de = left graphic def ptr
 
 _SP1_DRAW_MASK2NR:
 
    ; hl = sprite def = (mask,graph) pairs
    ; bc = bg cell
-   ; 0
+
+   push ix	; save!
 
    push bc
    pop ix	; ix = dst buffer
 
+   ; 0
    ld e,(ix+0)
-   ld d,(ix+1)
    ld a,(hl)
    and e
    inc hl
    or (hl)
    inc hl
    ld (ix+0),a
+
+   ld e,(ix+1)
    ld a,(hl)
-   and d
+   and e
    inc hl
    or (hl)
    inc hl
    ld (ix+1),a
 
-   ; 1
-
-   ld e,(ix+3)
-   ld d,(ix+2)
+   ld e,(ix+2)
    ld a,(hl)
    and e
    inc hl
    or (hl)
    inc hl
    ld (ix+2),a
+
+   ld e,(ix+3)
    ld a,(hl)
-   and d
+   and e
    inc hl
    or (hl)
    inc hl
    ld (ix+3),a
 
-   ; 2
-
    ld e,(ix+4)
-   ld d,(ix+5)
    ld a,(hl)
    and e
    inc hl
    or (hl)
    inc hl
    ld (ix+4),a
+
+   ld e,(ix+5)
    ld a,(hl)
-   and d
+   and e
    inc hl
    or (hl)
    inc hl
    ld (ix+5),a
 
-   ; 3
-
    ld e,(ix+6)
-   ld d,(ix+7)
    ld a,(hl)
    and e
    inc hl
    or (hl)
    inc hl
    ld (ix+6),a
+
+   ld e,(ix+7)
    ld a,(hl)
-   and d
+   and e
    inc hl
    or (hl)
+   inc hl
    ld (ix+7),a
 
+   pop ix	; restore!
    ret

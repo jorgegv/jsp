@@ -18,7 +18,7 @@
 
 _SP1_DRAW_MASK2:
 
-   cp _jsp_rottbl/256
+   cp _jsp_rottbl/256 - 2
    jp z, _SP1_DRAW_MASK2NR
 
    push iy	; save

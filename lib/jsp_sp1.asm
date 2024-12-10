@@ -33,14 +33,12 @@ _sp1_draw_mask2:
 ;; void sp1_draw_mask2nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 
 _sp1_draw_mask2nr:
-	pop ix		; save ret addr
+	pop de		; save ret addr
 
-	ld a,0		; a = rot table
-	ld de,0		; de = unused
 	pop hl		; hl = graphic def ptr
 	pop bc		; bc = graphic disp
 
-	push ix		;; restore ret addr
+	push de		;; restore ret addr
 
 	jp _SP1_DRAW_MASK2NR
 

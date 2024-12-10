@@ -18,7 +18,7 @@
 
 _SP1_DRAW_MASK2RB:
 
-   cp _jsp_rottbl/256
+   cp _jsp_rottbl/256 - 2
    ret z
 
    ld d,a
