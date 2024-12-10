@@ -95,10 +95,12 @@ extern uint8_t test_sprite_pixels[];
 extern uint8_t test_bg1tile_pixels[];
 void test_sprite_draw( void ) {
     uint8_t i,j;
+    uint8_t x,y;
+    int8_t dx,dy;
 
     uint16_t character = 0x3d80;	// '0' at ROM
     // draw some tiles
-    for ( i = 0; i < 17; i++ ) {
+    for ( i = 0; i < 24; i++ ) {
         for ( j = 0; j < 32; j++ ) {
                 jsp_draw_background_tile( i, j, (void *)character );
                 character += 8;
@@ -112,11 +114,37 @@ void test_sprite_draw( void ) {
     // play with sprite
     jsp_init_sprite( &test_sprite, test_sprite_pixels );
 
-    for ( i = 0; i < 160; i++ ) {
-        jsp_move_sprite( &test_sprite, i, i );
+    dx = 3;
+    dy = 2;
+    x = 20;
+    y = 30;
+    while ( 1 ) {
+        jsp_move_sprite( &test_sprite, x, y );
+
+        if ( ( x + dx > 240 ) || ( x + dx < 4 ) ){
+            dx = -dx;
+        }
+        x += dx;
+
+        if ( ( y + dy > 170 ) || ( y + dy < 4 ) ) {
+            dy = -dy;
+        }
+        y += dy;
+
+        __asm
+        halt
+        __endasm;
+
         jsp_redraw();
-        z80_delay_ms( 10 );
+
+//        z80_delay_ms( 10 );
     }
+
+//    for ( i = 0; i < 160; i++ ) {
+//        jsp_move_sprite( &test_sprite, i, i );
+//        jsp_redraw();
+//        z80_delay_ms( 10 );
+//    }
 //        jsp_draw_screen_tile( 19, 2, &test_sprite.pdbuf[0] ); *zx_cxy2aaddr( 2, 19 ) = PAPER_YELLOW | BRIGHT;
 //        jsp_draw_screen_tile( 19, 3, &test_sprite.pdbuf[8] ); *zx_cxy2aaddr( 3, 19 ) = PAPER_YELLOW | BRIGHT;
 //        jsp_draw_screen_tile( 19, 4, &test_sprite.pdbuf[16] ); *zx_cxy2aaddr( 4, 19 ) = PAPER_YELLOW | BRIGHT;
