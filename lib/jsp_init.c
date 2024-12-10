@@ -52,7 +52,7 @@ void jsp_init_rottbl( void ) {
 void jsp_init_background( uint8_t *default_bg_tile ) {
     uint16_t i;
     for ( i = 0; i < 768; i++ )
-        jsp_btt[ i ] = default_bg_tile;
+        jsp_btt[ i ] = jsp_drt[ i ] = default_bg_tile;
     jsp_default_bg_tile = default_bg_tile;
 }
 
