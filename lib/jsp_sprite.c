@@ -60,6 +60,13 @@ void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __sm
             pix_ptr += 16;
         }
     }
+
+    // update DRT pointers and mark cells as dirty
+    for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ )
+        for ( j = 0; j < JSP_SPRITE_WIDTH_CHARS + 1; j++ ) {
+            jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ] = &sp->pdbuf[ ( i * ( JSP_SPRITE_WIDTH_CHARS + 1 ) + j ) * 8 ];
+            jsp_dtt_mark_dirty( i, j );
+        }
 }
 
 void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee {

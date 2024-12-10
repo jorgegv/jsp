@@ -148,7 +148,7 @@ void test_sprite_draw( void ) {
     jsp_draw_screen_tile( 21, 2, &test_sprite.pdbuf[48] ); *zx_cxy2aaddr( 2, 21 ) = PAPER_YELLOW | BRIGHT;
     jsp_draw_screen_tile( 21, 3, &test_sprite.pdbuf[56] ); *zx_cxy2aaddr( 3, 21 ) = PAPER_YELLOW | BRIGHT;
     jsp_draw_screen_tile( 21, 4, &test_sprite.pdbuf[64] ); *zx_cxy2aaddr( 4, 21 ) = PAPER_YELLOW | BRIGHT;
-//    jsp_redraw();
+    jsp_redraw();
 }
 
 void main( void ) {
