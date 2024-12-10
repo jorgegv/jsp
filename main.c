@@ -110,16 +110,29 @@ void test_sprite_draw( void ) {
     jsp_redraw();
 */
 
-    jsp_draw_background_tile( 0, 0, (void *)0x3d80 );
-    jsp_draw_background_tile( 0, 1, (void *)0x3d88 );
-    jsp_draw_background_tile( 0, 2, (void *)0x3d90 );
-    jsp_draw_background_tile( 1, 0, (void *)0x3d98 );
-    jsp_draw_background_tile( 1, 1, (void *)0x3da0 );
-    jsp_draw_background_tile( 1, 2, (void *)0x3da8 );
-    jsp_draw_background_tile( 2, 0, (void *)0x3db0 );
-    jsp_draw_background_tile( 2, 1, (void *)0x3db8 );
-    jsp_draw_background_tile( 2, 2, (void *)0x3dc0 );
+    uint16_t character = 0x3d80;
+    // draw some tiles
+    for ( i = 0; i < 17; i++ ) {
+        for ( j = 0; j < 32; j++ ) {
+                jsp_draw_background_tile( i, j, (void *)character );
+                character += 8;
+                if ( character == 0x3dd0 )
+                    character = 0x3d80;
+        }
+    }
+    // update screen
     jsp_redraw();
+
+//    jsp_draw_background_tile( 0, 0, (void *)0x3d80 );
+//    jsp_draw_background_tile( 0, 1, (void *)0x3d88 );
+//    jsp_draw_background_tile( 0, 2, (void *)0x3d90 );
+//    jsp_draw_background_tile( 1, 0, (void *)0x3d98 );
+//    jsp_draw_background_tile( 1, 1, (void *)0x3da0 );
+//    jsp_draw_background_tile( 1, 2, (void *)0x3da8 );
+//    jsp_draw_background_tile( 2, 0, (void *)0x3db0 );
+//    jsp_draw_background_tile( 2, 1, (void *)0x3db8 );
+//    jsp_draw_background_tile( 2, 2, (void *)0x3dc0 );
+//    jsp_redraw();
 
     // play with sprite
     jsp_init_sprite( &test_sprite, test_sprite_pixels );

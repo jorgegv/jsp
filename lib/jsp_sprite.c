@@ -26,10 +26,10 @@ void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __sm
             jsp_memcpy( &sp->pdbuf[ ( i * ( JSP_SPRITE_WIDTH_CHARS + 1 ) + j ) * 8 ], jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ], 8 );
     
     // initialize pointers for drawing
-    bg_ptr = sp->pdbuf;
-    pix_ptr = sp->pixels - ( ypos % 8 );
+    pix_ptr = pix_ptr_left = sp->pixels - ( ypos % 8 );
 
     // draw left column
+    bg_ptr = &sp->pdbuf[ 0 ];
     for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ ) {
         sp1_draw_mask2lb( bg_ptr, pix_ptr, rottbl );
         bg_ptr += ( JSP_SPRITE_WIDTH_CHARS + 1 ) * 8;
@@ -37,9 +37,8 @@ void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __sm
     }
             
     // draw middle columns if they exist
-    #if JSP_SPRITE_WIDTH_CHARS > 2
+    #if JSP_SPRITE_WIDTH_CHARS > 1
     bg_ptr = &sp->pdbuf[ 8 ];
-    pix_ptr_left = sp->pixels - ( ypos % 8 );
     for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ ) {
         sp1_draw_mask2( bg_ptr, pix_ptr, pix_ptr_left, rottbl );
         bg_ptr += ( JSP_SPRITE_WIDTH_CHARS + 1 ) * 8;
@@ -50,22 +49,14 @@ void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __sm
 
     // draw right column
     bg_ptr = &sp->pdbuf[ JSP_SPRITE_WIDTH_CHARS * 8 ];
+    // the right column is the same as the last middle one, i.e. the last pix_ptr_left
+    pix_ptr = pix_ptr_left;
     for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ ) {
         sp1_draw_mask2rb( bg_ptr, pix_ptr, rottbl );
         bg_ptr += ( JSP_SPRITE_WIDTH_CHARS + 1 ) * 8;
         pix_ptr += 16;
     }
 
-/*
-    for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ ) {
-        sp1_draw_mask2rb(
-            &sp->pdbuf[ JSP_SPRITE_WIDTH_CHARS * 8 + i * ( JSP_SPRITE_WIDTH_CHARS + 1 ) * 8 ],	// dst buf
-            &sp->pixels[ JSP_SPRITE_WIDTH_CHARS * ( JSP_SPRITE_HEIGHT_CHARS + 1 ) * 8 + i * 2 * 8 ] - ( ypos % 8 ),			// sprite data
-            &sp->pixels[ ( JSP_SPRITE_WIDTH_CHARS - 1 ) * ( JSP_SPRITE_HEIGHT_CHARS + 1 ) * 8 + i * 2 * 8 ] - ( ypos % 8 ),			// sprite data
-            &jsp_rottbl[ 512 * ( ( xpos % 8 ) - 1 ) ]			// rot tbl
-        );
-    }
-*/
 }
 
 void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee {
