@@ -113,7 +113,7 @@ void test_sprite_draw( void ) {
     jsp_init_sprite( &test_sprite, test_sprite_pixels );
 
     for ( i = 0; i < 160; i++ ) {
-        jsp_draw_sprite( &test_sprite, i, i );
+        jsp_move_sprite( &test_sprite, i, i );
         jsp_redraw();
         z80_delay_ms( 10 );
     }

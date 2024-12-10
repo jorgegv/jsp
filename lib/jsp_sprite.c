@@ -6,7 +6,7 @@
 
 void jsp_init_sprite( struct jsp_sprite_s *sp, uint8_t *pixels ) __smallc __z88dk_callee {
     sp->pixels = pixels;
-    sp->xpos = sp-> ypos = 255;
+    sp->xpos = sp->ypos = 0;
     sp->flags.initialized = 1;
 }
 
@@ -14,6 +14,8 @@ void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __sm
     uint8_t i,j,start_row,start_col;
     uint8_t *bg_ptr,*pix_ptr,*pix_ptr_left,*rottbl;
     
+    if ( ! sp->flags.initialized ) return;
+
     start_row = ypos / 8;
     start_col = xpos / 8;
 
@@ -67,7 +69,22 @@ void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __sm
             jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ] = &sp->pdbuf[ ( i * ( JSP_SPRITE_WIDTH_CHARS + 1 ) + j ) * 8 ];
             jsp_dtt_mark_dirty( start_row + i, start_col + j );
         }
+
+    // update sprite with new pos
+    sp->xpos = xpos;
+    sp->ypos = ypos;
 }
 
 void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee {
+    uint8_t i,j,start_row,start_col;
+
+    // mark old positions as dirty
+    start_row = sp->ypos / 8;
+    start_col = sp->xpos / 8;
+    for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ )
+        for ( j = 0; j < JSP_SPRITE_WIDTH_CHARS + 1; j++ )
+            jsp_dtt_mark_dirty( start_row + i, start_col + j );
+
+    // draw on new position
+    jsp_draw_sprite( sp, xpos, ypos );
 }

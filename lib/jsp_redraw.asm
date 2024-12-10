@@ -4,6 +4,7 @@
 	extern _jsp_dtt_mark_clean
 	extern _jsp_drt
 	extern _jsp_dtt
+	extern _jsp_drt_restore_bg
 
 	public _jsp_redraw
 
@@ -134,10 +135,22 @@ dirty_cell:
 	pop af				;; A = real col
 	pop bc				;; BC = row
 
+	push bc				;; save both for later again
+	push af
+
 	push bc				;; param: row
 	ld c,a				;; BC = real col
 	push bc				;; param: real col
 	call _jsp_dtt_mark_clean	;; jsp_dtt_mark_clean( row, col )
+					;; no cleanup, __z88dk_callee
+
+	pop af				;; A = real col
+	pop bc				;; BC = row
+
+	push bc				;; param: row
+	ld c,a				;; BC = real col
+	push bc				;; param: real col
+	call _jsp_drt_restore_bg	;; jsp_drt_restore_bg( row, col )
 					;; no cleanup, __z88dk_callee
 
 	pop de
