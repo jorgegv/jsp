@@ -19,7 +19,7 @@ void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __sm
 
     rottbl = &jsp_rottbl[ 512 * ( xpos % 8 ) ] - 512;
 
-    // fill the sprite PDB with the current background
+    // fill the sprite PDB with the current DRT records as background
     // cell by cell
     for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ )
         for ( j = 0; j < JSP_SPRITE_WIDTH_CHARS + 1; j++ )
@@ -65,7 +65,7 @@ void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __sm
     for ( i = 0; i < JSP_SPRITE_HEIGHT_CHARS + 1; i++ )
         for ( j = 0; j < JSP_SPRITE_WIDTH_CHARS + 1; j++ ) {
             jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ] = &sp->pdbuf[ ( i * ( JSP_SPRITE_WIDTH_CHARS + 1 ) + j ) * 8 ];
-            jsp_dtt_mark_dirty( i, j );
+            jsp_dtt_mark_dirty( start_row + i, start_col + j );
         }
 }
 
