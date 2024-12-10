@@ -5,7 +5,7 @@
 
 // screen drawing functions
 
-void jsp_draw_screen_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee {
+void _jsp_draw_screen_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee {
     uint8_t *dst = zx_cxy2saddr( col, row );
     uint8_t i = 8;
     while ( i-- ) {
