@@ -3,6 +3,7 @@
 	extern _zx_cxy2saddr_callee
 
 	public _jsp_draw_screen_tile
+;	public _jsp_draw_screen_tile_attr
 
 _jsp_draw_screen_tile:
 
@@ -24,33 +25,35 @@ _jsp_draw_screen_tile:
 	pop hl		; HL = src data
 
 	ldi		; transfer 1 byte
+	dec de
 
-	dec e
 	inc d		; next line
 	ldi		; ... 7 times more
+	dec de
 
-	dec e
 	inc d
 	ldi
+	dec de
 
-	dec e
 	inc d
 	ldi
+	dec de
 
-	dec e
 	inc d
 	ldi
+	dec de
 
-	dec e
 	inc d
 	ldi
+	dec de
 
-	dec e
 	inc d
 	ldi
+	dec de
 
-	dec e
 	inc d
 	ldi
 
 	ret
+
+_jsp_draw_screen_tile_attr:
