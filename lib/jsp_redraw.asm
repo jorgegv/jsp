@@ -1,6 +1,7 @@
 	section code_compiler
 
 	extern _jsp_draw_screen_tile
+	extern _jsp_draw_screen_tile_attr
 	extern _jsp_dtt_mark_clean
 	extern _jsp_drt
 	extern _jsp_dtt
