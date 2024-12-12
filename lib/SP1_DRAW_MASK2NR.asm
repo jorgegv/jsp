@@ -7,6 +7,17 @@
 	section code_compiler
 
 	public _SP1_DRAW_MASK2NR
+	public _sp1_draw_mask2nr
+
+;; void sp1_draw_mask2nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
+
+_sp1_draw_mask2nr:
+	pop de		; save ret addr
+
+	pop hl		; hl = graphic def ptr
+	pop bc		; bc = graphic disp
+
+	push de		;; restore ret addr
 
 ;  a = hor rot table
 ; bc = graphic disp

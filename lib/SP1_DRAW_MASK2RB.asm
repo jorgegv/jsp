@@ -7,9 +7,23 @@
 	section code_compiler
 
 	public _SP1_DRAW_MASK2RB
+	public _sp1_draw_mask2rb
 
 	extern _SP1_DRAW_MASK2LB_ALT
 	extern _jsp_rottbl
+
+;; void sp1_draw_mask2rb( uint8_t *dst, uint8_t *graph, uint8_t *rottbl ) __smallc __z88dk_callee;
+
+_sp1_draw_mask2rb:
+	pop de		; save ret addr
+
+	pop bc
+	ld a,b		; a = hor rot table
+
+	pop hl		; hl = left graphic def ptr
+	pop bc		; bc = graphic disp
+
+	push de		;; restore ret addr
 
 ;  a = hor rot table
 ; bc = graphic disp
