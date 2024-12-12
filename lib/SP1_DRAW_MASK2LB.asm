@@ -19,153 +19,153 @@
 
 _SP1_DRAW_MASK2LB:
 
-   cp _jsp_rottbl/256 - 2
-   jp z, _SP1_DRAW_MASK2NR
+	cp _jsp_rottbl/256 - 2
+	jp z, _SP1_DRAW_MASK2NR
 
-   ld d,a
+	ld d,a
 
 _SP1_DRAW_MASK2LB_ALT:
 
-   push ix	; save!
+	push ix	; save!
 
-   push bc
-   pop ix
+	push bc
+	pop ix
 
-   ;  d = shift table
-   ; hl = sprite def (mask,graph) pairs
-   ; ix = dst buf  
+	;  d = shift table
+	; hl = sprite def (mask,graph) pairs
+	; ix = dst buf  
 
-   ld e,$ff
-   ld a,(de)
-   cpl
-   exx
-   ld b,a
-   exx
+	ld e,$ff
+	ld a,(de)
+	cpl
+	exx
+	ld b,a
+	exx
 
 _SP1Mask2LBRotate:
 
-   ; 0
+	; 0
 
-   ld c,(ix+0)
-   ld b,(ix+1)
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   exx
-   or b
-   exx
-   and c
-   ld c,a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   or c
-   ld (ix+0),a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   exx
-   or b
-   exx
-   and b
-   ld b,a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   or b
-   ld (ix+1),a
+	ld c,(ix+0)
+	ld b,(ix+1)
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	exx
+	or b
+	exx
+	and c
+	ld c,a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	or c
+	ld (ix+0),a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	exx
+	or b
+	exx
+	and b
+	ld b,a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	or b
+	ld (ix+1),a
 
-   ; 1
+	; 1
 
-   ld c,(ix+2)
-   ld b,(ix+3)
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   exx
-   or b
-   exx
-   and c
-   ld c,a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   or c
-   ld (ix+2),a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   exx
-   or b
-   exx
-   and b
-   ld b,a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   or b
-   ld (ix+3),a
+	ld c,(ix+2)
+	ld b,(ix+3)
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	exx
+	or b
+	exx
+	and c
+	ld c,a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	or c
+	ld (ix+2),a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	exx
+	or b
+	exx
+	and b
+	ld b,a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	or b
+	ld (ix+3),a
 
-   ; 2
+	; 2
 
-   ld c,(ix+4)
-   ld b,(ix+5)
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   exx
-   or b
-   exx
-   and c
-   ld c,a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   or c
-   ld (ix+4),a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   exx
-   or b
-   exx
-   and b
-   ld b,a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   or b
-   ld (ix+5),a
+	ld c,(ix+4)
+	ld b,(ix+5)
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	exx
+	or b
+	exx
+	and c
+	ld c,a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	or c
+	ld (ix+4),a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	exx
+	or b
+	exx
+	and b
+	ld b,a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	or b
+	ld (ix+5),a
 
-   ; 3
+	; 3
 
-   ld c,(ix+6)
-   ld b,(ix+7)
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   exx
-   or b
-   exx
-   and c
-   ld c,a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   or c
-   ld (ix+6),a
-   ld e,(hl)
-   inc hl
-   ld a,(de)
-   exx
-   or b
-   exx
-   and b
-   ld b,a
-   ld e,(hl)
-   ld a,(de)
-   or b
-   ld (ix+7),a
+	ld c,(ix+6)
+	ld b,(ix+7)
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	exx
+	or b
+	exx
+	and c
+	ld c,a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	or c
+	ld (ix+6),a
+	ld e,(hl)
+	inc hl
+	ld a,(de)
+	exx
+	or b
+	exx
+	and b
+	ld b,a
+	ld e,(hl)
+	ld a,(de)
+	or b
+	ld (ix+7),a
 
-   pop ix	; restore!
-   ret
+	pop ix	; restore!
+	ret

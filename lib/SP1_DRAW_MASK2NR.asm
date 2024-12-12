@@ -14,78 +14,78 @@
 
 _SP1_DRAW_MASK2NR:
 
-   ; hl = sprite def = (mask,graph) pairs
-   ; bc = bg cell
+	; hl = sprite def = (mask,graph) pairs
+	; bc = bg cell
 
-   push ix	; save!
+	push ix	; save!
 
-   push bc
-   pop ix	; ix = dst buffer
+	push bc
+	pop ix	; ix = dst buffer
 
-   ; 0
-   ld e,(ix+0)
-   ld a,(hl)
-   and e
-   inc hl
-   or (hl)
-   inc hl
-   ld (ix+0),a
+	; 0
+	ld e,(ix+0)
+	ld a,(hl)
+	and e
+	inc hl
+	or (hl)
+	inc hl
+	ld (ix+0),a
 
-   ld e,(ix+1)
-   ld a,(hl)
-   and e
-   inc hl
-   or (hl)
-   inc hl
-   ld (ix+1),a
+	ld e,(ix+1)
+	ld a,(hl)
+	and e
+	inc hl
+	or (hl)
+	inc hl
+	ld (ix+1),a
 
-   ld e,(ix+2)
-   ld a,(hl)
-   and e
-   inc hl
-   or (hl)
-   inc hl
-   ld (ix+2),a
+	ld e,(ix+2)
+	ld a,(hl)
+	and e
+	inc hl
+	or (hl)
+	inc hl
+	ld (ix+2),a
 
-   ld e,(ix+3)
-   ld a,(hl)
-   and e
-   inc hl
-   or (hl)
-   inc hl
-   ld (ix+3),a
+	ld e,(ix+3)
+	ld a,(hl)
+	and e
+	inc hl
+	or (hl)
+	inc hl
+	ld (ix+3),a
 
-   ld e,(ix+4)
-   ld a,(hl)
-   and e
-   inc hl
-   or (hl)
-   inc hl
-   ld (ix+4),a
+	ld e,(ix+4)
+	ld a,(hl)
+	and e
+	inc hl
+	or (hl)
+	inc hl
+	ld (ix+4),a
 
-   ld e,(ix+5)
-   ld a,(hl)
-   and e
-   inc hl
-   or (hl)
-   inc hl
-   ld (ix+5),a
+	ld e,(ix+5)
+	ld a,(hl)
+	and e
+	inc hl
+	or (hl)
+	inc hl
+	ld (ix+5),a
 
-   ld e,(ix+6)
-   ld a,(hl)
-   and e
-   inc hl
-   or (hl)
-   inc hl
-   ld (ix+6),a
+	ld e,(ix+6)
+	ld a,(hl)
+	and e
+	inc hl
+	or (hl)
+	inc hl
+	ld (ix+6),a
 
-   ld e,(ix+7)
-   ld a,(hl)
-   and e
-   inc hl
-   or (hl)
-   inc hl
-   ld (ix+7),a
+	ld e,(ix+7)
+	ld a,(hl)
+	and e
+	inc hl
+	or (hl)
+	inc hl
+	ld (ix+7),a
 
-   pop ix	; restore!
-   ret
+	pop ix	; restore!
+	ret

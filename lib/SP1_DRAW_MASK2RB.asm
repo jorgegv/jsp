@@ -18,16 +18,16 @@
 
 _SP1_DRAW_MASK2RB:
 
-   cp _jsp_rottbl/256 - 2
-   ret z
+	cp _jsp_rottbl/256 - 2
+	ret z
 
-   ld d,a
-   inc d
+	ld d,a
+	inc d
 
-   ;  d = shift table
-   ; hl = left sprite def (mask,graph) pairs
-   ; bc = graphic disp
+	;  d = shift table
+	; hl = left sprite def (mask,graph) pairs
+	; bc = graphic disp
 
 _SP1Mask2RBRotate:
 
-   jp _SP1_DRAW_MASK2LB_ALT
+	jp _SP1_DRAW_MASK2LB_ALT
