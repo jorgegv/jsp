@@ -1,6 +1,7 @@
 	section code_compiler
 
 	extern _jsp_dtt
+	extern jsp_rowcolindex
 
 	public _jsp_dtt_mark_dirty
 	public _jsp_dtt_mark_clean
@@ -48,16 +49,10 @@ jsp_dtt_mark_dirty_clean_test:
 
 	push af			;; push back retaddr
 
-	ld h,0			;; ensure no garbage in H
-	ld d,h			;; ensure no garbage in D
-
-	add hl,hl		;; HL = row * 32
-	add hl,hl
-	add hl,hl
-	add hl,hl
-	add hl,hl
-
-	add hl,de		;; HL += col - cell index (0-767)
+	ld d,l			;; D = row, E = col
+	push de			;; save DE
+	call jsp_rowcolindex	;; HL = offset (0-767)
+	pop de			;; restore
 
 	ld a,0x07		;; A = col % 8 -> # bit to set
 	and e			;; (save for later)
