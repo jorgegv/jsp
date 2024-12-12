@@ -90,16 +90,21 @@ void test_btt_redraw( void ) {
     jsp_redraw();
 }
 
-struct jsp_sprite_s test_sprite;
+#define NUM_SPRITES 5
+struct { 
+    uint8_t x,y;
+    int8_t dx,dy;
+    struct jsp_sprite_s sp;
+    } test_sprite[ NUM_SPRITES ];
+
 extern uint8_t test_sprite_pixels[];
 extern uint8_t test_bg1tile_pixels[];
 void test_sprite_draw( void ) {
     uint8_t i,j;
-    uint8_t x,y;
-    int8_t dx,dy;
 
     uint16_t character = 0x3d80;	// '0' at ROM
-    // draw some tiles
+
+    // draw some background tiles
     for ( i = 0; i < 24; i++ ) {
         for ( j = 0; j < 32; j++ ) {
                 jsp_draw_background_tile( i, j, (void *)character );
@@ -108,33 +113,38 @@ void test_sprite_draw( void ) {
                     character = 0x3d80;
         }
     }
-    // update screen
-    jsp_redraw();
 
-    // play with sprite
-    jsp_init_sprite( &test_sprite, test_sprite_pixels );
+    // play with sprites
 
-    dx = 3;
-    dy = 2;
-    x = 20;
-    y = 30;
+    srand( 12345 );
+    for ( i = 0; i < NUM_SPRITES; i++ ) {
+        jsp_init_sprite( &test_sprite[ i ].sp, test_sprite_pixels );
+        test_sprite[ i ].x = rand() % 240;
+        test_sprite[ i ].y = rand() % 170;
+        test_sprite[ i ].dx = ( rand() % 8 ) - 4;
+        test_sprite[ i ].dy = ( rand() % 8 ) - 4;
+    }
+
     while ( 1 ) {
-        jsp_move_sprite( &test_sprite, x, y );
+        for ( i = 0; i < NUM_SPRITES; i++ ) {
+            jsp_move_sprite( &test_sprite[ i ].sp, test_sprite[ i ].x, test_sprite[ i ].y );
 
-        if ( ( x + dx > 240 ) || ( x + dx < 4 ) ){
-            dx = -dx;
+            if ( ( test_sprite[ i ].x + test_sprite[ i ].dx > 240 ) || ( test_sprite[ i ].x + test_sprite[ i ].dx < 4 ) ){
+                test_sprite[ i ].dx = -test_sprite[ i ].dx;
+            }
+            test_sprite[ i ].x += test_sprite[ i ].dx;
+
+            if ( ( test_sprite[ i ].y + test_sprite[ i ].dy > 170 ) || ( test_sprite[ i ].y + test_sprite[ i ].dy < 4 ) ) {
+                test_sprite[ i ].dy = -test_sprite[ i ].dy;
+            }
+            test_sprite[ i ].y += test_sprite[ i ].dy;
         }
-        x += dx;
 
-        if ( ( y + dy > 170 ) || ( y + dy < 4 ) ) {
-            dy = -dy;
-        }
-        y += dy;
-
+/*
         __asm
         halt
         __endasm;
-
+*/
         jsp_redraw();
 
 //        z80_delay_ms( 10 );
