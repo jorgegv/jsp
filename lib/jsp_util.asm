@@ -40,7 +40,7 @@ _jsp_memcpy:
 
 ;; jsp_rowcolindex: calculates index of (r,c) pair into DRT,DTT,BTT tables
 ;; input: D = row, E = col
-;; return: HL = row * 32 + col
+;; return: HL = row * 32 + col (0-767)
 ;; trashes HL,DE
 jsp_rowcolindex:
 	ld h,0

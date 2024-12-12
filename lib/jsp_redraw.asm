@@ -88,28 +88,23 @@ dirty_exit:
 
 ;; at this point:
 ;; B = counter, C = col % 8 (bit index)
-;; D = row, E = start col
+;; D = row, E = start col of 8-cell group
 ;; trashes HL
 dirty_cell:
 	push af
 	push bc
 	push de
 
-	ld h,0				;; HL = row
-	ld l,d
+	push de				;; save
 
-	add hl,hl			;; multiply by 32
-	add hl,hl	
-	add hl,hl	
-	add hl,hl	
-	add hl,hl	
-
-	ld a,e				;; A = start col
-	add a,c				;; A = real col
+	ld a,c
+	add a,e
 	push af				;; save real col for later
+	ld e,a				;; D = real row, E = real col
+	call jsp_rowcolindex		;; HL = index (0-767)
+	pop af				;; A real col again
 
-	or l				;; add the top bits of L (5 lower bits are 0)
-	ld l,a				;; HL = cell index (0-767)
+	pop de				;; restore
 
 	add hl,hl			;; multiply by 2 to get offset into DRT table
 
@@ -118,7 +113,6 @@ dirty_cell:
 	add hl,de			;; HL = _jsp_drt[ cell_index ]
 	pop de				;; D = row, E = start col
 
-	pop af				;; recover real col into A
 	ld b,0
 	ld c,d				;; BC = row
 
