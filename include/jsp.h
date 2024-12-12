@@ -77,9 +77,6 @@ void jsp_dtt_mark_dirty( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 void jsp_dtt_mark_clean( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 uint8_t jsp_dtt_is_dirty( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 
-// restore drt cell background
-void jsp_drt_restore_bg( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
-
 // draw 8x8 tile to screen
 void jsp_draw_screen_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee;
 

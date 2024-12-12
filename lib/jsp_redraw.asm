@@ -5,7 +5,9 @@
 	extern _jsp_dtt_mark_clean
 	extern _jsp_drt
 	extern _jsp_dtt
+	extern _jsp_btt
 	extern _jsp_drt_restore_bg
+	extern jsp_rowcolindex
 
 	public _jsp_redraw
 
@@ -130,7 +132,7 @@ dirty_cell:
 	inc hl
 	ld b,(hl)
 	push bc				;; param: DRT record address
-	call _jsp_draw_screen_tile	;; jsp_draw_tile( row, col, jsp_drt[ i ] )
+	call _jsp_draw_screen_tile	;; jsp_draw_screen_tile( row, col, jsp_drt[ i ] )
 					;; no cleanup, __z88dk_callee
 
 	pop af				;; A = real col
@@ -148,11 +150,25 @@ dirty_cell:
 	pop af				;; A = real col
 	pop bc				;; BC = row
 
-	push bc				;; param: row
-	ld c,a				;; BC = real col
-	push bc				;; param: real col
-	call _jsp_drt_restore_bg	;; jsp_drt_restore_bg( row, col )
-					;; no cleanup, __z88dk_callee
+	ld d,c
+	ld e,a				;; D = row, E = col
+	call jsp_rowcolindex		;; HL = row,col index into DRT/BTT (0-767)
+
+	add hl,hl			;; multiply index by 2 to get real byte offset
+	push hl				;; save offset for later
+
+	ld de,_jsp_btt			;; index into BTT
+	add hl,de
+	ld c,(hl)			;; get background pointer
+	inc hl
+	ld b,(hl)			;; BC = jsp_btt[ row * 32 + col ]
+
+	pop hl				;; index into DRT
+	ld de,_jsp_drt
+	add hl,de
+	ld (hl),c			;, store bg pointer as drt pointer
+	inc hl
+	ld (hl),b			;; jsp_drt[ row * 32 + col ] = jsp_btt[ row * 32 + col ]
 
 	pop de
 	pop bc
