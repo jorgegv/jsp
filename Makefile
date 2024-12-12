@@ -19,6 +19,7 @@ C_OBJS		= $(C_SRCS:.c=.o)
 ASM_OBJS	= $(ASM_SRCS:.asm=.o)
 
 .SILENT:
+MAKEFLAGS 	+= --no-print-directory -j4
 
 # generic rules
 %.o: %.c
@@ -32,7 +33,9 @@ ASM_OBJS	= $(ASM_SRCS:.asm=.o)
 default: $(BIN)
 
 # full build
-build: clean $(TAP)
+build:
+	make clean
+	make $(TAP)
 	echo Build successful
 
 # clean
