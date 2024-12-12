@@ -28,21 +28,12 @@ void jsp_delete_background_tile( uint8_t row, uint8_t col ) __smallc __z88dk_cal
 // Sprite functions and data structures
 /////////////////////////////////////////
 
-// All sprites in the game are the same size.  You can just change these
-// values and recompile, the engine will reconfigure for the given sizes
-
-#define JSP_SPRITE_WIDTH_CHARS	2
-#define JSP_SPRITE_HEIGHT_CHARS	2
-
-///////////////////////////////////////
-
 // sprite data structure
 struct jsp_sprite_s {
-    // pointer to pixel data - they can be changed at any moment, for
-    // animations, etc.
-    uint8_t *pixels;
+    // sprite size in chars
+    uint8_t rows;
+    uint8_t cols;
 
-    // sprite size is not stored, it's fixed at compile time (see above)
     // sprite current position
     uint8_t xpos;
     uint8_t ypos;
@@ -52,15 +43,19 @@ struct jsp_sprite_s {
         int initialized:1;
     } flags;
 
-    // Private Drawing Buffer of (m+1)x(n+1) chars
-    // Last element in struct, so previous elements can be accessed with
-    // short offsets (i.e.  ix+n, etc.)
-    uint8_t pdbuf[ ( JSP_SPRITE_WIDTH_CHARS + 1 ) * ( JSP_SPRITE_HEIGHT_CHARS + 1 ) * 8 ];
+    // pointer to pixel data - they can be changed at any moment, for
+    // animations, etc.
+    uint8_t *pixels;
+
+    // pointer to Private Drawing Buffer of (m+1)x(n+1) chars
+    uint8_t *pdbuf;
 };
 
-void jsp_init_sprite( struct jsp_sprite_s *sp, uint8_t *pixels ) __smallc __z88dk_callee;
+void jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall;
 void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
 void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
+
+#define DEFINE_SPRITE(_name,_rows,_cols,_pixels,_xpos,_ypos) uint8_t _name##_pdbuf[ ( (_rows) + 1 ) * ( (_cols) + 1 ) * 8 ]; struct jsp_sprite_s _name = { .rows = (_rows), .cols = (_cols), .xpos = (_xpos), .ypos = (_ypos), .flags.initialized = 1, .pixels = (_pixels), .pdbuf = _name##_pdbuf }
 
 /////////////////////////////////////////
 // Internal functions and library data

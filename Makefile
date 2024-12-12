@@ -1,5 +1,6 @@
 ZCC		= zcc +zx -compiler=sdcc
 CFLAGS		= -vn -SO3 --opt-code-size --max-allocs-per-node200000 --list -s --c-code-in-asm -I$(INCLUDE_DIR)
+#CFLAGS		= -E -SO3 --opt-code-size --max-allocs-per-node200000 --list -s --c-code-in-asm -I$(INCLUDE_DIR)
 LDFLAGS		= -lndos -m
 
 # for a minimal size, replace the above by these:

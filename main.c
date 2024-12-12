@@ -84,21 +84,35 @@ void test_btt_redraw( void ) {
     for ( i = 0; i < 11; i++ ) {
         for ( j = 0; j < 16; j++ ) {
             jsp_delete_background_tile( i*2, j*2 );
-        }
+         }
     }
     // update screen
     jsp_redraw();
 }
 
-#define NUM_SPRITES 5
-struct { 
-    uint8_t x,y;
-    int8_t dx,dy;
-    struct jsp_sprite_s sp;
-    } test_sprite[ NUM_SPRITES ];
+#define NUM_SPRITES 1
 
 extern uint8_t test_sprite_pixels[];
 extern uint8_t test_bg1tile_pixels[];
+
+DEFINE_SPRITE(sprite0,2,2,test_sprite_pixels,0,0);
+//DEFINE_SPRITE(sprite1,2,2,test_sprite_pixels,0,0);
+//DEFINE_SPRITE(sprite2,2,2,test_sprite_pixels,0,0);
+//DEFINE_SPRITE(sprite3,2,2,test_sprite_pixels,0,0);
+//DEFINE_SPRITE(sprite4,2,2,test_sprite_pixels,0,0);
+
+struct { 
+    uint8_t x,y;
+    int8_t dx,dy;
+    struct jsp_sprite_s *sp;
+    } test_sprite[ NUM_SPRITES ] = {
+        { .sp = &sprite0 },
+//        { .sp = &sprite1 },
+//        { .sp = &sprite2 },
+//        { .sp = &sprite3 },
+//        { .sp = &sprite4 },
+};
+
 void test_sprite_draw( void ) {
     uint8_t i,j;
 
@@ -118,7 +132,6 @@ void test_sprite_draw( void ) {
 
     srand( 12345 );
     for ( i = 0; i < NUM_SPRITES; i++ ) {
-        jsp_init_sprite( &test_sprite[ i ].sp, test_sprite_pixels );
         test_sprite[ i ].x = rand() % 240;
         test_sprite[ i ].y = rand() % 170;
         test_sprite[ i ].dx = ( rand() % 8 ) - 4;
@@ -127,7 +140,7 @@ void test_sprite_draw( void ) {
 
     while ( 1 ) {
         for ( i = 0; i < NUM_SPRITES; i++ ) {
-            jsp_move_sprite( &test_sprite[ i ].sp, test_sprite[ i ].x, test_sprite[ i ].y );
+            jsp_move_sprite( test_sprite[ i ].sp, test_sprite[ i ].x, test_sprite[ i ].y );
 
             if ( ( test_sprite[ i ].x + test_sprite[ i ].dx > 240 ) || ( test_sprite[ i ].x + test_sprite[ i ].dx < 4 ) ){
                 test_sprite[ i ].dx = -test_sprite[ i ].dx;
