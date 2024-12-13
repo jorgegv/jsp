@@ -110,19 +110,12 @@ void test_sprite_draw( void ) {
                     character = 0x3d80;
         }
     }
-//    jsp_redraw();
+    jsp_redraw();
 
     jsp_init_sprite( &test_sprite );
 
-    for ( i = 0; i < 100; i++ ) {
-        jsp_move_sprite( &test_sprite, i*2, 12 );	// ASM version
-        jsp_redraw();
-        z80_delay_ms( 100 );
-    }
-    return;
     // draw a sprite
-//    jsp_draw_sprite( &test_sprite, 240, 12 );	// ASM version
-    jsp_move_sprite( &test_sprite, 28, 34 );	// ASM version
+    jsp_draw_sprite( &test_sprite, 240, 12 );	// ASM version
 
     jsp_draw_screen_tile_attr( 19, 2, &test_sprite.pdbuf[0], PAPER_YELLOW | BRIGHT );
     jsp_draw_screen_tile_attr( 19, 3, &test_sprite.pdbuf[8], PAPER_YELLOW | BRIGHT );
@@ -138,12 +131,12 @@ void test_sprite_draw( void ) {
 
 }
 
-#define NUM_SPRITES 5
+#define NUM_SPRITES 3
 DEFINE_SPRITE(sprite0,2,2,test_sprite_pixels,0,0);
 DEFINE_SPRITE(sprite1,2,2,test_sprite_pixels,0,0);
 DEFINE_SPRITE(sprite2,2,2,test_sprite_pixels,0,0);
-DEFINE_SPRITE(sprite3,2,2,test_sprite_pixels,0,0);
-DEFINE_SPRITE(sprite4,2,2,test_sprite_pixels,0,0);
+//DEFINE_SPRITE(sprite3,2,2,test_sprite_pixels,0,0);
+//DEFINE_SPRITE(sprite4,2,2,test_sprite_pixels,0,0);
 
 struct { 
     uint8_t x,y;
@@ -153,8 +146,8 @@ struct {
         { .sp = &sprite0 },
         { .sp = &sprite1 },
         { .sp = &sprite2 },
-        { .sp = &sprite3 },
-        { .sp = &sprite4 },
+//        { .sp = &sprite3 },
+//        { .sp = &sprite4 },
 };
 
 void test_sprite_move( void ) {
@@ -212,10 +205,6 @@ void test_sprite_move( void ) {
 void main( void ) {
     zx_cls();
     jsp_init( NULL );
-
-    // disable interrupts, our routines use IX and IY and this does not get
-    // along with ROM ISR :-)
-    intrinsic_di();
 
     // only one of the tests below can be run, they interfere with each
     // other

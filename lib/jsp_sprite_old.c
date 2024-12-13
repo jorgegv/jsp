@@ -4,7 +4,7 @@
 
 #include "jsp.h"
 
-void jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall {
+void _jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall {
     sp->xpos = sp->ypos = 0;
     sp->flags.initialized = 1;
 }

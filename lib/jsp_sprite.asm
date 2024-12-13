@@ -2,6 +2,7 @@
 
 	public _jsp_draw_sprite
 	public _jsp_move_sprite
+	public _jsp_init_sprite
 
 	extern _jsp_rottbl
 	extern jsp_rowcolindex
@@ -540,4 +541,21 @@ jsp_move_sprite_j:
 	call _jsp_draw_sprite	; no cleanup - __z88dk_callee
 
 	pop ix			; restore!
+	ret
+
+; void jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall;
+_jsp_init_sprite:
+	push ix			; save!
+	push hl
+	pop ix			; ix = sp
+
+	;     sp->xpos = sp->ypos = 0;
+	xor a
+	ld (ix+2),a
+	ld (ix+3),a
+
+	;     sp->flags.initialized = 1;
+	set 0,(ix+4)
+
+	pop ix
 	ret
