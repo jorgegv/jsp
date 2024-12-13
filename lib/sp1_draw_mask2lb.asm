@@ -14,7 +14,7 @@
 	extern _jsp_rottbl
 
 ;; void sp1_draw_mask2lb( uint8_t *dst, uint8_t *graph, uint8_t *rottbl ) __smallc __z88dk_callee;
-
+;; trashes BC' !!
 _sp1_draw_mask2lb:
 	pop de		; save ret addr
 

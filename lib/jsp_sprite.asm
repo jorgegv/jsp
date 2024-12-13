@@ -9,6 +9,7 @@
 	extern _sp1_draw_mask2lb
 	extern _sp1_draw_mask2rb
 	extern _sp1_draw_mask2
+	extern _jsp_dtt_mark_dirty
 
 ; var definitions as global for optimized access
 
@@ -21,35 +22,43 @@ _rottbl:	dw 0
 
 ; void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee {
 _jsp_draw_sprite:
-	pop af		; save ret addr
-	pop bc		; C = ypos
-	pop de		; E = xpos
-	pop hl		; HL = sp
-	push af		; restore ret addr
+	pop af			; save ret addr
+	pop bc			; C = ypos
+	pop de			; E = xpos
+	pop hl			; HL = sp
+	push af			; restore ret addr
 
-	push ix		; save!
+	push ix			; save!
 
 	push hl
-	pop ix		; ix = sprite pointer (sp parameter)
+	pop ix			; ix = sprite pointer (sp parameter)
 
 	; during all the routine, we'll keep ix = sprite pointer (sp) and
-	; b = xpos, c = ypos
+	; h' = xpos, l' = ypos
 
-	ld b,e		; B = xpos, C = ypos
+	ld b,e			; B = xpos, C = ypos
+	push bc
+	exx
+	pop hl			; save xpos,ypos to BC'
+	exx
 
 	;     if ( ! sp->flags.initialized ) return;
 	ld a,0x01
-	and (hl)
+	and (ix+4)		; sp->flags.initialized == 1 ?
 	jp z,jsp_draw_sprite_return
 
 	;     start_row = ypos / 8;
-	ld a,0x07
-	and c
+	ld a,c
+	srl a
+	srl a
+	srl a
 	ld (_start_row),a
 
 	;     start_col = xpos / 8;
-	ld a,0x07
-	and b
+	ld a,b
+	srl a
+	srl a
+	srl a
 	ld (_start_col),a
 
 	;     rottbl = &jsp_rottbl[ 512 * ( xpos % 8 ) ] - 512;
@@ -69,8 +78,6 @@ _jsp_draw_sprite:
 	;     for ( i = 0; i < sp->rows + 1; i++ )
 	;         for ( j = 0; j < sp->cols + 1; j++ )
 	;             jsp_memcpy( &sp->pdbuf[ ( i * ( sp->cols + 1 ) + j ) * 8 ], jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ], 8 );
-
-	push bc			; save xpos,ypos
 
 	ld l,(ix+7)
 	ld h,(ix+8)		; HL = sp->pdbuf (it will be incrementing by 8 each time)
@@ -93,8 +100,10 @@ jsp_draw_sprite_j:
 	call jsp_rowcolindex	; HL = DRT index
 	add hl,hl		; multiply by 2 to get real byte offset
 	ld de,_jsp_drt
-	add hl,de		; HL = jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ]
-	ex de,hl		; DE = jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ]
+	add hl,de		; HL =  addr of jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ]
+	ld e,(hl)
+	inc hl
+	ld d,(hl)		; DE = jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ]
 	pop hl			; HL = pdbuf address
 
 	push hl			; save dst addr!
@@ -129,8 +138,12 @@ jsp_draw_sprite_j:
 	;     // initialize pointers for drawing
 	;     pix_ptr = pix_ptr_left = sp->pixels - ( ypos % 8 ) * 2;
 
+debug0:
+
 	ld a,0x07
-	and c			; A = ypos % 8
+	exx
+	and l			; A = ypos % 8 (ypos is in L')
+	exx
 	ld l,a
 	ld h,0
 	add hl,hl		; HL = ( ypos % 8 ) * 2
@@ -140,6 +153,8 @@ jsp_draw_sprite_j:
 	sbc hl,de		; HL = sp->pixels - ( ypos % 8 ) * 2
 	ld (_pix_ptr),hl	; store to pix_ptr
 	ld (_pix_ptr_left),hl	; store to pix_ptr_left
+
+debug1:
 
 	;     // draw left column
 	;     bg_ptr = &sp->pdbuf[ 0 ];
@@ -192,6 +207,8 @@ jsp_draw_sprite_left_i:
 	pop bc			; restore counter
 	djnz jsp_draw_sprite_left_i
 
+debug2:
+
 	;     // draw middle columns if they exist
 	;     for ( j = 1; j < sp->cols; j++ ) {
 	;         bg_ptr = &sp->pdbuf[ j * 8 ];
@@ -218,7 +235,7 @@ jsp_draw_sprite_middle_j:
 	ld d,(ix+8)
 	add hl,de		; bg_ptr = &sp->pdbuf[ j * 8 ]
 
-	ld b,1			; B = i (row counter) - reset
+	ld b,0			; B = i (row counter) - reset
 
 	pop de			; restore precalculated ( sp->cols + 1 ) * 8
 
@@ -259,12 +276,12 @@ jsp_draw_sprite_middle_i:
 
 	inc b			; i++
 	ld a,(ix+0)
+	inc a
 	cp b			; i == sp->rows ? (i < sp->rows + 1 ?)
 	jp nz,jsp_draw_sprite_middle_i	; no, loop another row
 
 	inc c			; j++
 	ld a,(ix+1)
-	dec a
 	cp c			; j == sp->cols - 1 ? (j < sp->cols ?)
 	jp nz,jsp_draw_sprite_middle_j	; no, loop another column
 
@@ -280,16 +297,18 @@ jsp_draw_sprite_middle_i:
 	;         }
 	;     }
 
-	pop bc			; restore xpos,ypos
-	push bc			; save xpos,ypos again
+debug3:
+
 	push de			; save precalculated ( sp->cols + 1 ) * 8
 
-	ld a,b			; skip if xpos % 8 == 0
+	exx
+	ld a,h			; skip if xpos % 8 == 0 (xpos is in H')
+	exx
 	and 0x07
 	jp z,jsp_draw_sprite_update_drt
 
-	ld hl,(_pix_ptr)
-	ld (_pix_ptr_left),hl	; pix_ptr = pix_ptr_left
+	ld hl,(_pix_ptr_left)
+	ld (_pix_ptr),hl	; pix_ptr = pix_ptr_left
 
 	ld l,(ix+1)
 	ld h,0
@@ -335,6 +354,12 @@ jsp_draw_sprite_right_i:
 	pop bc			; restore counter i
 	djnz jsp_draw_sprite_right_i
 
+	;; FIX:REMOVE THIS LINE - UP TO HERE IT WORKS FINE, VERIFIED
+
+debug4:
+
+;;	jp jsp_draw_sprite_update_pos	; FIX! REMOVE!
+
 	;     // update DRT pointers and mark cells as dirty
 	;     for ( i = 0; i < sp->rows + 1; i++ )
 	;         for ( j = 0; j < sp->cols + 1; j++ ) {
@@ -352,17 +377,18 @@ jsp_draw_sprite_update_drt_i:
 
 jsp_draw_sprite_update_drt_j:
 	push bc			; save counters i,j
-	push hl			; save current pdbuf pointer
 
-	ld hl,_start_row
-	ld a,(hl)
+	ld a,(_start_row)
 	add a,c
 	ld d,a			; D = start_row + i
 
-	ld hl,_start_col
-	ld a,(hl)
+	ld a,(_start_col)
 	add a,b
 	ld e,a			; E = start_col + j
+
+	push de			; save start_row + i,start_col + j
+
+	push hl			; save current pdbuf pointer
 
 	call jsp_rowcolindex	; HL = index into DRT (0-767)
 	add hl,hl		; multiply by 2 to get real byte offset
@@ -381,6 +407,17 @@ jsp_draw_sprite_update_drt_j:
 	ld de,8
 	add hl,de		; pdbuf ptr += 8
 
+	pop de			; DE = saved start_row + i, start_col + j
+	push hl			; save updated pdbuf ptr
+
+	ld h,0
+	ld l,d
+	push hl			; param: start_row + i
+	ld l,e
+	push hl			; param: startcol + j
+	call _jsp_dtt_mark_dirty	; no cleanup - __z88dk_callee
+
+	pop hl			; recover updated pdbuf ptr
 	pop bc			; restore counters i,j
 
 	inc b			; j++
@@ -398,9 +435,12 @@ jsp_draw_sprite_update_drt_j:
 	;     // update sprite with new pos
 	;     sp->xpos = xpos;
 	;     sp->ypos = ypos;
-	pop bc			; restore xpos,ypos
-	ld (ix+2),b		; sp->xpos = xpos
-	ld (ix+3),c		; sp->ypos = ypos
+jsp_draw_sprite_update_pos:
+
+	exx			; xpos,ypos are in HL'
+	ld (ix+2),h		; sp->xpos = xpos
+	ld (ix+3),l		; sp->ypos = ypos
+	exx
 
 jsp_draw_sprite_return:
 	pop ix		; restore!

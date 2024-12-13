@@ -109,10 +109,12 @@ void test_sprite_draw( void ) {
                     character = 0x3d80;
         }
     }
+    jsp_redraw();
 
     // draw a sprite
-    jsp_move_sprite( &test_sprite, 6, 12 );
-    jsp_redraw();
+    jsp_init_sprite( &test_sprite );
+//    _jsp_draw_sprite( &test_sprite, 6, 12 );	// C version
+    jsp_draw_sprite( &test_sprite, 6, 12 );	// ASM version
 
     jsp_draw_screen_tile( 19, 2, &test_sprite.pdbuf[0] ); *zx_cxy2aaddr( 2, 19 ) = PAPER_YELLOW | BRIGHT;
     jsp_draw_screen_tile( 19, 3, &test_sprite.pdbuf[8] ); *zx_cxy2aaddr( 3, 19 ) = PAPER_YELLOW | BRIGHT;
@@ -123,6 +125,9 @@ void test_sprite_draw( void ) {
     jsp_draw_screen_tile( 21, 2, &test_sprite.pdbuf[48] ); *zx_cxy2aaddr( 2, 21 ) = PAPER_YELLOW | BRIGHT;
     jsp_draw_screen_tile( 21, 3, &test_sprite.pdbuf[56] ); *zx_cxy2aaddr( 3, 21 ) = PAPER_YELLOW | BRIGHT;
     jsp_draw_screen_tile( 21, 4, &test_sprite.pdbuf[64] ); *zx_cxy2aaddr( 4, 21 ) = PAPER_YELLOW | BRIGHT;
+
+    jsp_redraw();
+
 }
 
 #define NUM_SPRITES 1
@@ -205,7 +210,7 @@ void main( void ) {
 //    test_dtt();
 //    test_btt_contents();
 //    test_btt_redraw();
-//    test_sprite_draw();
-    test_sprite_move();
+    test_sprite_draw();
+//    test_sprite_move();
     while ( 1 );
 }
