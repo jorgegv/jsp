@@ -140,8 +140,6 @@ jsp_draw_sprite_j:
 	;     // initialize pointers for drawing
 	;     pix_ptr = pix_ptr_left = sp->pixels - ( ypos % 8 ) * 2;
 
-debug0:
-
 	ld a,0x07
 	exx
 	and l			; A = ypos % 8 (ypos is in L')
@@ -155,8 +153,6 @@ debug0:
 	sbc hl,de		; HL = sp->pixels - ( ypos % 8 ) * 2
 	ld (_pix_ptr),hl	; store to pix_ptr
 	ld (_pix_ptr_left),hl	; store to pix_ptr_left
-
-debug1:
 
 	;     // draw left column
 	;     bg_ptr = &sp->pdbuf[ 0 ];
@@ -208,8 +204,6 @@ jsp_draw_sprite_left_i:
 
 	pop bc			; restore counter
 	djnz jsp_draw_sprite_left_i
-
-debug2:
 
 	;     // draw middle columns if they exist
 	;     for ( j = 1; j < sp->cols; j++ ) {
@@ -299,8 +293,6 @@ jsp_draw_sprite_middle_i:
 	;         }
 	;     }
 
-debug3:
-
 	exx
 	ld a,h			; skip if xpos % 8 == 0 (xpos is in H')
 	exx
@@ -355,12 +347,6 @@ jsp_draw_sprite_right_i:
 
 	pop bc			; restore counter i
 	djnz jsp_draw_sprite_right_i
-
-	;; FIX:REMOVE THIS LINE - UP TO HERE IT WORKS FINE, VERIFIED
-
-debug4:
-
-;;	jp jsp_draw_sprite_update_pos	; FIX! REMOVE!
 
 	;     // update DRT pointers and mark cells as dirty
 	;     for ( i = 0; i < sp->rows + 1; i++ )
@@ -434,8 +420,6 @@ jsp_draw_sprite_update_drt_j:
 	cp c			; i == sp-rows + 1 ?
 	jp nz,jsp_draw_sprite_update_drt_i
 
-
-debug5:
 	;     // update sprite with new pos
 	;     sp->xpos = xpos;
 	;     sp->ypos = ypos;
@@ -449,8 +433,6 @@ jsp_draw_sprite_update_pos:
 jsp_draw_sprite_return:
 	pop ix		; restore!
 	ret
-
-debug6:
 
 ; void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
 _jsp_move_sprite:
@@ -468,7 +450,6 @@ _jsp_move_sprite:
 	push hl
 	pop ix			; ix = sp
 
-debug7:
 	;     // mark old positions as dirty
 	;     start_row = sp->ypos / 8;
 	;     start_col = sp->xpos / 8;
@@ -484,9 +465,6 @@ debug7:
 	srl a
 	ld d,a			; D = sp->ypos / 8 (start_row)
 
-;	push de			; DE = precalculated start_row,start_col
-
-debug8:
 	;     for ( i = 0; i < sp->rows + 1; i++ )
 	;         for ( j = 0; j < sp->cols + 1; j++ )
 	;             jsp_dtt_mark_dirty( start_row + i, start_col + j );
