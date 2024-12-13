@@ -342,7 +342,58 @@ jsp_draw_sprite_right_i:
 	;             jsp_dtt_mark_dirty( start_row + i, start_col + j );
 	;         }
 jsp_draw_sprite_update_drt:
-	; TBD
+
+	ld c,0			; i=0
+	ld l,(ix+7)
+	ld h,(ix+8)		; HL = sp->pdbuf
+
+jsp_draw_sprite_update_drt_i:
+	ld b,0			; j=0
+
+jsp_draw_sprite_update_drt_j:
+	push bc			; save counters i,j
+	push hl			; save current pdbuf pointer
+
+	ld hl,_start_row
+	ld a,(hl)
+	add a,c
+	ld d,a			; D = start_row + i
+
+	ld hl,_start_col
+	ld a,(hl)
+	add a,b
+	ld e,a			; E = start_col + j
+
+	call jsp_rowcolindex	; HL = index into DRT (0-767)
+	add hl,hl		; multiply by 2 to get real byte offset
+
+	ld de,_jsp_drt
+	add hl,de		; HL = &jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ]
+
+	pop de			; DE = current pdbuf pointer
+	push de
+
+	ld (hl),e
+	inc hl
+	ld (hl),d		; jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ] = &sp->pdbuf[ ( i * ( sp->cols + 1 ) + j ) * 8 ]
+
+	pop hl			; HL = current pdbuf ptr
+	ld de,8
+	add hl,de		; pdbuf ptr += 8
+
+	pop bc			; restore counters i,j
+
+	inc b			; j++
+	ld a,(ix+1)
+	inc a			; A = sp->cols + 1
+	cp b			; j == sp-cols + 1 ?
+	jp nz,jsp_draw_sprite_update_drt_j
+
+	inc c			; i++
+	ld a,(ix+0)
+	inc a			; A = sp->rows + 1
+	cp c			; i == sp-rows + 1 ?
+	jp nz,jsp_draw_sprite_update_drt_i
 
 	;     // update sprite with new pos
 	;     sp->xpos = xpos;

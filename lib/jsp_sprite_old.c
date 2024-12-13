@@ -13,6 +13,7 @@ void jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall {
 uint8_t i,j,start_row,start_col;
 uint8_t *bg_ptr,*pix_ptr,*pix_ptr_left,*rottbl;
 
+/*
 void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee {
     
     if ( ! sp->flags.initialized ) return;
@@ -73,6 +74,7 @@ void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __sm
     sp->xpos = xpos;
     sp->ypos = ypos;
 }
+*/
 
 void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee {
 
