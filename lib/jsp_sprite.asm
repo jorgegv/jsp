@@ -1,6 +1,7 @@
 	section code_compiler
 
 	public _jsp_draw_sprite
+	public _jsp_move_sprite
 
 	extern _jsp_rottbl
 	extern jsp_rowcolindex
@@ -20,7 +21,7 @@ _pix_ptr:	dw 0
 _pix_ptr_left:	dw 0
 _rottbl:	dw 0
 
-; void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee {
+; void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
 _jsp_draw_sprite:
 	pop af			; save ret addr
 	pop bc			; C = ypos
@@ -39,7 +40,7 @@ _jsp_draw_sprite:
 	ld b,e			; B = xpos, C = ypos
 	push bc
 	exx
-	pop hl			; save xpos,ypos to BC'
+	pop hl			; save xpos,ypos to HL'
 	exx
 
 	;     if ( ! sp->flags.initialized ) return;
@@ -299,13 +300,13 @@ jsp_draw_sprite_middle_i:
 
 debug3:
 
-	push de			; save precalculated ( sp->cols + 1 ) * 8
-
 	exx
 	ld a,h			; skip if xpos % 8 == 0 (xpos is in H')
 	exx
 	and 0x07
 	jp z,jsp_draw_sprite_update_drt
+
+	push de			; save precalculated ( sp->cols + 1 ) * 8
 
 	ld hl,(_pix_ptr_left)
 	ld (_pix_ptr),hl	; pix_ptr = pix_ptr_left
@@ -432,6 +433,8 @@ jsp_draw_sprite_update_drt_j:
 	cp c			; i == sp-rows + 1 ?
 	jp nz,jsp_draw_sprite_update_drt_i
 
+
+debug5:
 	;     // update sprite with new pos
 	;     sp->xpos = xpos;
 	;     sp->ypos = ypos;
@@ -446,19 +449,95 @@ jsp_draw_sprite_return:
 	pop ix		; restore!
 	ret
 
-; }
-; 
-; void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee {
-; 
-;     // mark old positions as dirty
-;     start_row = sp->ypos / 8;
-;     start_col = sp->xpos / 8;
-; 
-;     for ( i = 0; i < sp->rows + 1; i++ )
-;         for ( j = 0; j < sp->cols + 1; j++ )
-;             jsp_dtt_mark_dirty( start_row + i, start_col + j );
-; 
-;     // draw on new position
-;     jsp_draw_sprite( sp, xpos, ypos );
-; }
-; 
+debug6:
+
+; void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
+_jsp_move_sprite:
+	pop af			; save ret addr
+	pop bc			; C = ypos
+	pop de			; E = xpos
+	pop hl			; HL = sp
+	push af			; restore ret addr
+
+	push ix			; save!
+
+	ld b,e			; B = xpos, C = ypos
+	push bc			; save for later
+
+	push hl
+	pop ix			; ix = sp
+
+debug7:
+	;     // mark old positions as dirty
+	;     start_row = sp->ypos / 8;
+	;     start_col = sp->xpos / 8;
+	ld a,(ix+2)
+	srl a
+	srl a
+	srl a
+	ld e,a			; E = sp->xpos / 8 (start_col)
+
+	ld a,(ix+3)
+	srl a
+	srl a
+	srl a
+	ld d,a			; D = sp->ypos / 8 (start_row)
+
+;	push de			; DE = precalculated start_row,start_col
+
+debug8:
+	;     for ( i = 0; i < sp->rows + 1; i++ )
+	;         for ( j = 0; j < sp->cols + 1; j++ )
+	;             jsp_dtt_mark_dirty( start_row + i, start_col + j );
+
+	ld b,0			; i = 0
+
+jsp_move_sprite_i:
+	ld c,0			; j = 0
+
+jsp_move_sprite_j:
+	push de			; save precalculated start_row,start_col
+	push bc			; save counters i,j
+
+	ld a,d			; A = start_row
+	add b			; A = start_row + i
+	ld h,0
+	ld l,a			; HL = start_row + i
+	push hl			; param: start_row + i
+
+	ld a,e			; A = start_col
+	add c			; A = start_col + j
+	ld l,a			; start_col + j
+	push hl			; param: start_col + j
+
+	call _jsp_dtt_mark_dirty	; no cleanup - __z88dk_callee
+
+	pop bc			; restore counters
+	pop de			; restore precalculated start_row,start_col
+
+	inc c
+	ld a,(ix+1)
+	inc a			; A = sp->cols + 1
+	cp c			; j == sp->cols + 1 ?
+	jp nz,jsp_move_sprite_j	; no, next column
+
+	inc b
+	ld a,(ix+0)
+	inc a			; A = sp->rows + 1
+	cp b			; i == sp->rows + 1 ?
+	jp nz,jsp_move_sprite_i	; no, next row
+
+	;     // draw on new position
+	;     jsp_draw_sprite( sp, xpos, ypos );
+	pop bc			; B = xpos, C = ypos
+	ld l,b			; L = xpos
+	ld b,0			; BC = ypos
+	ld h,b			; HL = xpos
+
+	push ix			; param: sp
+	push hl			; param: xpos
+	push bc			; param: ypos
+	call _jsp_draw_sprite	; no cleanup - __z88dk_callee
+
+	pop ix			; restore!
+	ret

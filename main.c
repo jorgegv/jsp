@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <spectrum.h>
 #include <arch/z80.h>
+#include <intrinsic.h>
 
 #include "jsp.h"
 
@@ -109,33 +110,40 @@ void test_sprite_draw( void ) {
                     character = 0x3d80;
         }
     }
-    jsp_redraw();
+//    jsp_redraw();
 
-    // draw a sprite
     jsp_init_sprite( &test_sprite );
-//    _jsp_draw_sprite( &test_sprite, 6, 12 );	// C version
-    jsp_draw_sprite( &test_sprite, 6, 12 );	// ASM version
 
-    jsp_draw_screen_tile( 19, 2, &test_sprite.pdbuf[0] ); *zx_cxy2aaddr( 2, 19 ) = PAPER_YELLOW | BRIGHT;
-    jsp_draw_screen_tile( 19, 3, &test_sprite.pdbuf[8] ); *zx_cxy2aaddr( 3, 19 ) = PAPER_YELLOW | BRIGHT;
-    jsp_draw_screen_tile( 19, 4, &test_sprite.pdbuf[16] ); *zx_cxy2aaddr( 4, 19 ) = PAPER_YELLOW | BRIGHT;
-    jsp_draw_screen_tile( 20, 2, &test_sprite.pdbuf[24] ); *zx_cxy2aaddr( 2, 20 ) = PAPER_YELLOW | BRIGHT;
-    jsp_draw_screen_tile( 20, 3, &test_sprite.pdbuf[32] ); *zx_cxy2aaddr( 3, 20 ) = PAPER_YELLOW | BRIGHT;
-    jsp_draw_screen_tile( 20, 4, &test_sprite.pdbuf[40] ); *zx_cxy2aaddr( 4, 20 ) = PAPER_YELLOW | BRIGHT;
-    jsp_draw_screen_tile( 21, 2, &test_sprite.pdbuf[48] ); *zx_cxy2aaddr( 2, 21 ) = PAPER_YELLOW | BRIGHT;
-    jsp_draw_screen_tile( 21, 3, &test_sprite.pdbuf[56] ); *zx_cxy2aaddr( 3, 21 ) = PAPER_YELLOW | BRIGHT;
-    jsp_draw_screen_tile( 21, 4, &test_sprite.pdbuf[64] ); *zx_cxy2aaddr( 4, 21 ) = PAPER_YELLOW | BRIGHT;
+    for ( i = 0; i < 100; i++ ) {
+        jsp_move_sprite( &test_sprite, i*2, 12 );	// ASM version
+        jsp_redraw();
+        z80_delay_ms( 100 );
+    }
+    return;
+    // draw a sprite
+//    jsp_draw_sprite( &test_sprite, 240, 12 );	// ASM version
+    jsp_move_sprite( &test_sprite, 28, 34 );	// ASM version
+
+    jsp_draw_screen_tile_attr( 19, 2, &test_sprite.pdbuf[0], PAPER_YELLOW | BRIGHT );
+    jsp_draw_screen_tile_attr( 19, 3, &test_sprite.pdbuf[8], PAPER_YELLOW | BRIGHT );
+    jsp_draw_screen_tile_attr( 19, 4, &test_sprite.pdbuf[16], PAPER_YELLOW | BRIGHT );
+    jsp_draw_screen_tile_attr( 20, 2, &test_sprite.pdbuf[24], PAPER_YELLOW | BRIGHT );
+    jsp_draw_screen_tile_attr( 20, 3, &test_sprite.pdbuf[32], PAPER_YELLOW | BRIGHT );
+    jsp_draw_screen_tile_attr( 20, 4, &test_sprite.pdbuf[40], PAPER_YELLOW | BRIGHT );
+    jsp_draw_screen_tile_attr( 21, 2, &test_sprite.pdbuf[48], PAPER_YELLOW | BRIGHT );
+    jsp_draw_screen_tile_attr( 21, 3, &test_sprite.pdbuf[56], PAPER_YELLOW | BRIGHT );
+    jsp_draw_screen_tile_attr( 21, 4, &test_sprite.pdbuf[64], PAPER_YELLOW | BRIGHT );
 
     jsp_redraw();
 
 }
 
-#define NUM_SPRITES 1
+#define NUM_SPRITES 5
 DEFINE_SPRITE(sprite0,2,2,test_sprite_pixels,0,0);
-//DEFINE_SPRITE(sprite1,2,2,test_sprite_pixels,0,0);
-//DEFINE_SPRITE(sprite2,2,2,test_sprite_pixels,0,0);
-//DEFINE_SPRITE(sprite3,2,2,test_sprite_pixels,0,0);
-//DEFINE_SPRITE(sprite4,2,2,test_sprite_pixels,0,0);
+DEFINE_SPRITE(sprite1,2,2,test_sprite_pixels,0,0);
+DEFINE_SPRITE(sprite2,2,2,test_sprite_pixels,0,0);
+DEFINE_SPRITE(sprite3,2,2,test_sprite_pixels,0,0);
+DEFINE_SPRITE(sprite4,2,2,test_sprite_pixels,0,0);
 
 struct { 
     uint8_t x,y;
@@ -143,10 +151,10 @@ struct {
     struct jsp_sprite_s *sp;
     } test_sprites[ NUM_SPRITES ] = {
         { .sp = &sprite0 },
-//        { .sp = &sprite1 },
-//        { .sp = &sprite2 },
-//        { .sp = &sprite3 },
-//        { .sp = &sprite4 },
+        { .sp = &sprite1 },
+        { .sp = &sprite2 },
+        { .sp = &sprite3 },
+        { .sp = &sprite4 },
 };
 
 void test_sprite_move( void ) {
@@ -204,13 +212,18 @@ void test_sprite_move( void ) {
 void main( void ) {
     zx_cls();
     jsp_init( NULL );
+
+    // disable interrupts, our routines use IX and IY and this does not get
+    // along with ROM ISR :-)
+    intrinsic_di();
+
     // only one of the tests below can be run, they interfere with each
     // other
 
 //    test_dtt();
 //    test_btt_contents();
 //    test_btt_redraw();
-    test_sprite_draw();
-//    test_sprite_move();
+//    test_sprite_draw();
+    test_sprite_move();
     while ( 1 );
 }
