@@ -90,11 +90,42 @@ void test_btt_redraw( void ) {
     jsp_redraw();
 }
 
-#define NUM_SPRITES 1
-
 extern uint8_t test_sprite_pixels[];
 extern uint8_t test_bg1tile_pixels[];
 
+DEFINE_SPRITE(test_sprite,2,2,test_sprite_pixels,0,0);
+
+void test_sprite_draw( void ) {
+    uint8_t i,j;
+
+    uint16_t character = 0x3d80;	// '0' at ROM
+
+    // draw some background tiles
+    for ( i = 0; i < 18; i++ ) {
+        for ( j = 0; j < 32; j++ ) {
+                jsp_draw_background_tile( i, j, (void *)character );
+                character += 8;
+                if ( character == 0x3dd0 )
+                    character = 0x3d80;
+        }
+    }
+
+    // draw a sprite
+    jsp_move_sprite( &test_sprite, 6, 12 );
+    jsp_redraw();
+
+    jsp_draw_screen_tile( 19, 2, &test_sprite.pdbuf[0] ); *zx_cxy2aaddr( 2, 19 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 19, 3, &test_sprite.pdbuf[8] ); *zx_cxy2aaddr( 3, 19 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 19, 4, &test_sprite.pdbuf[16] ); *zx_cxy2aaddr( 4, 19 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 20, 2, &test_sprite.pdbuf[24] ); *zx_cxy2aaddr( 2, 20 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 20, 3, &test_sprite.pdbuf[32] ); *zx_cxy2aaddr( 3, 20 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 20, 4, &test_sprite.pdbuf[40] ); *zx_cxy2aaddr( 4, 20 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 21, 2, &test_sprite.pdbuf[48] ); *zx_cxy2aaddr( 2, 21 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 21, 3, &test_sprite.pdbuf[56] ); *zx_cxy2aaddr( 3, 21 ) = PAPER_YELLOW | BRIGHT;
+    jsp_draw_screen_tile( 21, 4, &test_sprite.pdbuf[64] ); *zx_cxy2aaddr( 4, 21 ) = PAPER_YELLOW | BRIGHT;
+}
+
+#define NUM_SPRITES 1
 DEFINE_SPRITE(sprite0,2,2,test_sprite_pixels,0,0);
 //DEFINE_SPRITE(sprite1,2,2,test_sprite_pixels,0,0);
 //DEFINE_SPRITE(sprite2,2,2,test_sprite_pixels,0,0);
@@ -105,7 +136,7 @@ struct {
     uint8_t x,y;
     int8_t dx,dy;
     struct jsp_sprite_s *sp;
-    } test_sprite[ NUM_SPRITES ] = {
+    } test_sprites[ NUM_SPRITES ] = {
         { .sp = &sprite0 },
 //        { .sp = &sprite1 },
 //        { .sp = &sprite2 },
@@ -113,7 +144,7 @@ struct {
 //        { .sp = &sprite4 },
 };
 
-void test_sprite_draw( void ) {
+void test_sprite_move( void ) {
     uint8_t i,j;
 
     uint16_t character = 0x3d80;	// '0' at ROM
@@ -132,25 +163,25 @@ void test_sprite_draw( void ) {
 
     srand( 12345 );
     for ( i = 0; i < NUM_SPRITES; i++ ) {
-        test_sprite[ i ].x = rand() % 240;
-        test_sprite[ i ].y = rand() % 170;
-        test_sprite[ i ].dx = ( rand() % 8 ) - 4;
-        test_sprite[ i ].dy = ( rand() % 8 ) - 4;
+        test_sprites[ i ].x = rand() % 240;
+        test_sprites[ i ].y = rand() % 170;
+        test_sprites[ i ].dx = ( rand() % 8 ) - 4;
+        test_sprites[ i ].dy = ( rand() % 8 ) - 4;
     }
 
     while ( 1 ) {
         for ( i = 0; i < NUM_SPRITES; i++ ) {
-            jsp_move_sprite( test_sprite[ i ].sp, test_sprite[ i ].x, test_sprite[ i ].y );
+            jsp_move_sprite( test_sprites[ i ].sp, test_sprites[ i ].x, test_sprites[ i ].y );
 
-            if ( ( test_sprite[ i ].x + test_sprite[ i ].dx > 240 ) || ( test_sprite[ i ].x + test_sprite[ i ].dx < 4 ) ){
-                test_sprite[ i ].dx = -test_sprite[ i ].dx;
+            if ( ( test_sprites[ i ].x + test_sprites[ i ].dx > 240 ) || ( test_sprites[ i ].x + test_sprites[ i ].dx < 4 ) ){
+                test_sprites[ i ].dx = -test_sprites[ i ].dx;
             }
-            test_sprite[ i ].x += test_sprite[ i ].dx;
+            test_sprites[ i ].x += test_sprites[ i ].dx;
 
-            if ( ( test_sprite[ i ].y + test_sprite[ i ].dy > 170 ) || ( test_sprite[ i ].y + test_sprite[ i ].dy < 4 ) ) {
-                test_sprite[ i ].dy = -test_sprite[ i ].dy;
+            if ( ( test_sprites[ i ].y + test_sprites[ i ].dy > 170 ) || ( test_sprites[ i ].y + test_sprites[ i ].dy < 4 ) ) {
+                test_sprites[ i ].dy = -test_sprites[ i ].dy;
             }
-            test_sprite[ i ].y += test_sprite[ i ].dy;
+            test_sprites[ i ].y += test_sprites[ i ].dy;
         }
 
 /*
@@ -163,20 +194,6 @@ void test_sprite_draw( void ) {
 //        z80_delay_ms( 10 );
     }
 
-//    for ( i = 0; i < 160; i++ ) {
-//        jsp_move_sprite( &test_sprite, i, i );
-//        jsp_redraw();
-//        z80_delay_ms( 10 );
-//    }
-//        jsp_draw_screen_tile( 19, 2, &test_sprite.pdbuf[0] ); *zx_cxy2aaddr( 2, 19 ) = PAPER_YELLOW | BRIGHT;
-//        jsp_draw_screen_tile( 19, 3, &test_sprite.pdbuf[8] ); *zx_cxy2aaddr( 3, 19 ) = PAPER_YELLOW | BRIGHT;
-//        jsp_draw_screen_tile( 19, 4, &test_sprite.pdbuf[16] ); *zx_cxy2aaddr( 4, 19 ) = PAPER_YELLOW | BRIGHT;
-//        jsp_draw_screen_tile( 20, 2, &test_sprite.pdbuf[24] ); *zx_cxy2aaddr( 2, 20 ) = PAPER_YELLOW | BRIGHT;
-//        jsp_draw_screen_tile( 20, 3, &test_sprite.pdbuf[32] ); *zx_cxy2aaddr( 3, 20 ) = PAPER_YELLOW | BRIGHT;
-//        jsp_draw_screen_tile( 20, 4, &test_sprite.pdbuf[40] ); *zx_cxy2aaddr( 4, 20 ) = PAPER_YELLOW | BRIGHT;
-//        jsp_draw_screen_tile( 21, 2, &test_sprite.pdbuf[48] ); *zx_cxy2aaddr( 2, 21 ) = PAPER_YELLOW | BRIGHT;
-//        jsp_draw_screen_tile( 21, 3, &test_sprite.pdbuf[56] ); *zx_cxy2aaddr( 3, 21 ) = PAPER_YELLOW | BRIGHT;
-//        jsp_draw_screen_tile( 21, 4, &test_sprite.pdbuf[64] ); *zx_cxy2aaddr( 4, 21 ) = PAPER_YELLOW | BRIGHT;
 }
 
 void main( void ) {
@@ -188,6 +205,7 @@ void main( void ) {
 //    test_dtt();
 //    test_btt_contents();
 //    test_btt_redraw();
-    test_sprite_draw();
+//    test_sprite_draw();
+    test_sprite_move();
     while ( 1 );
 }
