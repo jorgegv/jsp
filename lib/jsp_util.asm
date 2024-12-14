@@ -5,6 +5,7 @@
 	public _jsp_memzero
 	public _jsp_memcpy
 	public jsp_rowcolindex
+	public jsp_rowcolindex_dtt
 
 ;; void jsp_memzero( void *dst, uint16_t numbytes ) __smallc __z88dk_callee;
 ;; trashes a,bc,de,hl
@@ -55,4 +56,19 @@ jsp_rowcolindex:
 	add hl,hl
 
 	add hl,de	; HL += col
+	ret
+
+;; jsp_rowcolindex_dtt: calculates index of (r,c) pair into DRT,DTT,BTT tables
+;; input: D = row, E = col
+;; return: L = ( row * 32 + col (0-767) ) / 8 (0-95)
+;; trashes A,E
+jsp_rowcolindex_dtt:
+	srl e
+	srl e
+	srl e		; E = col / 8
+	ld a,d
+	rlca		; A = row * 4
+	rlca
+	or e		; add both
+	ld l,a		; return in L
 	ret

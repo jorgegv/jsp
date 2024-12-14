@@ -2,6 +2,7 @@
 
 	extern _jsp_dtt
 	extern jsp_rowcolindex
+	extern jsp_rowcolindex_dtt
 
 	public _jsp_dtt_mark_dirty
 	public _jsp_dtt_mark_clean
@@ -51,18 +52,11 @@ jsp_dtt_mark_dirty_clean_test:
 
 	ld d,l			;; D = row, E = col
 	push de			;; save DE
-	call jsp_rowcolindex	;; HL = offset (0-767)
+	call jsp_rowcolindex_dtt	;; L = offset (0-96) - H is already 0
 	pop de			;; restore
 
 	ld a,0x07		;; A = col % 8 -> # bit to set
 	and e			;; (save for later)
-
-	srl h			;; divide HL by 8 to get the byte index
-	rr l
-	srl h
-	rr l
-	srl h
-	rr l
 
 	ld de,_jsp_dtt		;; index into DTT table
 	add hl,de		;; HL = byte to modify
