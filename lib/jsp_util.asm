@@ -58,7 +58,7 @@ jsp_rowcolindex:
 	add hl,de	; HL += col
 	ret
 
-;; jsp_rowcolindex_dtt: calculates index of (r,c) pair into DRT,DTT,BTT tables
+;; jsp_rowcolindex_dtt: calculates index of (r,c) pair into DTT table (8-bit packed)
 ;; input: D = row, E = col
 ;; return: L = ( row * 32 + col (0-767) ) / 8 (0-95)
 ;; trashes A,E
