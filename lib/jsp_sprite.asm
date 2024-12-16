@@ -111,12 +111,15 @@ jsp_draw_sprite_j:
 	push hl			; save dst addr!
 
 	;             jsp_memcpy( &sp->pdbuf[ ( i * ( sp->cols + 1 ) + j ) * 8 ], jsp_drt[ ( start_row + i ) * 32  + ( start_col + j ) ], 8 );
-	push hl			; param: dst
-	push de			; param: src
-	ld e,8
-	ld d,0
-	push de			; param: 8
-	call _jsp_memcpy	; no cleanup needed: __z88dk_callee
+	ex de,hl		; DE = dst, HL = src
+	ldi			; transfer 8 bytes
+	ldi			; trashes BC but we don't care
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
 
 	pop hl			; recover dst addr!
 
