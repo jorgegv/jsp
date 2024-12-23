@@ -6,9 +6,9 @@ See [SP1-COMPARISON.md](doc/SP1-COMPARISON.md) for a comparison between SP1 and 
 
 Copyright 2024 ZXjogv <zx@jogv.es> (Jorge Gonzalez Villalonga), based on SP1 works by Alvin Albrecht
 
-------
-
 ## Test Program
+
+Testing code is on the base directory. The library sources are in `lib` and `include` directories.
 
 Ensure you have a recent Z88DK build and you have configured your environment to use it (i.e. `zcc` works!).
 
