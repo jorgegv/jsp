@@ -1,8 +1,7 @@
 	section code_compiler
 
-	public _jsp_draw_sprite
-	public _jsp_move_sprite
-	public _jsp_init_sprite
+	public _jsp_draw_sprite_mask2
+	public _jsp_move_sprite_mask2
 	public _jsp_current_rottbl_msb
 
 	extern _jsp_rottbl
@@ -24,7 +23,7 @@ _pix_ptr_left:			dw 0
 _jsp_current_rottbl_msb:	db 0
 
 ; void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
-_jsp_draw_sprite:
+_jsp_draw_sprite_mask2:
 	pop af			; save ret addr
 	pop bc			; C = ypos
 	pop de			; E = xpos
@@ -431,7 +430,7 @@ jsp_draw_sprite_return:
 	ret
 
 ; void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
-_jsp_move_sprite:
+_jsp_move_sprite_mask2:
 	pop af			; save ret addr
 	pop bc			; C = ypos
 	pop de			; E = xpos
@@ -512,24 +511,7 @@ jsp_move_sprite_j:
 	push ix			; param: sp
 	push hl			; param: xpos
 	push bc			; param: ypos
-	call _jsp_draw_sprite	; no cleanup - __z88dk_callee
+	call _jsp_draw_sprite_mask2	; no cleanup - __z88dk_callee
 
 	pop ix			; restore!
-	ret
-
-; void jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall;
-_jsp_init_sprite:
-	push ix			; save!
-	push hl
-	pop ix			; ix = sp
-
-	;     sp->xpos = sp->ypos = 0;
-	xor a
-	ld (ix+2),a
-	ld (ix+3),a
-
-	;     sp->flags.initialized = 1;
-	set 0,(ix+4)
-
-	pop ix
 	ret

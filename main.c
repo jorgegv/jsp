@@ -94,7 +94,7 @@ void test_btt_redraw( void ) {
 extern uint8_t test_sprite_pixels[];
 extern uint8_t test_bg1tile_pixels[];
 
-DEFINE_SPRITE(test_sprite,2,2,test_sprite_pixels,0,0);
+DEFINE_SPRITE_MASK2(test_sprite,2,2,test_sprite_pixels,0,0);
 
 void test_sprite_draw_mask2( void ) {
     uint8_t i,j;
@@ -115,7 +115,7 @@ void test_sprite_draw_mask2( void ) {
     jsp_init_sprite( &test_sprite );
 
     // draw a sprite
-    jsp_draw_sprite( &test_sprite, 219, 12 );	// ASM version
+    jsp_draw_sprite_mask2( &test_sprite, 219, 12 );	// ASM version
 
     // check the sprite's pdbuf after drawing
     for ( i = 0; i < 3; i++ )
@@ -128,11 +128,11 @@ void test_sprite_draw_mask2( void ) {
 }
 
 #define NUM_SPRITES 3
-DEFINE_SPRITE(sprite0,2,2,test_sprite_pixels,0,0);
-DEFINE_SPRITE(sprite1,2,2,test_sprite_pixels,0,0);
-DEFINE_SPRITE(sprite2,2,2,test_sprite_pixels,0,0);
-//DEFINE_SPRITE(sprite3,2,2,test_sprite_pixels,0,0);
-//DEFINE_SPRITE(sprite4,2,2,test_sprite_pixels,0,0);
+DEFINE_SPRITE_MASK2(sprite0,2,2,test_sprite_pixels,0,0);
+DEFINE_SPRITE_MASK2(sprite1,2,2,test_sprite_pixels,0,0);
+DEFINE_SPRITE_MASK2(sprite2,2,2,test_sprite_pixels,0,0);
+//DEFINE_SPRITE_MASK2(sprite3,2,2,test_sprite_pixels,0,0);
+//DEFINE_SPRITE_MASK2(sprite4,2,2,test_sprite_pixels,0,0);
 
 struct { 
     uint8_t x,y;
@@ -163,6 +163,7 @@ void test_sprite_move_mask2( void ) {
 
     // play with sprites
 
+    // position sprites randomly and assign some movement constants
     srand( 12345 );
     for ( i = 0; i < NUM_SPRITES; i++ ) {
         test_sprites[ i ].x = rand() % 240;
@@ -173,7 +174,7 @@ void test_sprite_move_mask2( void ) {
 
     while ( 1 ) {
         for ( i = 0; i < NUM_SPRITES; i++ ) {
-            jsp_move_sprite( test_sprites[ i ].sp, test_sprites[ i ].x, test_sprites[ i ].y );
+            jsp_move_sprite_mask2( test_sprites[ i ].sp, test_sprites[ i ].x, test_sprites[ i ].y );
 
             if ( ( test_sprites[ i ].x + test_sprites[ i ].dx > 240 ) || ( test_sprites[ i ].x + test_sprites[ i ].dx < 4 ) ){
                 test_sprites[ i ].dx = -test_sprites[ i ].dx;
