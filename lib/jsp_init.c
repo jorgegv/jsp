@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "jsp.h"
+#include "jsp_private.h"
 
 ///////////////////////////
 // Private data

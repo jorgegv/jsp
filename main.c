@@ -7,6 +7,10 @@
 
 #include "jsp.h"
 
+// this is included because of the tests below, it should not be included in
+// a regular JSP program
+#include "jsp_private.h"
+
 void test_dtt( void ) {
     uint8_t i;
     uint8_t *ptr = jsp_dtt;
