@@ -1,4 +1,4 @@
-# README
+# JSP Sprite Library
 
 JSP is an experimental sprite library for the ZX Spectrum using the [Z88DK toolchain](https://www.z88dk.org). It is based on the same algorithms as the [SP1 Sprite Library](https://github.com/z88dk/z88dk/wiki/LIBRARY-SP1-Software-Sprites-(sp1.h)) by Alvin Albrecht but with a much smaller memory footprint. Some of its internal routines have been derived from SP1 ones (thanks Alvin!).
 
