@@ -203,6 +203,47 @@ void test_sprite_move_mask2( void ) {
 
 }
 
+void test_sprite_move_load1( void ) {
+    uint8_t i,j;
+
+    // play with sprites
+
+    // position sprites randomly and assign some movement constants
+    srand( 12345 );
+    for ( i = 0; i < NUM_SPRITES; i++ ) {
+        test_sprites[ i ].x = rand() % 240;
+        test_sprites[ i ].y = rand() % 170;
+        test_sprites[ i ].dx = ( rand() % 8 ) - 4;
+        test_sprites[ i ].dy = ( rand() % 8 ) - 4;
+    }
+
+    while ( 1 ) {
+        for ( i = 0; i < NUM_SPRITES; i++ ) {
+            jsp_move_sprite_load1( test_sprites[ i ].sp, test_sprites[ i ].x, test_sprites[ i ].y );
+
+            if ( ( test_sprites[ i ].x + test_sprites[ i ].dx > 240 ) || ( test_sprites[ i ].x + test_sprites[ i ].dx < 4 ) ){
+                test_sprites[ i ].dx = -test_sprites[ i ].dx;
+            }
+            test_sprites[ i ].x += test_sprites[ i ].dx;
+
+            if ( ( test_sprites[ i ].y + test_sprites[ i ].dy > 170 ) || ( test_sprites[ i ].y + test_sprites[ i ].dy < 4 ) ) {
+                test_sprites[ i ].dy = -test_sprites[ i ].dy;
+            }
+            test_sprites[ i ].y += test_sprites[ i ].dy;
+        }
+
+/*
+        __asm
+        halt
+        __endasm;
+*/
+        jsp_redraw();
+
+//        z80_delay_ms( 10 );
+    }
+
+}
+
 void main( void ) {
     zx_cls();
     jsp_init( NULL );
@@ -214,6 +255,7 @@ void main( void ) {
 //    test_btt_contents();
 //    test_btt_redraw();
 //    test_sprite_draw_mask2();
-    test_sprite_move_mask2();
+//    test_sprite_move_mask2();
+    test_sprite_move_load1();
     while ( 1 );
 }
