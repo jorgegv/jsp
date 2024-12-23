@@ -96,7 +96,7 @@ extern uint8_t test_bg1tile_pixels[];
 
 DEFINE_SPRITE(test_sprite,2,2,test_sprite_pixels,0,0);
 
-void test_sprite_draw( void ) {
+void test_sprite_draw_mask2( void ) {
     uint8_t i,j;
 
     uint16_t character = 0x3d80;	// '0' at ROM
@@ -115,18 +115,14 @@ void test_sprite_draw( void ) {
     jsp_init_sprite( &test_sprite );
 
     // draw a sprite
-    jsp_draw_sprite( &test_sprite, 240, 12 );	// ASM version
+    jsp_draw_sprite( &test_sprite, 219, 12 );	// ASM version
 
-    jsp_draw_screen_tile_attr( 19, 2, &test_sprite.pdbuf[0], PAPER_YELLOW | BRIGHT );
-    jsp_draw_screen_tile_attr( 19, 3, &test_sprite.pdbuf[8], PAPER_YELLOW | BRIGHT );
-    jsp_draw_screen_tile_attr( 19, 4, &test_sprite.pdbuf[16], PAPER_YELLOW | BRIGHT );
-    jsp_draw_screen_tile_attr( 20, 2, &test_sprite.pdbuf[24], PAPER_YELLOW | BRIGHT );
-    jsp_draw_screen_tile_attr( 20, 3, &test_sprite.pdbuf[32], PAPER_YELLOW | BRIGHT );
-    jsp_draw_screen_tile_attr( 20, 4, &test_sprite.pdbuf[40], PAPER_YELLOW | BRIGHT );
-    jsp_draw_screen_tile_attr( 21, 2, &test_sprite.pdbuf[48], PAPER_YELLOW | BRIGHT );
-    jsp_draw_screen_tile_attr( 21, 3, &test_sprite.pdbuf[56], PAPER_YELLOW | BRIGHT );
-    jsp_draw_screen_tile_attr( 21, 4, &test_sprite.pdbuf[64], PAPER_YELLOW | BRIGHT );
+    // check the sprite's pdbuf after drawing
+    for ( i = 0; i < 3; i++ )
+        for ( j = 0; j < 3; j++ )
+            jsp_draw_screen_tile_attr( 19 + i, 2 + j, &test_sprite.pdbuf[ 8 * ( 3 * i + j ) ], PAPER_YELLOW | BRIGHT );
 
+    // update screen
     jsp_redraw();
 
 }
@@ -150,7 +146,7 @@ struct {
 //        { .sp = &sprite4 },
 };
 
-void test_sprite_move( void ) {
+void test_sprite_move_mask2( void ) {
     uint8_t i,j;
 
     uint16_t character = 0x3d80;	// '0' at ROM
@@ -212,7 +208,7 @@ void main( void ) {
 //    test_dtt();
 //    test_btt_contents();
 //    test_btt_redraw();
-//    test_sprite_draw();
-    test_sprite_move();
+//    test_sprite_draw_mask2();
+    test_sprite_move_mask2();
     while ( 1 );
 }
