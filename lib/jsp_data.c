@@ -8,12 +8,12 @@
     #define ROTTBL_ADDR		0xB200
     #define BTT_ADDR		0xAC00
     #define DRT_ADDR		0xA600
-    #define DTT_ADDR		0xA545
+    #define DTT_ADDR		0xA5A0
 #else
     #define ROTTBL_ADDR		0xF200
     #define BTT_ADDR		0xEC00
     #define DRT_ADDR		0xE600
-    #define DTT_ADDR		0xE585
+    #define DTT_ADDR		0xE5A0
 #endif
 
 // rotation tables

@@ -81,6 +81,8 @@ been reset for the next drawing cycle.
 
 ## MEMORY MAPS
 
+Be careful when using JSP with the standard ROM interrupt routine, some of its routines use the IY register!
+
 **48K MODE**
 
 | Range     | Contents                                          |
@@ -88,17 +90,10 @@ been reset for the next drawing cycle.
 | F200-FFFF | Rotation tables (3.5 kB, 256-aligned)             |
 | EC00-F199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
 | E600-EB99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
-| E5E8-E5FF | Unused (18 bytes)                                 |
-| E5E5-E5E7 | "JP <isr>" opcodes (3 bytes)                      |
-| E585-E5E4 | Dirty Tiles Table, DTT (96 bytes)                 |
-| E501-E584 | Stack (132 bytes)                                 |
-| E400-E500 | IV table with value 0xE5 (257 bytes)              |
-| 5D00-E3FF | Program code and data (34560 bytes)               |
+| E5A0-E5FF | Dirty Tiles Table, DTT (96 bytes)                 |
+| 5D00-E59F | free for program code and data (34976 bytes)      |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
-- SP should be initialized at startup to 0xEB8B
-- Stack + Unused is 156 bytes
-- In case IM2 is not used, the IV table (257 bytes) is not used and adds to the end of available program memory. Also the top unused block grows to 21 bytes
 
 **128K MODE**
 
@@ -109,15 +104,7 @@ The layout is similar to 48K mode, but down 16K, in order to free up the C000-FF
 | B200-BFFF | Rotation tables (3.5 kB, 256-aligned)             |
 | AC00-B199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
 | A600-AB99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
-| A5A7-A5FF | Stack (89 bytes)                                  |
-| A5A5-A5A7 | "JP <isr>" opcodes (3 bytes)                      |
-| A545-A5A4 | Dirty Tiles Table, DTT (96 bytes)                 |
-| A501-A544 | Unused (68 bytes)                                 |
-| A400-A500 | IV table with value 0xA5 (257 bytes)              |
-| 5D00-A3FF | Program code and data (18176 bytes)               |
+| A5A0-A5FF | Dirty Tiles Table, DTT (96 bytes)                 |
+| 5D00-A59F | free for program code and data (18592 bytes)      |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
-- SP should be initialized at startup to 0xAC00
-- Stack + Unused is 156 bytes
-- Stack is smaller than in 48K map, careful with this
-- In case IM2 is not used, the IV table (257 bytes) is not used and adds to the end of available program memory, with additional 74 unused bytes. Also the stack is 85 bytes (82+3)
