@@ -38,12 +38,12 @@ A "tile" is an 8x8 UDG stored top to down in memory (8 consecutive bytes)
 
 - For each sprite:
 
-  - Mark as dirty the cells corresponding to the previous coordinates
+  - Mark as dirty the cells corresponding to the previous position
 
   - Save the new coordinates
 
   - Copy the background tiles for that sprite from the DRT cells to the
-    sprite PDB
+    sprite's PDB
 
   - Draw the sprite on the PDB over the previous contents, with your
     preferred method (masked, or, xor, etc.), preshifted, rotated, etc.
@@ -54,10 +54,8 @@ A "tile" is an 8x8 UDG stored top to down in memory (8 consecutive bytes)
 
   - Mark as dirty the DTT cells corresponding to the sprite position
 
-  - Mark as dirty also the cells corresponding to the previous position
-
 At this point, the sprites have been drawn in order (whatever your order
-is), the DTT contains the dirty cells ythat need to be redrawn, and the DRT
+is), the DTT contains the dirty cells that need to be redrawn, and the DRT
 contains the pointers to the contents to be drawn.
 
 ## WORKFLOW FOR REDRAWING THE SCREEN
