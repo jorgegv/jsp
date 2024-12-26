@@ -3,8 +3,6 @@
 	public _jsp_draw_sprite_load1
 	public _jsp_move_sprite_load1
 
-	extern _jsp_draw_sprite_mask2
-
 	extern _jsp_rottbl
 	extern jsp_rowcolindex
 	extern _jsp_drt
@@ -12,9 +10,6 @@
 	extern _sp1_draw_load1lb
 	extern _sp1_draw_load1rb
 	extern _sp1_draw_load1
-	extern _sp1_draw_mask2lb
-	extern _sp1_draw_mask2rb
-	extern _sp1_draw_mask2
 	extern _jsp_dtt_mark_dirty
 
 ; var definitions as global for optimized access
@@ -164,7 +159,7 @@ jsp_draw_sprite_j:
 	;     // draw left column
 	;     bg_ptr = &sp->pdbuf[ 0 ];
 	;     for ( i = 0; i < sp->rows + 1; i++ ) {
-	;         sp1_draw_mask2lb( bg_ptr, pix_ptr, rottbl );
+	;         sp1_draw_load1lb( bg_ptr, pix_ptr, rottbl );
 	;         bg_ptr += ( sp->cols + 1 ) * 8;
 	;         pix_ptr += 16;
 	;     }
@@ -196,7 +191,7 @@ jsp_draw_sprite_left_i:
 	push de			; param: pix_ptr
 	ld de,(_rottbl)
 	push de			; param: rottbl
-	call _sp1_draw_mask2lb	; no clean up - __z88dk_callee
+	call _sp1_draw_load1lb	; no clean up - __z88dk_callee
 
 	ld hl,(_pix_ptr)
 	ld de,16
@@ -216,7 +211,7 @@ jsp_draw_sprite_left_i:
 	;     for ( j = 1; j < sp->cols; j++ ) {
 	;         bg_ptr = &sp->pdbuf[ j * 8 ];
 	;         for ( i = 0; i < sp->rows + 1; i++ ) {
-	;             sp1_draw_mask2( bg_ptr, pix_ptr, pix_ptr_left, rottbl );
+	;             sp1_draw_load1( bg_ptr, pix_ptr, pix_ptr_left, rottbl );
 	;             bg_ptr += ( sp->cols + 1 ) * 8;
 	;             pix_ptr += 16;
 	;             pix_ptr_left += 16;
@@ -254,7 +249,7 @@ jsp_draw_sprite_middle_i:
 	push hl			; param: pix_ptr_left
 	ld hl,(_rottbl)
 	push hl			; param: rottbl
-	call _sp1_draw_mask2	; no cleanup - __z88dk_callee
+	call _sp1_draw_load1	; no cleanup - __z88dk_callee
 
 	pop hl			; restore bg_ptr
 	pop de
@@ -294,7 +289,7 @@ jsp_draw_sprite_middle_i:
 	;         // the right column uses the same data as the last middle one, i.e. pix_ptr_left
 	;         pix_ptr = pix_ptr_left;
 	;         for ( i = 0; i < sp->rows + 1; i++ ) {
-	;             sp1_draw_mask2rb( bg_ptr, pix_ptr, rottbl );
+	;             sp1_draw_load1rb( bg_ptr, pix_ptr, rottbl );
 	;             bg_ptr += ( sp->cols + 1 ) * 8;
 	;             pix_ptr += 16;
 	;         }
@@ -336,7 +331,7 @@ jsp_draw_sprite_right_i:
 	push hl			; param: pix_ptr
 	ld hl,(_rottbl)
 	push hl			; param: rottbl
-	call _sp1_draw_mask2rb	; no cleanup - __z88dk_callee
+	call _sp1_draw_load1rb	; no cleanup - __z88dk_callee
 
 	pop de			; restore precalculated ( sp->cols + 1 ) * 8
 	pop hl			; restore bg_ptr
@@ -523,7 +518,7 @@ jsp_move_sprite_j:
 	push ix			; param: sp
 	push hl			; param: xpos
 	push bc			; param: ypos
-	call _jsp_draw_sprite_mask2	; no cleanup - __z88dk_callee
+	call _jsp_draw_sprite_load1	; no cleanup - __z88dk_callee
 
 	pop ix			; restore!
 	ret
