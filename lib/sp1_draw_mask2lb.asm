@@ -12,14 +12,14 @@
 
 	extern _SP1_DRAW_MASK2NR
 	extern _jsp_rottbl
+	extern _jsp_current_rottbl_msb
 
-;; void sp1_draw_mask2lb( uint8_t *dst, uint8_t *graph, uint8_t *rottbl ) __smallc __z88dk_callee;
+;; void sp1_draw_mask2lb( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 ;; trashes BC' !!
 _sp1_draw_mask2lb:
 	pop de		; save ret addr
 
-	pop bc
-	ld a,b		; a = hor rot table
+	ld a,(_jsp_current_rottbl_msb)		; a = hor rot table
 
 	pop hl		; hl = graphic def ptr
 	pop bc		; bc = graphic disp
