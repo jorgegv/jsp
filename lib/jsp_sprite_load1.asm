@@ -138,15 +138,14 @@ jsp_draw_sprite_j:
 	jp nz,jsp_draw_sprite_i ; no, loop another row
 
 	;     // initialize pointers for drawing
-	;     pix_ptr = pix_ptr_left = sp->pixels - ( ypos % 8 ) * 2;
+	;     pix_ptr = pix_ptr_left = sp->pixels - ( ypos % 8 );
 
 	ld a,0x07
 	exx
 	and l			; A = ypos % 8 (ypos is in L')
 	exx
 	ld l,a
-	ld h,0
-	add hl,hl		; HL = ( ypos % 8 ) * 2
+	ld h,0			; HL = ( ypos % 8 )
 	ld e,(ix+5)
 	ld d,(ix+6)		; DE = sp->pixels
 	ex de,hl
@@ -159,7 +158,7 @@ jsp_draw_sprite_j:
 	;     for ( i = 0; i < sp->rows + 1; i++ ) {
 	;         sp1_draw_load1lb( bg_ptr, pix_ptr, rottbl );
 	;         bg_ptr += ( sp->cols + 1 ) * 8;
-	;         pix_ptr += 16;
+	;         pix_ptr += 8;
 	;     }
 
 	; precalc ( sp->cols + 1 ) * 8 outside of the loop
@@ -190,9 +189,9 @@ jsp_draw_sprite_left_i:
 	call _sp1_draw_load1lb	; no clean up - __z88dk_callee
 
 	ld hl,(_pix_ptr)
-	ld de,16
+	ld de,8
 	add hl,de
-	ld (_pix_ptr),hl	; pix_ptr += 16
+	ld (_pix_ptr),hl	; pix_ptr += 8
 
 	pop hl			; restore bg_ptr
 
@@ -209,8 +208,8 @@ jsp_draw_sprite_left_i:
 	;         for ( i = 0; i < sp->rows + 1; i++ ) {
 	;             sp1_draw_load1( bg_ptr, pix_ptr, pix_ptr_left, rottbl );
 	;             bg_ptr += ( sp->cols + 1 ) * 8;
-	;             pix_ptr += 16;
-	;             pix_ptr_left += 16;
+	;             pix_ptr += 8;
+	;             pix_ptr_left += 8;
 	;         }
 	;     }
 
@@ -252,15 +251,15 @@ jsp_draw_sprite_middle_i:
 
 	push hl			; save bg_ptr
 
-	ld de,16
+	ld de,8
 
 	ld hl,(_pix_ptr)
 	add hl,de
-	ld (_pix_ptr),hl	; pix_ptr += 16
+	ld (_pix_ptr),hl	; pix_ptr += 8
 
 	ld hl,(_pix_ptr_left)
 	add hl,de
-	ld (_pix_ptr_left),hl	; pix_ptr_left += 16
+	ld (_pix_ptr_left),hl	; pix_ptr_left += 8
 
 	pop hl			; restore bg_ptr
 	pop de			; restore precalculated ( sp->cols + 1 ) * 8
@@ -285,7 +284,7 @@ jsp_draw_sprite_middle_i:
 	;         for ( i = 0; i < sp->rows + 1; i++ ) {
 	;             sp1_draw_load1rb( bg_ptr, pix_ptr, rottbl );
 	;             bg_ptr += ( sp->cols + 1 ) * 8;
-	;             pix_ptr += 16;
+	;             pix_ptr += 8;
 	;         }
 	;     }
 
@@ -332,9 +331,9 @@ jsp_draw_sprite_right_i:
 
 	push de			; save precalculated...
 	ld hl,(_pix_ptr)
-	ld de,16
+	ld de,8
 	add hl,de
-	ld (_pix_ptr),hl	; pix_ptr += 16
+	ld (_pix_ptr),hl	; pix_ptr += 8
 	pop de			; restore precalculated...
 
 	pop hl			; restore bg_ptr
