@@ -156,7 +156,7 @@ jsp_draw_sprite_j:
 	;     // draw left column
 	;     bg_ptr = &sp->pdbuf[ 0 ];
 	;     for ( i = 0; i < sp->rows + 1; i++ ) {
-	;         sp1_draw_load1lb( bg_ptr, pix_ptr, rottbl );
+	;         sp1_draw_load1lb( bg_ptr, pix_ptr );
 	;         bg_ptr += ( sp->cols + 1 ) * 8;
 	;         pix_ptr += 8;
 	;     }
@@ -206,7 +206,7 @@ jsp_draw_sprite_left_i:
 	;     for ( j = 1; j < sp->cols; j++ ) {
 	;         bg_ptr = &sp->pdbuf[ j * 8 ];
 	;         for ( i = 0; i < sp->rows + 1; i++ ) {
-	;             sp1_draw_load1( bg_ptr, pix_ptr, pix_ptr_left, rottbl );
+	;             sp1_draw_load1( bg_ptr, pix_ptr, pix_ptr_left );
 	;             bg_ptr += ( sp->cols + 1 ) * 8;
 	;             pix_ptr += 8;
 	;             pix_ptr_left += 8;
@@ -282,7 +282,7 @@ jsp_draw_sprite_middle_i:
 	;         // the right column uses the same data as the last middle one, i.e. pix_ptr_left
 	;         pix_ptr = pix_ptr_left;
 	;         for ( i = 0; i < sp->rows + 1; i++ ) {
-	;             sp1_draw_load1rb( bg_ptr, pix_ptr, rottbl );
+	;             sp1_draw_load1rb( bg_ptr, pix_ptr );
 	;             bg_ptr += ( sp->cols + 1 ) * 8;
 	;             pix_ptr += 8;
 	;         }
