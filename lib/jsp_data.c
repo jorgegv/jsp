@@ -28,3 +28,7 @@ __at( DRT_ADDR ) uint8_t *jsp_drt[ 768 ];
 // Dirty Tiles Table: byte array
 __at( DTT_ADDR ) uint8_t jsp_dtt[ 768 / 8 ];
 
+// rottbl parameter does not change while drawing a full sprite, so better
+// to set it up in a global once at the beginning instead of passing it
+// around as a parameter
+uint8_t jsp_current_rottbl_msb;

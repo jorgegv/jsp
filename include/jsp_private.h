@@ -10,6 +10,7 @@ extern uint16_t	*jsp_btt[];
 extern uint16_t	*jsp_drt[];
 extern uint8_t	jsp_dtt[];
 extern uint8_t	*jsp_default_bg_tile;
+extern uint8_t jsp_current_rottbl_msb;
 
 // mark/unmark one cell for redraw
 void jsp_dtt_mark_dirty( uint8_t row, uint8_t col ) __smallc __z88dk_callee;

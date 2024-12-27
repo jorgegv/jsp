@@ -95,10 +95,10 @@ void test_btt_redraw( void ) {
     jsp_redraw();
 }
 
-extern uint8_t test_sprite_pixels[];
+extern uint8_t test_sprite_mask2_pixels[];
 extern uint8_t test_bg1tile_pixels[];
 
-DEFINE_SPRITE_MASK2(test_sprite,2,2,test_sprite_pixels,0,0);
+DEFINE_SPRITE_MASK2(test_sprite,2,2,test_sprite_mask2_pixels,0,0);
 
 void test_sprite_draw_mask2( void ) {
     uint8_t i,j;
@@ -132,11 +132,11 @@ void test_sprite_draw_mask2( void ) {
 }
 
 #define NUM_SPRITES 3
-DEFINE_SPRITE_MASK2(sprite0,2,2,test_sprite_pixels,0,0);
-DEFINE_SPRITE_MASK2(sprite1,2,2,test_sprite_pixels,0,0);
-DEFINE_SPRITE_MASK2(sprite2,2,2,test_sprite_pixels,0,0);
-//DEFINE_SPRITE_MASK2(sprite3,2,2,test_sprite_pixels,0,0);
-//DEFINE_SPRITE_MASK2(sprite4,2,2,test_sprite_pixels,0,0);
+DEFINE_SPRITE_MASK2(sprite0,2,2,test_sprite_mask2_pixels,0,0);
+DEFINE_SPRITE_MASK2(sprite1,2,2,test_sprite_mask2_pixels,0,0);
+DEFINE_SPRITE_MASK2(sprite2,2,2,test_sprite_mask2_pixels,0,0);
+//DEFINE_SPRITE_MASK2(sprite3,2,2,test_sprite_mask2_pixels,0,0);
+//DEFINE_SPRITE_MASK2(sprite4,2,2,test_sprite_mask2_pixels,0,0);
 
 struct { 
     uint8_t x,y;
@@ -204,7 +204,7 @@ void test_sprite_move_mask2( void ) {
 }
 
 void test_sprite_move_load1( void ) {
-    uint8_t i,j;
+    uint8_t i;
 
     // play with sprites
 

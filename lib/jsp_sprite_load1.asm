@@ -11,6 +11,7 @@
 	extern _sp1_draw_load1rb
 	extern _sp1_draw_load1
 	extern _jsp_dtt_mark_dirty
+	extern _jsp_current_rottbl_msb
 
 ; var definitions as global for optimized access
 
@@ -19,7 +20,6 @@ _start_col:	db 0
 _bg_ptr:	dw 0
 _pix_ptr:	dw 0
 _pix_ptr_left:	dw 0
-_rottbl:	dw 0
 
 ; void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
 _jsp_draw_sprite_load1:
@@ -70,9 +70,7 @@ _jsp_draw_sprite_load1:
 	add a,d			; A = top byte of &jsp_rottbl[ 512 * ( xpos % 8 ) ]
 	dec a
 	dec a			; A = top byte of jsp_rottbl[ 512 * ( xpos % 8 ) ] - 512
-	ld (_rottbl+1),a	; store high byte
-	xor a
-	ld (_rottbl),a		; ensure low byte is zero
+	ld (_jsp_current_rottbl_msb),a	; store high byte
 
 	;     // fill the sprite PDB with the current DRT records as background
 	;     // cell by cell
@@ -189,8 +187,6 @@ jsp_draw_sprite_left_i:
 	push hl			; param: bg_ptr
 	ld de,(_pix_ptr)
 	push de			; param: pix_ptr
-	ld de,(_rottbl)
-	push de			; param: rottbl
 	call _sp1_draw_load1lb	; no clean up - __z88dk_callee
 
 	ld hl,(_pix_ptr)
@@ -247,8 +243,6 @@ jsp_draw_sprite_middle_i:
 	push hl			; param: pix_ptr
 	ld hl,(_pix_ptr_left)
 	push hl			; param: pix_ptr_left
-	ld hl,(_rottbl)
-	push hl			; param: rottbl
 	call _sp1_draw_load1	; no cleanup - __z88dk_callee
 
 	pop hl			; restore bg_ptr
@@ -329,8 +323,6 @@ jsp_draw_sprite_right_i:
 	push hl			; param: bg_ptr
 	ld hl,(_pix_ptr)
 	push hl			; param: pix_ptr
-	ld hl,(_rottbl)
-	push hl			; param: rottbl
 	call _sp1_draw_load1rb	; no cleanup - __z88dk_callee
 
 	pop de			; restore precalculated ( sp->cols + 1 ) * 8

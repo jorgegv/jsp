@@ -2,7 +2,6 @@
 
 	public _jsp_draw_sprite_mask2
 	public _jsp_move_sprite_mask2
-	public _jsp_current_rottbl_msb
 
 	extern _jsp_rottbl
 	extern jsp_rowcolindex
@@ -12,15 +11,15 @@
 	extern _sp1_draw_mask2rb
 	extern _sp1_draw_mask2
 	extern _jsp_dtt_mark_dirty
+	extern _jsp_current_rottbl_msb
 
 ; var definitions as global for optimized access
 
-_start_row:			db 0
-_start_col:			db 0
-_bg_ptr:			dw 0
-_pix_ptr:			dw 0
-_pix_ptr_left:			dw 0
-_jsp_current_rottbl_msb:	db 0
+_start_row:	db 0
+_start_col:	db 0
+_bg_ptr:	dw 0
+_pix_ptr:	dw 0
+_pix_ptr_left:	dw 0
 
 ; void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
 _jsp_draw_sprite_mask2:

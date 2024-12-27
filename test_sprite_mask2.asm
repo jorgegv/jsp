@@ -1,10 +1,10 @@
 	section data_compiler
 
-;; sprite '_test_sprite_pixels' definition
+;; sprite '_test_sprite_mask2_pixels' definition
 ;; pixel data
 ;; with extra blank bottom row
 ;; 
-PUBLIC _test_sprite_pixels	;; 96 bytes 
+PUBLIC _test_sprite_mask2_pixels	;; 96 bytes 
 
 	db	$ff,$00		;; extra top 7-rows for drawing
 	db	$ff,$00		;; _before_ the public sprite label
@@ -14,7 +14,7 @@ PUBLIC _test_sprite_pixels	;; 96 bytes
 	db	$ff,$00
 	db	$ff,$00
 
-_test_sprite_pixels:
+_test_sprite_mask2_pixels:
 	;; rows: 0-1, col: 0
 	db	$f8,$00		;; mask: ##########......   pix: ................
 	db	$e0,$03		;; mask: ######..........   pix: ............####
