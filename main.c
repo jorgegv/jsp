@@ -96,6 +96,7 @@ void test_btt_redraw( void ) {
 }
 
 extern uint8_t test_sprite_mask2_pixels[];
+extern uint8_t test_sprite_load1_pixels[];
 extern uint8_t test_bg1tile_pixels[];
 
 DEFINE_SPRITE_MASK2(test_sprite,2,2,test_sprite_mask2_pixels,0,0);
@@ -132,11 +133,18 @@ void test_sprite_draw_mask2( void ) {
 }
 
 #define NUM_SPRITES 3
-DEFINE_SPRITE_MASK2(sprite0,2,2,test_sprite_mask2_pixels,0,0);
-DEFINE_SPRITE_MASK2(sprite1,2,2,test_sprite_mask2_pixels,0,0);
-DEFINE_SPRITE_MASK2(sprite2,2,2,test_sprite_mask2_pixels,0,0);
+
+//DEFINE_SPRITE_MASK2(sprite0,2,2,test_sprite_mask2_pixels,0,0);
+//DEFINE_SPRITE_MASK2(sprite1,2,2,test_sprite_mask2_pixels,0,0);
+//DEFINE_SPRITE_MASK2(sprite2,2,2,test_sprite_mask2_pixels,0,0);
 //DEFINE_SPRITE_MASK2(sprite3,2,2,test_sprite_mask2_pixels,0,0);
 //DEFINE_SPRITE_MASK2(sprite4,2,2,test_sprite_mask2_pixels,0,0);
+
+DEFINE_SPRITE_LOAD1(sprite0,2,2,test_sprite_load1_pixels,0,0);
+DEFINE_SPRITE_LOAD1(sprite1,2,2,test_sprite_load1_pixels,0,0);
+DEFINE_SPRITE_LOAD1(sprite2,2,2,test_sprite_load1_pixels,0,0);
+//DEFINE_SPRITE_LOAD1(sprite3,2,2,test_sprite_load1_pixels,0,0);
+//DEFINE_SPRITE_LOAD1(sprite4,2,2,test_sprite_load1_pixels,0,0);
 
 struct { 
     uint8_t x,y;
