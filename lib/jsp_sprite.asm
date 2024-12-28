@@ -2,6 +2,7 @@
 
 	public _jsp_draw_sprite
 	public _jsp_move_sprite
+
 	public jsp_sprite_smc_1
 	public jsp_sprite_smc_2
 	public jsp_sprite_smc_3
@@ -10,18 +11,81 @@
 	public jsp_sprite_smc_6
 	public jsp_sprite_smc_7
 
+	public _JSP_TYPE_LOAD1
+	public _JSP_TYPE_MASK2
+
 	extern _jsp_rottbl
 	extern jsp_rowcolindex
 	extern _jsp_drt
 	extern _jsp_memcpy
-	extern _sp1_draw_load1lb
-	extern _sp1_draw_load1rb
-	extern _sp1_draw_load1
 	extern _jsp_dtt_mark_dirty
 	extern _jsp_current_rottbl_msb
 
-; var definitions as global for optimized access
+	extern _sp1_draw_load1lb
+	extern _sp1_draw_load1rb
+	extern _sp1_draw_load1
+	extern _sp1_draw_mask2lb
+	extern _sp1_draw_mask2rb
+	extern _sp1_draw_mask2
 
+; SMC patch data table for each sprite type
+_JSP_TYPE_LOAD1:
+	db	$00			; opcode: NOP
+	dw	_sp1_draw_load1lb	; left border drawing function
+	dw	_sp1_draw_load1		; middle drawing function
+	dw	_sp1_draw_load1rb	; right border drawing function
+	db	8			; single cell size (pix)
+
+_JSP_TYPE_MASK2:
+	db	$29			; opcode: ADD HL,HL
+	dw	_sp1_draw_mask2lb	; left border drawing function
+	dw	_sp1_draw_mask2		; middle drawing function
+	dw	_sp1_draw_mask2rb	; right border drawing function
+	db	16			; single cell size (mask,pix)
+
+; this function patches the _jsp_draw_sprite function SMC points according
+; to the sprite type
+; input: ix = sprite pointer
+; trashes A,HL, but when we call here they hold nothing relevant
+jsp_patch_smc_draw_sprite:
+	push de				; save
+
+	ld l,(ix+9)			; HL = type_ptr, which points to one of the
+	ld h,(ix+10)			; entries in the previous patch data table
+
+	ld a,(hl)			; A = opcode
+	ld (jsp_sprite_smc_1),a
+	inc hl
+
+	ld e,(hl)			; DE = left border drawing function
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld (jsp_sprite_smc_2+1),de
+
+	ld e,(hl)			; DE = middle drawing function
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld (jsp_sprite_smc_4+1),de
+
+	ld e,(hl)			; DE = right border drawing function
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld (jsp_sprite_smc_6+1),de
+
+	ld e,(hl)			; DE = cell size (16-bit value)
+	ld d,0
+	ld (jsp_sprite_smc_3+1),de
+	ld (jsp_sprite_smc_5+1),de
+	ld (jsp_sprite_smc_7+1),de
+
+	pop de				; restore
+	ret
+
+
+; global var definitions for optimized access
 _start_row:	db 0
 _start_col:	db 0
 _bg_ptr:	dw 0
@@ -43,6 +107,8 @@ _jsp_draw_sprite:
 
 	push hl
 	pop ix			; ix = sprite pointer (sp parameter)
+
+	call jsp_patch_smc_draw_sprite
 
 	; during all the routine, we'll keep ix = sprite pointer (sp) and
 	; h' = xpos, l' = ypos

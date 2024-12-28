@@ -7,10 +7,6 @@
 
 #include "jsp.h"
 
-// this is included because of the tests below, it should not be included in
-// a regular JSP program
-#include "jsp_private.h"
-
 void test_dtt( void ) {
     uint8_t i;
     uint8_t *ptr = jsp_dtt;
@@ -99,9 +95,9 @@ extern uint8_t test_sprite_mask2_pixels[];
 extern uint8_t test_sprite_load1_pixels[];
 extern uint8_t test_bg1tile_pixels[];
 
-DEFINE_SPRITE_MASK2(test_sprite,2,2,test_sprite_mask2_pixels,0,0);
+DEFINE_SPRITE(test_sprite,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
 
-void test_sprite_draw_mask2( void ) {
+void test_sprite_draw( void ) {
     uint8_t i,j;
 
     uint16_t character = 0x3d80;	// '0' at ROM
@@ -120,7 +116,7 @@ void test_sprite_draw_mask2( void ) {
     jsp_init_sprite( &test_sprite );
 
     // draw a sprite
-    jsp_draw_sprite_mask2( &test_sprite, 219, 12 );	// ASM version
+    jsp_draw_sprite( &test_sprite, 219, 12 );	// ASM version
 
     // check the sprite's pdbuf after drawing
     for ( i = 0; i < 3; i++ )
@@ -132,19 +128,19 @@ void test_sprite_draw_mask2( void ) {
 
 }
 
-#define NUM_SPRITES 3
+#define NUM_SPRITES 5
 
-DEFINE_SPRITE_MASK2(sprite0,2,2,test_sprite_mask2_pixels,0,0);
-DEFINE_SPRITE_MASK2(sprite1,2,2,test_sprite_mask2_pixels,0,0);
-DEFINE_SPRITE_MASK2(sprite2,2,2,test_sprite_mask2_pixels,0,0);
-//DEFINE_SPRITE_MASK2(sprite3,2,2,test_sprite_mask2_pixels,0,0);
-//DEFINE_SPRITE_MASK2(sprite4,2,2,test_sprite_mask2_pixels,0,0);
+//DEFINE_SPRITE(sprite0,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+//DEFINE_SPRITE(sprite1,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+//DEFINE_SPRITE(sprite2,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+DEFINE_SPRITE(sprite3,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+DEFINE_SPRITE(sprite4,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
 
-//DEFINE_SPRITE_LOAD1(sprite0,2,2,test_sprite_load1_pixels,0,0);
-//DEFINE_SPRITE_LOAD1(sprite1,2,2,test_sprite_load1_pixels,0,0);
-//DEFINE_SPRITE_LOAD1(sprite2,2,2,test_sprite_load1_pixels,0,0);
-//DEFINE_SPRITE_LOAD1(sprite3,2,2,test_sprite_load1_pixels,0,0);
-//DEFINE_SPRITE_LOAD1(sprite4,2,2,test_sprite_load1_pixels,0,0);
+DEFINE_SPRITE(sprite0,2,2,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
+DEFINE_SPRITE(sprite1,2,2,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
+DEFINE_SPRITE(sprite2,2,2,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
+//DEFINE_SPRITE(sprite3,2,2,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
+//DEFINE_SPRITE(sprite4,2,2,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
 
 struct { 
     uint8_t x,y;
@@ -154,11 +150,11 @@ struct {
         { .sp = &sprite0 },
         { .sp = &sprite1 },
         { .sp = &sprite2 },
-//        { .sp = &sprite3 },
-//        { .sp = &sprite4 },
+        { .sp = &sprite3 },
+        { .sp = &sprite4 },
 };
 
-void test_sprite_move_mask2( void ) {
+void test_sprite_move( void ) {
     uint8_t i,j;
 
     uint16_t character = 0x3d80;	// '0' at ROM
@@ -186,7 +182,7 @@ void test_sprite_move_mask2( void ) {
 
     while ( 1 ) {
         for ( i = 0; i < NUM_SPRITES; i++ ) {
-            jsp_move_sprite_mask2( test_sprites[ i ].sp, test_sprites[ i ].x, test_sprites[ i ].y );
+            jsp_move_sprite( test_sprites[ i ].sp, test_sprites[ i ].x, test_sprites[ i ].y );
 
             if ( ( test_sprites[ i ].x + test_sprites[ i ].dx > 240 ) || ( test_sprites[ i ].x + test_sprites[ i ].dx < 4 ) ){
                 test_sprites[ i ].dx = -test_sprites[ i ].dx;
@@ -198,56 +194,7 @@ void test_sprite_move_mask2( void ) {
             }
             test_sprites[ i ].y += test_sprites[ i ].dy;
         }
-
-/*
-        __asm
-        halt
-        __endasm;
-*/
         jsp_redraw();
-
-//        z80_delay_ms( 10 );
-    }
-
-}
-
-void test_sprite_move_load1( void ) {
-    uint8_t i;
-
-    // play with sprites
-
-    // position sprites randomly and assign some movement constants
-    srand( 12345 );
-    for ( i = 0; i < NUM_SPRITES; i++ ) {
-        test_sprites[ i ].x = rand() % 240;
-        test_sprites[ i ].y = rand() % 170;
-        test_sprites[ i ].dx = ( rand() % 8 ) - 4;
-        test_sprites[ i ].dy = ( rand() % 8 ) - 4;
-    }
-
-    while ( 1 ) {
-        for ( i = 0; i < NUM_SPRITES; i++ ) {
-            jsp_move_sprite_load1( test_sprites[ i ].sp, test_sprites[ i ].x, test_sprites[ i ].y );
-
-            if ( ( test_sprites[ i ].x + test_sprites[ i ].dx > 240 ) || ( test_sprites[ i ].x + test_sprites[ i ].dx < 4 ) ){
-                test_sprites[ i ].dx = -test_sprites[ i ].dx;
-            }
-            test_sprites[ i ].x += test_sprites[ i ].dx;
-
-            if ( ( test_sprites[ i ].y + test_sprites[ i ].dy > 170 ) || ( test_sprites[ i ].y + test_sprites[ i ].dy < 4 ) ) {
-                test_sprites[ i ].dy = -test_sprites[ i ].dy;
-            }
-            test_sprites[ i ].y += test_sprites[ i ].dy;
-        }
-
-/*
-        __asm
-        halt
-        __endasm;
-*/
-        jsp_redraw();
-
-//        z80_delay_ms( 10 );
     }
 
 }
@@ -262,8 +209,7 @@ void main( void ) {
 //    test_dtt();
 //    test_btt_contents();
 //    test_btt_redraw();
-//    test_sprite_draw_mask2();
-    test_sprite_move_mask2();
-//    test_sprite_move_load1();
+//    test_sprite_draw();
+    test_sprite_move();
     while ( 1 );
 }
