@@ -36,6 +36,14 @@ void jsp_delete_background_tile( uint8_t row, uint8_t col ) __smallc __z88dk_cal
 // Sprite functions and data structures
 /////////////////////////////////////////
 
+// rectangular region (cell coordinates)
+struct jsp_rect {
+    uint8_t row;
+    uint8_t col;
+    uint8_t width;
+    uint8_t height;
+};
+
 // sprite data structure
 struct jsp_sprite_s {
     // sprite size in chars
@@ -83,6 +91,19 @@ void jsp_move_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos 
 
 // Safe off-screen parking: mark cells dirty and flag sprite as inactive
 void jsp_sprite_park( struct jsp_sprite_s *sp );
+
+// Frame-based movement (sets pixels, handles parked + colour)
+void jsp_move_sprite_mask2_frame( struct jsp_sprite_s *sp, uint8_t *frame,
+                                  uint8_t xpos, uint8_t ypos );
+void jsp_move_sprite_load1_frame( struct jsp_sprite_s *sp, uint8_t *frame,
+                                  uint8_t xpos, uint8_t ypos );
+void jsp_move_sprite_frame( struct jsp_sprite_s *sp, uint8_t *frame,
+                            uint8_t xpos, uint8_t ypos );
+
+// Bounding-box check: 1 if sprite at (xpos,ypos) is fully inside rect, else 0
+uint8_t jsp_sprite_in_rect( struct jsp_sprite_s *sp,
+                            struct jsp_rect *rect,
+                            uint8_t xpos, uint8_t ypos );
 
 // Dynamic sprite pool — caller supplies storage, JSP manages slot allocation
 void jsp_sprite_pool_init( struct jsp_sprite_s *pool, uint8_t *pdbs,

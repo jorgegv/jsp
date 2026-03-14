@@ -65,3 +65,46 @@ void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos 
     sp->type_ptr = JSP_TYPE_LOAD1;
     _do_draw( sp, xpos, ypos );
 }
+
+///////////////////////////////////////////////////////////
+// P1-6: Frame-based movement
+///////////////////////////////////////////////////////////
+
+void jsp_move_sprite_mask2_frame( struct jsp_sprite_s *sp, uint8_t *frame,
+                                  uint8_t xpos, uint8_t ypos ) {
+    sp->pixels   = frame;
+    sp->type_ptr = JSP_TYPE_MASK2;
+    _do_move( sp, xpos, ypos );
+}
+
+void jsp_move_sprite_load1_frame( struct jsp_sprite_s *sp, uint8_t *frame,
+                                  uint8_t xpos, uint8_t ypos ) {
+    sp->pixels   = frame;
+    sp->type_ptr = JSP_TYPE_LOAD1;
+    _do_move( sp, xpos, ypos );
+}
+
+// Generic frame-based move: uses whatever type_ptr is already set in the sprite.
+void jsp_move_sprite_frame( struct jsp_sprite_s *sp, uint8_t *frame,
+                            uint8_t xpos, uint8_t ypos ) {
+    sp->pixels = frame;
+    _do_move( sp, xpos, ypos );
+}
+
+///////////////////////////////////////////////////////////
+// P1-7: Bounding-box clip check
+///////////////////////////////////////////////////////////
+
+// Returns 1 if the sprite's bounding box at (xpos, ypos) is fully within
+// rect (cell coordinates); 0 if partially or fully outside.
+uint8_t jsp_sprite_in_rect( struct jsp_sprite_s *sp,
+                            struct jsp_rect *rect,
+                            uint8_t xpos, uint8_t ypos ) {
+    uint8_t sc = xpos / 8;
+    uint8_t sr = ypos / 8;
+    if ( sc < rect->col )                       return 0;
+    if ( sr < rect->row )                       return 0;
+    if ( sc + sp->cols > rect->col + rect->width )  return 0;
+    if ( sr + sp->rows > rect->row + rect->height ) return 0;
+    return 1;
+}
