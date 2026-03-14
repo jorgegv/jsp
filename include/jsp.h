@@ -117,6 +117,16 @@ void jsp_sprite_set_color( struct jsp_sprite_s *sp, uint8_t color, uint8_t color
 // Write colour to attribute memory for the sprite's current cell positions.
 void jsp_apply_sprite_color( struct jsp_sprite_s *sp );
 
+// Rectangle-operation flags (mirror SP1 values for easy aliasing)
+#define JSP_RFLAG_TILE   0x01
+#define JSP_RFLAG_COLOUR 0x02
+
+// Clear a rectangular region (tile and/or colour, controlled by flags)
+void jsp_clear_rect( struct jsp_rect *rect, uint8_t attr,
+                     uint8_t ch, uint8_t flags );
+// Mark all cells in rect as dirty (redrawn on next jsp_redraw)
+void jsp_invalidate_rect( struct jsp_rect *rect );
+
 // Tile table (256 entries; 32-127 pre-filled with ROM font by jsp_init)
 extern uint8_t *jsp_tile_table[256];
 // Register 8-byte tile graphic at 1-byte index (equivalent to sp1_TileEntry)
