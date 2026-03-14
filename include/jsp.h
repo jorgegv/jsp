@@ -48,7 +48,8 @@ struct jsp_sprite_s {
 
     // sprite flags
     struct {
-        int initialized:1;
+        int initialized:1;  // bit 0
+        int parked:1;       // bit 1 - sprite is off-screen; skip old-position marking on next draw
     } flags;		// ofs: +4
 
     // pointer to pixel data - they can be changed at any moment, for
@@ -61,6 +62,11 @@ struct jsp_sprite_s {
     // sprite type (16 bits) - pointer to table of drawing functions,
     // but it's handled automatically by macros
     uint8_t *type_ptr;	// ofs: +9
+
+    // sprite colour attribute applied each frame (0 = no colour management)
+    uint8_t color;		// ofs: +11
+    // colour mask: 0xF8 = preserve PAPER/BRIGHT, replace INK only; 0x00 = full replace
+    uint8_t color_mask;	// ofs: +12
 };
 
 void jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall;
