@@ -18,8 +18,8 @@
 // Engine functions
 /////////////////////////////////////////
 
-// initialize engine, set default background tile
-void jsp_init( uint8_t *default_bg_tile );
+// initialize engine, set default background tile and default attribute
+void jsp_init( uint8_t *default_bg_tile, uint8_t default_attr );
 // redraw dirty parts of screen
 void jsp_redraw( void );
 
@@ -82,6 +82,7 @@ extern uint8_t	jsp_rottbl[];
 extern uint16_t	*jsp_btt[];
 extern uint16_t	*jsp_drt[];
 extern uint8_t	jsp_dtt[];
+extern uint8_t	jsp_bat[];
 extern uint8_t	*jsp_default_bg_tile;
 extern uint8_t jsp_current_rottbl_msb;
 

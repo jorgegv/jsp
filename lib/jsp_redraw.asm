@@ -6,6 +6,7 @@
 	extern _jsp_drt
 	extern _jsp_dtt
 	extern _jsp_btt
+	extern _jsp_bat
 	extern _jsp_drt_restore_bg
 	extern jsp_rowcolindex
 
@@ -131,6 +132,23 @@ dirty_cell:
 
 	pop af				;; A = real col
 	pop bc				;; BC = row
+
+	;; restore BAT attribute: write jsp_bat[row*32+col] to 0x5800+row*32+col
+	push bc				;; save row
+	push af				;; save real col
+	ld d,c				;; D = row
+	ld e,a				;; E = real col
+	call jsp_rowcolindex		;; HL = row*32+col (D trashed to 0, E=col preserved)
+	push hl				;; save index
+	ld de,_jsp_bat
+	add hl,de			;; HL = &jsp_bat[idx]
+	ld a,(hl)			;; A = BAT attribute value
+	pop hl				;; HL = idx
+	ld de,0x5800
+	add hl,de			;; HL = 0x5800 + idx
+	ld (hl),a			;; write BAT attr to ZX Spectrum attribute memory
+	pop af				;; restore real col
+	pop bc				;; restore row
 
 	push bc				;; save both for later again
 	push af

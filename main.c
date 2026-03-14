@@ -201,7 +201,7 @@ void test_sprite_move( void ) {
 
 void main( void ) {
     zx_cls();
-    jsp_init( NULL );
+    jsp_init( NULL, 0x38 );	// 0x38 = PAPER_WHITE | INK_BLACK
 
     // only one of the tests below can be run, they interfere with each
     // other

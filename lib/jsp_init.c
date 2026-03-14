@@ -4,6 +4,12 @@
 #include "jsp.h"
 
 ///////////////////////////
+// Externals
+///////////////////////////
+
+extern uint8_t jsp_bat[];
+
+///////////////////////////
 // Private data
 ///////////////////////////
 
@@ -56,11 +62,18 @@ void jsp_init_background( uint8_t *default_bg_tile ) {
     jsp_default_bg_tile = default_bg_tile;
 }
 
+void jsp_init_bat( uint8_t default_attr ) {
+    uint16_t i;
+    for ( i = 0; i < 768; i++ )
+        jsp_bat[ i ] = default_attr;
+}
+
 // run all jsp initializations
-void jsp_init( uint8_t *bgtile ) {
+void jsp_init( uint8_t *bgtile, uint8_t default_attr ) {
     jsp_init_rottbl();
     jsp_init_btt();
     jsp_init_drt();
     jsp_init_dtt();
     jsp_init_background( bgtile != NULL ? bgtile : jsp_blank_tile );
+    jsp_init_bat( default_attr );
 }
