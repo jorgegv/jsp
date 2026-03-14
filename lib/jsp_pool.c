@@ -46,7 +46,7 @@ struct jsp_sprite_s *jsp_sprite_alloc( uint8_t rows, uint8_t cols ) {
             sp->xpos             = 0;
             sp->ypos             = 0;
             sp->flags.initialized = 1;
-            sp->flags.parked     = 0;
+            sp->flags.parked     = 1;
             sp->pixels           = 0;
             sp->pdbuf            = _pdbs + (uint16_t)i * _pdb_stride;
             sp->type_ptr         = JSP_TYPE_MASK2;
