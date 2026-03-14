@@ -84,6 +84,13 @@ void jsp_move_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos 
 // Safe off-screen parking: mark cells dirty and flag sprite as inactive
 void jsp_sprite_park( struct jsp_sprite_s *sp );
 
+// Dynamic sprite pool — caller supplies storage, JSP manages slot allocation
+void jsp_sprite_pool_init( struct jsp_sprite_s *pool, uint8_t *pdbs,
+                           uint8_t pool_size,
+                           uint8_t max_rows, uint8_t max_cols );
+struct jsp_sprite_s *jsp_sprite_alloc( uint8_t rows, uint8_t cols );
+void jsp_sprite_free( struct jsp_sprite_s *sp );
+
 // Set the colour applied to all sprite cells each frame.
 void jsp_sprite_set_color( struct jsp_sprite_s *sp, uint8_t color, uint8_t color_mask );
 // Write colour to attribute memory for the sprite's current cell positions.
