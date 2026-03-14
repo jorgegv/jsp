@@ -48,10 +48,6 @@ void jsp_tile_put( uint8_t row, uint8_t col, uint8_t attr, uint16_t tile ) {
 // P1-9: Rectangle clear
 ///////////////////////////////////////////////////////////
 
-// Flags (mirror SP1 values for easy aliasing in RAGE1 mapping layer)
-#define JSP_RFLAG_TILE   0x01
-#define JSP_RFLAG_COLOUR 0x02
-
 void jsp_clear_rect( struct jsp_rect *rect, uint8_t attr,
                      uint8_t ch, uint8_t flags ) {
     uint8_t r, c;
