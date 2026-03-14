@@ -117,6 +117,20 @@ void jsp_sprite_set_color( struct jsp_sprite_s *sp, uint8_t color, uint8_t color
 // Write colour to attribute memory for the sprite's current cell positions.
 void jsp_apply_sprite_color( struct jsp_sprite_s *sp );
 
+// Text print context
+struct jsp_print_ctx {
+    struct jsp_rect *clip;  // clipping area (NULL = full screen)
+    uint8_t          attr;  // text colour attribute byte
+    uint8_t          row;   // current print row (cell coordinate)
+    uint8_t          col;   // current print col (cell coordinate)
+};
+
+// Static initialiser: JSP_PRINT_CTX_INIT(area, attr)
+#define JSP_PRINT_CTX_INIT(rect,at)  { &(rect), (at), 0, 0 }
+
+void jsp_print_set_pos( struct jsp_print_ctx *ctx, uint8_t row, uint8_t col );
+void jsp_print_string( struct jsp_print_ctx *ctx, const char *str );
+
 // Rectangle-operation flags (mirror SP1 values for easy aliasing)
 #define JSP_RFLAG_TILE   0x01
 #define JSP_RFLAG_COLOUR 0x02
