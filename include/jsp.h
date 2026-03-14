@@ -36,6 +36,13 @@ void jsp_delete_background_tile( uint8_t row, uint8_t col ) __smallc __z88dk_cal
 // Sprite functions and data structures
 /////////////////////////////////////////
 
+struct jsp_rect {
+    uint8_t row;
+    uint8_t col;
+    uint8_t width;
+    uint8_t height;
+};
+
 // sprite data structure
 struct jsp_sprite_s {
     // sprite size in chars

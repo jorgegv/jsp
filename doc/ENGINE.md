@@ -13,6 +13,9 @@ A "tile" is an 8x8 UDG stored top to down in memory (8 consecutive bytes)
 - DTT: Dirty tiles table: a table of 768 bits (_not_ bytes), indicating what
   tiles need to be redrawn on each frame - 96 bytes
 
+- FTT: Foreground tiles table: a table of 768 bits (_not_ bytes), indicating what
+  tiles are on top of all sprites and should not be overwritten by them - 96 bytes
+
 ## SPRITE DEFINITIONS
 
 - Normal graphic definition ( M x N chars )
@@ -21,14 +24,23 @@ A "tile" is an 8x8 UDG stored top to down in memory (8 consecutive bytes)
   Since we can move about 10 simultaneous 16x16 sprites, that's 90 cells to
   be drawn, so maximum overhead of 90 x 8 = 720 bytes
 
-## WORKFLOW FOR DRAWING BACKGROUND TILES
+## WORKFLOW FOR DRAWING TILES
 
-- For drawing a tile, copy it's address (pointer to 8-byte data) in its corresponding
-  position in the BTT
+- For drawing a _background_ tile, copy it's address (pointer to 8-byte
+  data) in its corresponding position in the BTT and reset the corresponding
+  bit in the FTT table
 
-- For removing a tile, set the corresponding position in the BTT to NULL (0)
+- For drawing a _foreground_ tile, copy it's address (pointer to 8-byte
+  data) in its corresponding position in the BTT and set the corresponding
+  bit in the FTT table
+
+- For removing a tile, just draw the default tile as a background tile on
+  the same position
 
 ## WORKFLOW FOR DRAWING SPRITES
+
+- FTT bits have been set up properly by the tile printing routines and will
+  not be touched by the updating routine
 
 - DTT must be fully set to 0 (this is done by the drawing function after
   drawing everything)
@@ -60,17 +72,20 @@ contains the pointers to the contents to be drawn.
 
 ## WORKFLOW FOR REDRAWING THE SCREEN
 
-- Walk the DTT byte by byte. This can be done very quickly, since we skip
-  bytes that are 0 (which means those 8 cells need not be redrawn), and most
-  cells will _not_ be redrawn (i.e. will be 0).
+- Walk the DTT and FTT byte by byte.  This can be done very quickly, since
+  we skip bytes that are 0 (which means those 8 cells need not be redrawn),
+  and most cells will _not_ be redrawn (i.e.  will be 0).
 
-- When some DTT byte is not zero, process the bits. For each bit:
+- When some (DTT byte) && (~FTT byte) is not zero, process the anded bits
+  (DTT && ~FTT).  This way, only if it's dirty _and_ is NOT a foregound
+  tile, it will be redrawn.  For each bit:
+
   - If it is 0, skip to next bit
   - If it is 1:
     - Get the address of the final tile to draw from the DRT an the position
       of this cell
     - Draw the tile to screen
-    - Reset the bit to 0
+    - Reset the DTT bit to 0 (keep FTT bit untouched)
     - Copy the pointer from BTT to DRT on the same position
     - These last two operations are much faster if done inside the drawing
     loop (max ~900T for DTT) than fully resetting DTT and DRT after the
@@ -78,6 +93,10 @@ contains the pointers to the contents to be drawn.
     
 At this point, all dirty cells have been redrawn, and the DTT and DRT have
 been reset for the next drawing cycle.
+
+** FIXME: what happens when the screen has just been redrawn and there is a foreground tile? It won't be updated...
+** We need some way to draw it the first time but not the following ones.
+** Possible solution: draw background first, then start drawing and moving sprites? Seems kludgy...
 
 ## MEMORY MAPS
 
