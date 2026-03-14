@@ -117,6 +117,13 @@ void jsp_sprite_set_color( struct jsp_sprite_s *sp, uint8_t color, uint8_t color
 // Write colour to attribute memory for the sprite's current cell positions.
 void jsp_apply_sprite_color( struct jsp_sprite_s *sp );
 
+// Tile table (256 entries; 32-127 pre-filled with ROM font by jsp_init)
+extern uint8_t *jsp_tile_table[256];
+// Register 8-byte tile graphic at 1-byte index (equivalent to sp1_TileEntry)
+void jsp_tile_register( uint8_t idx, uint8_t *gfx_ptr );
+// Draw tile at (row,col) with colour attribute; tile<256 = table lookup, else direct pointer
+void jsp_tile_put( uint8_t row, uint8_t col, uint8_t attr, uint16_t tile );
+
 #define DEFINE_SPRITE(_name,_rows,_cols,_pixels,_xpos,_ypos,_type) uint8_t _name##_pdbuf[ ( (_rows) + 1 ) * ( (_cols) + 1 ) * 8 ]; struct jsp_sprite_s _name = { .rows = (_rows), .cols = (_cols), .xpos = (_xpos), .ypos = (_ypos), .flags.initialized = 1, .pixels = (_pixels), .pdbuf = _name##_pdbuf, .type_ptr = _type }
 
 //////////////////////////////////////////////////////

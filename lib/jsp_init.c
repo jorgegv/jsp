@@ -4,10 +4,11 @@
 #include "jsp.h"
 
 ///////////////////////////
-// Externals
+// Externals / Forwards
 ///////////////////////////
 
 extern uint8_t jsp_bat[];
+void jsp_init_tile_table( void );
 
 ///////////////////////////
 // Private data
@@ -76,4 +77,5 @@ void jsp_init( uint8_t *bgtile, uint8_t default_attr ) {
     jsp_init_dtt();
     jsp_init_background( bgtile != NULL ? bgtile : jsp_blank_tile );
     jsp_init_bat( default_attr );
+    jsp_init_tile_table();
 }
