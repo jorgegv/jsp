@@ -7,7 +7,6 @@
 	extern _jsp_dtt
 	extern _jsp_btt
 	extern _jsp_bat
-	extern _jsp_drt_restore_bg
 	extern _jsp_ftt
 	extern jsp_rowcolindex
 
@@ -37,6 +36,8 @@
 
 _jsp_redraw:
 
+	push ix				;; save IX (SDCC uses IX as frame pointer via ___sdcc_enter_ix)
+
 	xor a
 	ld d,a				;; D = row = 0
 	ld e,a				;; E = col = 0
@@ -57,6 +58,13 @@ next_cell_group:
 	and c				;; A = DTT & ~FTT
 	call nz,process_dirty_cells	;; process non-foreground dirty cells
 
+	;; Restore DRT and clear DTT for any remaining FTT dirty cells.
+	;; process_dirty_cells cleared non-FTT bits; (hl) may still have FTT bits.
+	;; Without this, DRT becomes stale for fg cells and DTT bits accumulate.
+	ld a,(hl)			;; A = remaining dirty bits (only FTT cells)
+	and a
+	call nz,restore_fg_cells	;; restore DRT, clear DTT for these cells
+
 skip_group:
 	inc ix				;; advance FTT pointer
 	inc hl				;; prepare next 8 cells
@@ -74,6 +82,7 @@ skip_group:
 inc_update_ctr:
 	djnz next_cell_group		;; loop to process next group
 
+	pop ix				;; restore IX
 	ret				;; finished processing all DTT
 
 ;; process_dirty_cells
@@ -215,6 +224,74 @@ bat_restore_done:
 	ld (hl),c			;, store bg pointer as drt pointer
 	inc hl
 	ld (hl),b			;; jsp_drt[ row * 32 + col ] = jsp_btt[ row * 32 + col ]
+
+	pop de
+	pop bc
+	pop af
+	ret
+
+;; restore_fg_cells
+;; D: row, E: start col (always a multiple of 8)
+;; A: remaining DTT bitmap (only FTT dirty cells set)
+;; For each set bit: restores DRT[row,col] = BTT[row,col] and clears DTT bit.
+;; Does NOT draw to screen (foreground tiles must remain visible).
+restore_fg_cells:
+	push bc
+	push hl
+
+	ld b,8				;; B = counter
+	ld c,0				;; C = bit index
+
+restore_fg_loop:
+	rrca				;; bit 0 -> CF
+	call c,restore_fg_cell
+	inc c				;; next bit index
+	djnz restore_fg_loop
+
+	pop hl
+	pop bc
+	ret
+
+;; restore_fg_cell
+;; D: row, E: start col, C: bit index
+;; Clears DTT bit and restores DRT[row,col] = BTT[row,col].
+restore_fg_cell:
+	push af
+	push bc
+	push de
+
+	ld a,c
+	add a,e
+	ld e,a				;; E = real col (D = row still)
+
+	;; _jsp_dtt_mark_clean( row, col )
+	push de				;; save row,col
+	ld b,0
+	ld c,d
+	push bc				;; param: row
+	ld c,e
+	push bc				;; param: col
+	call _jsp_dtt_mark_clean	;; callee - pops params
+
+	pop de				;; restore D=row, E=real_col
+
+	;; Restore DRT[idx] = BTT[idx]
+	call jsp_rowcolindex		;; HL = row*32+col (index)
+	add hl,hl			;; byte offset
+
+	push hl				;; save offset
+	ld de,_jsp_btt
+	add hl,de
+	ld c,(hl)			;; C = BTT[idx] low
+	inc hl
+	ld b,(hl)			;; B = BTT[idx] high
+
+	pop hl				;; restore offset
+	ld de,_jsp_drt
+	add hl,de
+	ld (hl),c			;; DRT[idx] = BTT[idx] low
+	inc hl
+	ld (hl),b			;; DRT[idx+1] = BTT[idx] high
 
 	pop de
 	pop bc
