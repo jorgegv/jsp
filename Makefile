@@ -9,6 +9,7 @@ LDFLAGS		= -lndos -m
 #LDFLAGS	= -clib=sdcc_iy -startup=31 -m
 
 BIN		= main
+FUSE		= fuse
 TAP		=$(BIN).tap
 
 INCLUDE_DIR	= include
@@ -40,7 +41,7 @@ build:
 	echo Build successful
 
 # clean
-clean:
+clean: clean-tests
 	echo Cleaning up...
 	-rm -f $(BIN) $(TAP) *.{map,lst,o,lis,sym,bin} 2>/dev/null
 	-rm -f lib/*.{map,lst,o,lis,sym,bin} 2>/dev/null
@@ -55,7 +56,41 @@ $(TAP): $(BIN)
 
 # run it
 run: $(TAP)
-	fuse $(TAP)
+	$(FUSE) $(TAP)
+
+## tests
+
+TESTS_DIR	= tests
+LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm)
+
+SPRITE_MASK2_ASM = test_sprite_mask2.asm
+SPRITE_LOAD1_ASM = test_sprite_load1.asm
+
+TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
+		  test_sprite_move test_pool_and_colour test_tiles_and_print
+TEST_TAPS	= $(TESTS:%=$(TESTS_DIR)/%.tap)
+
+.PHONY: tests
+tests: $(TEST_TAPS)
+
+# Pattern rule: compile test + all lib sources in one zcc invocation
+$(TESTS_DIR)/%.tap: $(TESTS_DIR)/%.c $(LIB_SRCS)
+	echo Building $@...
+	$(ZCC) $(CFLAGS) $(LDFLAGS) $^ -o $(@:.tap=) -create-app
+
+# Extra sprite data prerequisites for tests that use sprites
+$(TESTS_DIR)/test_sprite_draw.tap: $(SPRITE_MASK2_ASM)
+$(TESTS_DIR)/test_sprite_move.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
+$(TESTS_DIR)/test_pool_and_colour.tap: $(SPRITE_MASK2_ASM)
+
+# run a single test (usage: make run-test TEST=test_dtt)
+run-test: $(TESTS_DIR)/$(TEST).tap
+	fuse $(TESTS_DIR)/$(TEST).tap
+
+clean-tests:
+	echo Cleaning tests...
+	-rm -f $(TEST_TAPS) $(TESTS:%=$(TESTS_DIR)/%) 2>/dev/null
+	-rm -f $(TESTS_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
 
 ## extras
 

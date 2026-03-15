@@ -7,3 +7,5 @@
 *.sym
 *.c.asm
 main
+tests/test_*
+!tests/test_*.c
