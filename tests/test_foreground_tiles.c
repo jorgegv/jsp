@@ -11,8 +11,11 @@ extern uint8_t test_sprite_mask2_pixels[];
 #define TEST_POOL_SIZE  2
 #define TEST_MAX_ROWS   2
 #define TEST_MAX_COLS   2
+#define TEST_PDB_SIZE   ((TEST_MAX_ROWS+1)*(TEST_MAX_COLS+1)*8)
 static struct jsp_sprite_s test_pool[ TEST_POOL_SIZE ];
-static uint8_t test_pdbs[ TEST_POOL_SIZE * (TEST_MAX_ROWS+1) * (TEST_MAX_COLS+1) * 8 ];
+static uint8_t test_pdb_0[ TEST_PDB_SIZE ];
+static uint8_t test_pdb_1[ TEST_PDB_SIZE ];
+static uint8_t *test_pdbs[ TEST_POOL_SIZE ] = { test_pdb_0, test_pdb_1 };
 
 // a closed box tile for the foreground band
 static uint8_t tile_box[] = { 0xFF, 0xFF, 0xC3, 0xC3, 0xC3, 0xC3, 0xFF, 0xFF };
@@ -48,8 +51,7 @@ void test_foreground_tiles( void ) {
     }
 
     // set up pool and allocate sprites
-    jsp_sprite_pool_init( test_pool, test_pdbs,
-                          TEST_POOL_SIZE, TEST_MAX_ROWS, TEST_MAX_COLS );
+    jsp_sprite_pool_init( test_pool, test_pdbs, TEST_POOL_SIZE );
 
     x[0] = 20;  y[0] = 20;  dx[0] = 2;  dy[0] = 3;
     x[1] = 180; y[1] = 140; dx[1] = -3; dy[1] = -2;

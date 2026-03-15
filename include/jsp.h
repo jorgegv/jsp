@@ -108,9 +108,10 @@ uint8_t jsp_sprite_in_rect( struct jsp_sprite_s *sp,
                             uint8_t xpos, uint8_t ypos );
 
 // Dynamic sprite pool — caller supplies storage, JSP manages slot allocation
-void jsp_sprite_pool_init( struct jsp_sprite_s *pool, uint8_t *pdbs,
-                           uint8_t pool_size,
-                           uint8_t max_rows, uint8_t max_cols );
+// pdbs is an array of pointers, one per slot; each points to a PDB buffer of
+// at least (rows+1)*(cols+1)*8 bytes for the sprite that will occupy that slot.
+void jsp_sprite_pool_init( struct jsp_sprite_s *pool, uint8_t **pdbs,
+                           uint8_t pool_size );
 struct jsp_sprite_s *jsp_sprite_alloc( uint8_t rows, uint8_t cols );
 void jsp_sprite_free( struct jsp_sprite_s *sp );
 
