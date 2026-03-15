@@ -93,7 +93,6 @@ clean-tests:
 	echo Cleaning tests...
 	-rm -f $(TEST_TAPS) $(TESTS:%=$(TESTS_DIR)/%.bin) 2>/dev/null
 	-rm -f $(TESTS_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
-	-rm -f $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM) 2>/dev/null
 
 ## extras
 
