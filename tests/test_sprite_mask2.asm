@@ -5,15 +5,6 @@
 ;; with extra blank bottom row
 ;; 
 PUBLIC _test_sprite_mask2_pixels	;; 96 bytes 
-
-	db	$ff,$00		;; extra top 7-rows for drawing
-	db	$ff,$00		;; _before_ the public sprite label
-	db	$ff,$00
-	db	$ff,$00
-	db	$ff,$00
-	db	$ff,$00
-	db	$ff,$00
-
 _test_sprite_mask2_pixels:
 	;; rows: 0-1, col: 0
 	db	$f8,$00		;; mask: ##########......   pix: ................

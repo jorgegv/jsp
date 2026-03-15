@@ -5,15 +5,6 @@
 ;; with extra blank bottom row
 ;; 
 PUBLIC _test_sprite_load1_pixels	;; 96 bytes 
-
-	db	$00		;; extra top 7-rows for drawing
-	db	$00		;; _before_ the public sprite label
-	db	$00
-	db	$00
-	db	$00
-	db	$00
-	db	$00
-
 _test_sprite_load1_pixels:
 	;; rows: 0-1, col: 0
 	db	$00		;; pix: ................
