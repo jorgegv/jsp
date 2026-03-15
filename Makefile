@@ -63,8 +63,8 @@ run: $(TAP)
 TESTS_DIR	= tests
 LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm)
 
-SPRITE_MASK2_ASM = test_sprite_mask2.asm
-SPRITE_LOAD1_ASM = test_sprite_load1.asm
+SPRITE_MASK2_ASM = $(TESTS_DIR)/test_sprite_mask2.asm
+SPRITE_LOAD1_ASM = $(TESTS_DIR)/test_sprite_load1.asm
 
 TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
 		  test_sprite_move test_pool_and_colour test_tiles_and_print
@@ -91,17 +91,18 @@ clean-tests:
 	echo Cleaning tests...
 	-rm -f $(TEST_TAPS) $(TESTS:%=$(TESTS_DIR)/%.bin) 2>/dev/null
 	-rm -f $(TESTS_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
+	-rm -f $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM) 2>/dev/null
 
 ## extras
 
-test_sprite_mask2.asm:
+$(TESTS_DIR)/test_sprite_mask2.asm:
 	../zxtools/bin/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 \
 		--code-type asm -s _test_sprite_mask2_pixels \
-		-g sprite_mask -l columns --extra-bottom-row > test_sprite_mask2.asm
+		-g sprite_mask -l columns --extra-bottom-row > $@
 
-test_sprite_load1.asm:
+$(TESTS_DIR)/test_sprite_load1.asm:
 	../zxtools/bin/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 \
 		--code-type asm -s _test_sprite_load1_pixels \
-		-g sprite_load -l columns --extra-bottom-row > test_sprite_load1.asm
+		-g sprite_load -l columns --extra-bottom-row > $@
