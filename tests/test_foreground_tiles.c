@@ -55,8 +55,8 @@ void test_foreground_tiles( void ) {
     test_pdbs[1] = test_pdb_1;
     jsp_sprite_pool_init( test_pool, test_pdbs, TEST_POOL_SIZE );
 
-    x[0] = 20;  y[0] = 20;  dx[0] = 2;  dy[0] = 3;
-    x[1] = 180; y[1] = 140; dx[1] = -3; dy[1] = -2;
+    x[0] = 20;  y[0] = 20;  dx[0] = 1;  dy[0] = 1;
+    x[1] = 180; y[1] = 140; dx[1] = -1; dy[1] = -1;
 
     for ( i = 0; i < TEST_POOL_SIZE; i++ ) {
         sp[i] = jsp_sprite_alloc( 2, 2 );
