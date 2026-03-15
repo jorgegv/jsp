@@ -15,7 +15,7 @@ extern uint8_t test_sprite_mask2_pixels[];
 static struct jsp_sprite_s test_pool[ TEST_POOL_SIZE ];
 static uint8_t test_pdb_0[ TEST_PDB_SIZE ];
 static uint8_t test_pdb_1[ TEST_PDB_SIZE ];
-static uint8_t *test_pdbs[ TEST_POOL_SIZE ] = { test_pdb_0, test_pdb_1 };
+static uint8_t *test_pdbs[ TEST_POOL_SIZE ];
 
 // a closed box tile for the foreground band
 static uint8_t tile_box[] = { 0xFF, 0xFF, 0xC3, 0xC3, 0xC3, 0xC3, 0xFF, 0xFF };
@@ -50,7 +50,9 @@ void test_foreground_tiles( void ) {
         *( volatile uint8_t * )( 0x5800 + (uint16_t)i * 32 + 21 ) = PAPER_YELLOW | INK_BLUE;
     }
 
-    // set up pool and allocate sprites
+    // set up pool and allocate sprites (runtime init required — z88dk/SDCC static pointer init is unreliable)
+    test_pdbs[0] = test_pdb_0;
+    test_pdbs[1] = test_pdb_1;
     jsp_sprite_pool_init( test_pool, test_pdbs, TEST_POOL_SIZE );
 
     x[0] = 20;  y[0] = 20;  dx[0] = 2;  dy[0] = 3;

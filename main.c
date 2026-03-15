@@ -212,7 +212,7 @@ static struct jsp_sprite_s test_pool[ TEST_POOL_SIZE ];
 static uint8_t test_pdb_0[ TEST_PDB_SIZE ];
 static uint8_t test_pdb_1[ TEST_PDB_SIZE ];
 static uint8_t test_pdb_2[ TEST_PDB_SIZE ];
-static uint8_t *test_pdbs[ TEST_POOL_SIZE ] = { test_pdb_0, test_pdb_1, test_pdb_2 };
+static uint8_t *test_pdbs[ TEST_POOL_SIZE ];
 
 // Test: pool alloc, frame-based movement, colour, park
 void test_pool_and_colour( void ) {
@@ -233,7 +233,10 @@ void test_pool_and_colour( void ) {
     }
     jsp_redraw();
 
-    // set up pool
+    // set up pool (runtime init required — z88dk/SDCC static pointer init is unreliable)
+    test_pdbs[0] = test_pdb_0;
+    test_pdbs[1] = test_pdb_1;
+    test_pdbs[2] = test_pdb_2;
     jsp_sprite_pool_init( test_pool, test_pdbs, TEST_POOL_SIZE );
 
     // allocate sprites from pool, set colours, initial positions and velocities
