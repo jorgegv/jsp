@@ -9,11 +9,13 @@
     #define BTT_ADDR		0xAC00
     #define DRT_ADDR		0xA600
     #define DTT_ADDR		0xA5A0
+    #define BAT_ADDR		0xA2A0
 #else
     #define ROTTBL_ADDR		0xF200
     #define BTT_ADDR		0xEC00
     #define DRT_ADDR		0xE600
     #define DTT_ADDR		0xE5A0
+    #define BAT_ADDR		0xE2A0
 #endif
 
 // rotation tables
@@ -27,6 +29,9 @@ __at( DRT_ADDR ) uint8_t *jsp_drt[ 768 ];
 
 // Dirty Tiles Table: byte array
 __at( DTT_ADDR ) uint8_t jsp_dtt[ 768 / 8 ];
+
+// Background Attribute Table: one attribute byte per screen cell
+__at( BAT_ADDR ) uint8_t jsp_bat[ 768 ];
 
 // rottbl parameter does not change while drawing a full sprite, so better
 // to set it up in a global once at the beginning instead of passing it

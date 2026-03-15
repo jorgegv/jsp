@@ -199,9 +199,100 @@ void test_sprite_move( void ) {
 
 }
 
+///////////////////////////////////////////////////////////
+// Phase 1 new API tests
+///////////////////////////////////////////////////////////
+
+// Pool storage for test_pool_and_colour
+#define TEST_POOL_SIZE  3
+#define TEST_MAX_ROWS   2
+#define TEST_MAX_COLS   2
+static struct jsp_sprite_s test_pool[ TEST_POOL_SIZE ];
+static uint8_t test_pdbs[ TEST_POOL_SIZE * (TEST_MAX_ROWS+1) * (TEST_MAX_COLS+1) * 8 ];
+
+// Test: pool alloc, frame-based movement, colour, park
+void test_pool_and_colour( void ) {
+    uint8_t i, j;
+    uint8_t frame;
+    struct jsp_sprite_s *sp[TEST_POOL_SIZE];
+    uint8_t x[TEST_POOL_SIZE], y[TEST_POOL_SIZE];
+    int8_t  dx[TEST_POOL_SIZE], dy[TEST_POOL_SIZE];
+
+    // fill background with ROM font chars
+    uint16_t character = 0x3d80;
+    for ( i = 0; i < 24; i++ ) {
+        for ( j = 0; j < 32; j++ ) {
+            jsp_draw_background_tile( i, j, (void *)character );
+            character += 8;
+            if ( character == 0x3dd0 ) character = 0x3d80;
+        }
+    }
+    jsp_redraw();
+
+    // set up pool
+    jsp_sprite_pool_init( test_pool, test_pdbs,
+                          TEST_POOL_SIZE, TEST_MAX_ROWS, TEST_MAX_COLS );
+
+    // allocate sprites from pool, set colours, initial positions and velocities
+    srand( 42 );
+    for ( i = 0; i < TEST_POOL_SIZE; i++ ) {
+        sp[i] = jsp_sprite_alloc( 2, 2 );
+        if ( sp[i] )
+            jsp_sprite_set_color( sp[i], (uint8_t)(INK_RED + i), 0xF8 );
+        x[i]  = (uint8_t)(20 + i * 40);
+        y[i]  = (uint8_t)(20 + i * 20);
+        dx[i] = (int8_t)(( rand() % 4 ) + 1);
+        dy[i] = (int8_t)(( rand() % 4 ) + 1);
+    }
+
+    // bouncing movement loop: ~200 frames
+    for ( frame = 0; frame < 200; frame++ ) {
+        for ( i = 0; i < TEST_POOL_SIZE; i++ ) {
+            if ( !sp[i] ) continue;
+            jsp_move_sprite_mask2_frame( sp[i], test_sprite_mask2_pixels, x[i], y[i] );
+
+            if ( (int16_t)x[i] + dx[i] > 230 || (int16_t)x[i] + dx[i] < 4 )
+                dx[i] = -dx[i];
+            x[i] = (uint8_t)( x[i] + dx[i] );
+
+            if ( (int16_t)y[i] + dy[i] > 170 || (int16_t)y[i] + dy[i] < 4 )
+                dy[i] = -dy[i];
+            y[i] = (uint8_t)( y[i] + dy[i] );
+        }
+        jsp_redraw();
+
+        // at frame 100, park sprite 1 to demonstrate park
+        if ( frame == 100 && sp[1] )
+            jsp_sprite_park( sp[1] );
+    }
+
+    // free all sprites back to pool
+    for ( i = 0; i < TEST_POOL_SIZE; i++ )
+        if ( sp[i] ) jsp_sprite_free( sp[i] );
+}
+
+// Test: tile_put, clear_rect, invalidate_rect, print_string
+void test_tiles_and_print( void ) {
+    struct jsp_rect game_area = { 0, 0, 32, 22 };
+    struct jsp_print_ctx ctx = JSP_PRINT_CTX_INIT( game_area, PAPER_BLACK | INK_WHITE );
+
+    // clear full screen with white paper
+    jsp_clear_rect( &game_area, PAPER_WHITE | INK_BLACK, ' ', JSP_RFLAG_TILE | JSP_RFLAG_COLOUR );
+
+    // print a string
+    jsp_print_set_pos( &ctx, 2, 4 );
+    jsp_print_string( &ctx, "HELLO JSP!" );
+
+    // draw a coloured tile at a specific position
+    jsp_tile_put( 10, 15, PAPER_RED | INK_WHITE | BRIGHT, ' ' );
+
+    jsp_redraw();
+    z80_delay_ms( 2000 );
+}
+
 void main( void ) {
     zx_cls();
-    jsp_init( NULL );
+    jsp_init( NULL, 0x38 );	// 0x38 = PAPER_WHITE | INK_BLACK
 
     // only one of the tests below can be run, they interfere with each
     // other
@@ -210,6 +301,8 @@ void main( void ) {
 //    test_btt_contents();
 //    test_btt_redraw();
 //    test_sprite_draw();
-    test_sprite_move();
+//    test_sprite_move();
+    test_pool_and_colour();
+//    test_tiles_and_print();
     while ( 1 );
 }

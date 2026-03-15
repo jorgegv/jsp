@@ -6,6 +6,7 @@
 	extern _jsp_drt
 	extern _jsp_dtt
 	extern _jsp_btt
+	extern _jsp_bat
 	extern _jsp_drt_restore_bg
 	extern jsp_rowcolindex
 
@@ -125,12 +126,52 @@ dirty_cell:
 	ld c,(hl)			;; get DRT record address to BC
 	inc hl
 	ld b,(hl)
+	ld (_drt_ptr_for_bat),bc	;; save DRT ptr for BAT conditional check
 	push bc				;; param: DRT record address
 	call _jsp_draw_screen_tile	;; jsp_draw_screen_tile( row, col, jsp_drt[ i ] )
 					;; no cleanup, __z88dk_callee
 
 	pop af				;; A = real col
 	pop bc				;; BC = row
+
+	;; restore BAT attribute only for background cells (DRT[idx] == BTT[idx])
+	push bc				;; save row
+	push af				;; save real col
+	ld d,c				;; D = row
+	ld e,a				;; E = real col
+	call jsp_rowcolindex		;; HL = row*32+col (index)
+	push hl				;; save index
+
+	;; check if this was a background cell: compare saved DRT ptr with BTT[idx]
+	add hl,hl			;; HL = index * 2 (byte offset)
+	ld de,_jsp_btt
+	add hl,de			;; HL = &_jsp_btt[idx]
+	ld c,(hl)
+	inc hl
+	ld b,(hl)			;; BC = BTT[idx]
+	ld hl,(_drt_ptr_for_bat)	;; HL = saved DRT ptr
+	and a				;; clear carry
+	sbc hl,bc			;; HL = DRT_ptr - BTT[idx]
+	jr nz,bat_restore_skip		;; DRT != BTT => sprite cell, skip BAT restore
+
+	;; background cell: restore BAT attr
+	pop hl				;; HL = index
+	push hl				;; keep a copy on stack
+	ld de,_jsp_bat
+	add hl,de			;; HL = &jsp_bat[idx]
+	ld a,(hl)			;; A = BAT attribute value
+	pop hl				;; HL = index
+	ld de,0x5800
+	add hl,de			;; HL = 0x5800 + idx
+	ld (hl),a			;; write BAT attr to ZX Spectrum attribute memory
+	jr bat_restore_done
+
+bat_restore_skip:
+	pop hl				;; discard saved index
+
+bat_restore_done:
+	pop af				;; restore real col
+	pop bc				;; restore row
 
 	push bc				;; save both for later again
 	push af
@@ -168,3 +209,6 @@ dirty_cell:
 	pop bc
 	pop af
 	ret
+
+	section data_compiler
+_drt_ptr_for_bat:	dw 0	;; saved DRT ptr before tile draw, for BAT conditional restore

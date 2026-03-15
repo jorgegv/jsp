@@ -18,8 +18,8 @@
 // Engine functions
 /////////////////////////////////////////
 
-// initialize engine, set default background tile
-void jsp_init( uint8_t *default_bg_tile );
+// initialize engine, set default background tile and default attribute
+void jsp_init( uint8_t *default_bg_tile, uint8_t default_attr );
 // redraw dirty parts of screen
 void jsp_redraw( void );
 
@@ -36,6 +36,7 @@ void jsp_delete_background_tile( uint8_t row, uint8_t col ) __smallc __z88dk_cal
 // Sprite functions and data structures
 /////////////////////////////////////////
 
+// rectangular region (cell coordinates)
 struct jsp_rect {
     uint8_t row;
     uint8_t col;
@@ -55,7 +56,8 @@ struct jsp_sprite_s {
 
     // sprite flags
     struct {
-        int initialized:1;
+        int initialized:1;  // bit 0
+        int parked:1;       // bit 1 - sprite is off-screen; skip old-position marking on next draw
     } flags;		// ofs: +4
 
     // pointer to pixel data - they can be changed at any moment, for
@@ -68,16 +70,83 @@ struct jsp_sprite_s {
     // sprite type (16 bits) - pointer to table of drawing functions,
     // but it's handled automatically by macros
     uint8_t *type_ptr;	// ofs: +9
+
+    // sprite colour attribute applied each frame (0 = no colour management)
+    uint8_t color;		// ofs: +11
+    // colour mask: 0xF8 = preserve PAPER/BRIGHT, replace INK only; 0x00 = full replace
+    uint8_t color_mask;	// ofs: +12
 };
 
 void jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall;
-void jsp_draw_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
-void jsp_move_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
-void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
-void jsp_move_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
 
+// Low-level asm sprite functions (generic dispatch via type_ptr, no parked/colour handling)
 void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
 void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
+
+// C-level wrappers: set type, handle parked flag, apply colour
+void jsp_draw_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
+void jsp_move_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
+void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
+void jsp_move_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
+
+// Safe off-screen parking: mark cells dirty and flag sprite as inactive
+void jsp_sprite_park( struct jsp_sprite_s *sp );
+
+// Frame-based movement (sets pixels, handles parked + colour)
+void jsp_move_sprite_mask2_frame( struct jsp_sprite_s *sp, uint8_t *frame,
+                                  uint8_t xpos, uint8_t ypos );
+void jsp_move_sprite_load1_frame( struct jsp_sprite_s *sp, uint8_t *frame,
+                                  uint8_t xpos, uint8_t ypos );
+void jsp_move_sprite_frame( struct jsp_sprite_s *sp, uint8_t *frame,
+                            uint8_t xpos, uint8_t ypos );
+
+// Bounding-box check: 1 if sprite at (xpos,ypos) is fully inside rect, else 0
+uint8_t jsp_sprite_in_rect( struct jsp_sprite_s *sp,
+                            struct jsp_rect *rect,
+                            uint8_t xpos, uint8_t ypos );
+
+// Dynamic sprite pool — caller supplies storage, JSP manages slot allocation
+void jsp_sprite_pool_init( struct jsp_sprite_s *pool, uint8_t *pdbs,
+                           uint8_t pool_size,
+                           uint8_t max_rows, uint8_t max_cols );
+struct jsp_sprite_s *jsp_sprite_alloc( uint8_t rows, uint8_t cols );
+void jsp_sprite_free( struct jsp_sprite_s *sp );
+
+// Set the colour applied to all sprite cells each frame.
+void jsp_sprite_set_color( struct jsp_sprite_s *sp, uint8_t color, uint8_t color_mask );
+// Write colour to attribute memory for the sprite's current cell positions.
+void jsp_apply_sprite_color( struct jsp_sprite_s *sp );
+
+// Text print context
+struct jsp_print_ctx {
+    struct jsp_rect *clip;  // clipping area (NULL = full screen)
+    uint8_t          attr;  // text colour attribute byte
+    uint8_t          row;   // current print row (cell coordinate)
+    uint8_t          col;   // current print col (cell coordinate)
+};
+
+// Static initialiser: JSP_PRINT_CTX_INIT(area, attr)
+#define JSP_PRINT_CTX_INIT(rect,at)  { &(rect), (at), 0, 0 }
+
+void jsp_print_set_pos( struct jsp_print_ctx *ctx, uint8_t row, uint8_t col );
+void jsp_print_string( struct jsp_print_ctx *ctx, const char *str );
+
+// Rectangle-operation flags (mirror SP1 values for easy aliasing)
+#define JSP_RFLAG_TILE   0x01
+#define JSP_RFLAG_COLOUR 0x02
+
+// Clear a rectangular region (tile and/or colour, controlled by flags)
+void jsp_clear_rect( struct jsp_rect *rect, uint8_t attr,
+                     uint8_t ch, uint8_t flags );
+// Mark all cells in rect as dirty (redrawn on next jsp_redraw)
+void jsp_invalidate_rect( struct jsp_rect *rect );
+
+// Tile table (256 entries; 32-127 pre-filled with ROM font by jsp_init)
+extern uint8_t *jsp_tile_table[256];
+// Register 8-byte tile graphic at 1-byte index (equivalent to sp1_TileEntry)
+void jsp_tile_register( uint8_t idx, uint8_t *gfx_ptr );
+// Draw tile at (row,col) with colour attribute; tile<256 = table lookup, else direct pointer
+void jsp_tile_put( uint8_t row, uint8_t col, uint8_t attr, uint16_t tile );
 
 #define DEFINE_SPRITE(_name,_rows,_cols,_pixels,_xpos,_ypos,_type) uint8_t _name##_pdbuf[ ( (_rows) + 1 ) * ( (_cols) + 1 ) * 8 ]; struct jsp_sprite_s _name = { .rows = (_rows), .cols = (_cols), .xpos = (_xpos), .ypos = (_ypos), .flags.initialized = 1, .pixels = (_pixels), .pdbuf = _name##_pdbuf, .type_ptr = _type }
 
@@ -89,6 +158,7 @@ extern uint8_t	jsp_rottbl[];
 extern uint16_t	*jsp_btt[];
 extern uint16_t	*jsp_drt[];
 extern uint8_t	jsp_dtt[];
+extern uint8_t	jsp_bat[];
 extern uint8_t	*jsp_default_bg_tile;
 extern uint8_t jsp_current_rottbl_msb;
 
