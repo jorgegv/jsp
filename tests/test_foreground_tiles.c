@@ -19,7 +19,6 @@ static uint8_t tile_cross[] = { 0x18, 0x18, 0x18, 0xFF, 0xFF, 0x18, 0x18, 0x18 }
 
 void test_foreground_tiles( void ) {
     uint8_t i, j;
-    uint8_t frame;
     struct jsp_sprite_s *sp[TEST_POOL_SIZE];
     uint8_t x[TEST_POOL_SIZE], y[TEST_POOL_SIZE];
     int8_t  dx[TEST_POOL_SIZE], dy[TEST_POOL_SIZE];
@@ -54,7 +53,7 @@ void test_foreground_tiles( void ) {
     }
 
     // animate ~300 frames: sprites bounce around, crossing the foreground band
-    for ( frame = 0; frame < 200; frame++ ) {
+    while ( 1 ) {
         for ( i = 0; i < TEST_POOL_SIZE; i++ ) {
             if ( !sp[i] ) continue;
             jsp_move_sprite_mask2_frame( sp[i], test_sprite_mask2_pixels, x[i], y[i] );
@@ -70,8 +69,6 @@ void test_foreground_tiles( void ) {
         jsp_redraw();
     }
 
-    for ( i = 0; i < TEST_POOL_SIZE; i++ )
-        if ( sp[i] ) jsp_sprite_free( sp[i] );
 }
 
 void main( void ) {
