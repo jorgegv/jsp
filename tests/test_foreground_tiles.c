@@ -14,8 +14,8 @@ extern uint8_t test_sprite_mask2_pixels[];
 static struct jsp_sprite_s test_pool[ TEST_POOL_SIZE ];
 static uint8_t test_pdbs[ TEST_POOL_SIZE * (TEST_MAX_ROWS+1) * (TEST_MAX_COLS+1) * 8 ];
 
-// a simple cross tile for the foreground
-static uint8_t tile_cross[] = { 0x18, 0x18, 0x18, 0xFF, 0xFF, 0x18, 0x18, 0x18 };
+// a closed box tile for the foreground band
+static uint8_t tile_box[] = { 0xFF, 0xFF, 0xC3, 0xC3, 0xC3, 0xC3, 0xFF, 0xFF };
 
 void test_foreground_tiles( void ) {
     uint8_t i, j;
@@ -34,10 +34,18 @@ void test_foreground_tiles( void ) {
     }
     jsp_redraw();
 
-    // draw a band of foreground cross tiles across the middle of the screen
+    // draw foreground bars: one horizontal band and two vertical bars
     // sprites should pass behind these tiles
-    for ( j = 0; j < 32; j++ )
-        jsp_draw_foreground_tile( 11, j, tile_cross );
+    for ( j = 0; j < 32; j++ ) {
+        jsp_draw_foreground_tile( 11, j, tile_box );
+        *( volatile uint8_t * )( 0x5800 + 11 * 32 + j ) = PAPER_YELLOW | INK_BLUE;
+    }
+    for ( i = 0; i < 24; i++ ) {
+        jsp_draw_foreground_tile( i, 10, tile_box );
+        *( volatile uint8_t * )( 0x5800 + (uint16_t)i * 32 + 10 ) = PAPER_YELLOW | INK_BLUE;
+        jsp_draw_foreground_tile( i, 21, tile_box );
+        *( volatile uint8_t * )( 0x5800 + (uint16_t)i * 32 + 21 ) = PAPER_YELLOW | INK_BLUE;
+    }
 
     // set up pool and allocate sprites
     jsp_sprite_pool_init( test_pool, test_pdbs,
