@@ -67,7 +67,8 @@ SPRITE_MASK2_ASM = $(TESTS_DIR)/test_sprite_mask2.asm
 SPRITE_LOAD1_ASM = $(TESTS_DIR)/test_sprite_load1.asm
 
 TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
-		  test_sprite_move test_pool_and_colour test_tiles_and_print
+		  test_sprite_move test_pool_and_colour test_tiles_and_print \
+		  test_foreground_tiles
 TEST_TAPS	= $(TESTS:%=$(TESTS_DIR)/%.tap)
 
 .PHONY: tests
@@ -82,6 +83,7 @@ $(TESTS_DIR)/%.tap: $(TESTS_DIR)/%.c $(LIB_SRCS)
 $(TESTS_DIR)/test_sprite_draw.tap: $(SPRITE_MASK2_ASM)
 $(TESTS_DIR)/test_sprite_move.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
 $(TESTS_DIR)/test_pool_and_colour.tap: $(SPRITE_MASK2_ASM)
+$(TESTS_DIR)/test_foreground_tiles.tap: $(SPRITE_MASK2_ASM)
 
 # run a single test (usage: make run-test TEST=test_dtt)
 run-test: $(TESTS_DIR)/$(TEST).tap

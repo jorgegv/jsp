@@ -27,10 +27,12 @@ void jsp_redraw( void );
 // Background tile functions
 /////////////////////////////////////////
 
-// draw 8x8 tile to BTT
+// draw 8x8 tile to BTT (clears foreground flag)
 void jsp_draw_background_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee;
-// resotres default background
+// restores default background (clears foreground flag)
 void jsp_delete_background_tile( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
+// draw 8x8 foreground tile: updates BTT/DRT, sets foreground flag, draws directly to screen
+void jsp_draw_foreground_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee;
 
 /////////////////////////////////////////
 // Sprite functions and data structures
@@ -158,6 +160,7 @@ extern uint8_t	jsp_rottbl[];
 extern uint16_t	*jsp_btt[];
 extern uint16_t	*jsp_drt[];
 extern uint8_t	jsp_dtt[];
+extern uint8_t	jsp_ftt[];
 extern uint8_t	jsp_bat[];
 extern uint8_t	*jsp_default_bg_tile;
 extern uint8_t jsp_current_rottbl_msb;
@@ -170,6 +173,11 @@ extern uint8_t JSP_TYPE_MASK2[];
 void jsp_dtt_mark_dirty( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 void jsp_dtt_mark_clean( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 uint8_t jsp_dtt_is_dirty( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
+
+// mark/unmark one cell as foreground
+void jsp_ftt_mark_fg( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
+void jsp_ftt_mark_bg( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
+uint8_t jsp_ftt_is_fg( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 
 // draw 8x8 tile to screen
 void jsp_draw_screen_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee;

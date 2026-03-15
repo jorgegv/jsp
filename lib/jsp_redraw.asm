@@ -8,6 +8,7 @@
 	extern _jsp_btt
 	extern _jsp_bat
 	extern _jsp_drt_restore_bg
+	extern _jsp_ftt
 	extern jsp_rowcolindex
 
 	public _jsp_redraw
@@ -41,13 +42,23 @@ _jsp_redraw:
 	ld e,a				;; E = col = 0
 
 	ld b,96				;; B = DTT counter
-	ld hl,_jsp_dtt			;; hl = start of dtt
+	ld hl,_jsp_dtt			;; HL = start of DTT
+	ld ix,_jsp_ftt			;; IX = start of FTT
 
 next_cell_group:
 	ld a,(hl)
-	and a				;; update Z flag
-	call nz,process_dirty_cells	;; if any dirty cell, go to process them
+	and a				;; quick skip if DTT byte is 0 (common case)
+	jr z,skip_group
 
+	;; some dirty cells: mask out foreground bits (DTT && ~FTT)
+	ld c,a				;; C = DTT byte
+	ld a,(ix+0)			;; A = FTT byte
+	cpl				;; A = ~FTT byte
+	and c				;; A = DTT & ~FTT
+	call nz,process_dirty_cells	;; process non-foreground dirty cells
+
+skip_group:
+	inc ix				;; advance FTT pointer
 	inc hl				;; prepare next 8 cells
 
 	ld a,8				;; col += 8

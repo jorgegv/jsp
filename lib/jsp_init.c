@@ -8,6 +8,7 @@
 ///////////////////////////
 
 extern uint8_t jsp_bat[];
+extern uint8_t jsp_ftt[];
 void jsp_init_tile_table( void );
 
 ///////////////////////////
@@ -37,6 +38,11 @@ void jsp_init_drt( void ) {
 // set all cells to clean
 void jsp_init_dtt( void ) {
     jsp_memzero( jsp_dtt, 768 / 8 );
+}
+
+// set all cells to background (no foreground)
+void jsp_init_ftt( void ) {
+    jsp_memzero( jsp_ftt, 768 / 8 );
 }
 
 // initialize rotation tables
@@ -75,6 +81,7 @@ void jsp_init( uint8_t *bgtile, uint8_t default_attr ) {
     jsp_init_btt();
     jsp_init_drt();
     jsp_init_dtt();
+    jsp_init_ftt();
     jsp_init_background( bgtile != NULL ? bgtile : jsp_blank_tile );
     jsp_init_bat( default_attr );
     jsp_init_tile_table();

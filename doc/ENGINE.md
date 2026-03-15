@@ -94,9 +94,11 @@ contains the pointers to the contents to be drawn.
 At this point, all dirty cells have been redrawn, and the DTT and DRT have
 been reset for the next drawing cycle.
 
-** FIXME: what happens when the screen has just been redrawn and there is a foreground tile? It won't be updated...
-** We need some way to draw it the first time but not the following ones.
-** Possible solution: draw background first, then start drawing and moving sprites? Seems kludgy...
+Solution for initial draw of foreground tiles: `jsp_draw_foreground_tile()` draws
+the tile directly to screen via `jsp_draw_screen_tile()` at placement time, without
+touching the DTT.  The FTT bit protects the cell from the redraw loop from then on.
+`jsp_draw_background_tile()` and `jsp_delete_background_tile()` clear the FTT bit so
+a foreground tile can be demoted back to a normal background tile at any time.
 
 ## MEMORY MAPS
 
@@ -110,7 +112,9 @@ Be careful when using JSP with the standard ROM interrupt routine, some of its r
 | EC00-F199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
 | E600-EB99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
 | E5A0-E5FF | Dirty Tiles Table, DTT (96 bytes)                 |
-| 5D00-E59F | free for program code and data (34976 bytes)      |
+| E540-E59F | Foreground Tiles Table, FTT (96 bytes)            |
+| E240-E53F | Background Attribute Table, BAT (768 bytes)       |
+| 5D00-E23F | free for program code and data (34368 bytes)      |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
 
@@ -124,6 +128,8 @@ The layout is similar to 48K mode, but down 16K, in order to free up the C000-FF
 | AC00-B199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
 | A600-AB99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
 | A5A0-A5FF | Dirty Tiles Table, DTT (96 bytes)                 |
-| 5D00-A59F | free for program code and data (18592 bytes)      |
+| A540-A59F | Foreground Tiles Table, FTT (96 bytes)            |
+| A240-A53F | Background Attribute Table, BAT (768 bytes)       |
+| 5D00-A23F | free for program code and data (17984 bytes)      |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
