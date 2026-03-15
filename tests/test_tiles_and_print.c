@@ -18,7 +18,7 @@ void test_tiles_and_print( void ) {
     jsp_print_string( &ctx, "HELLO JSP!" );
 
     // draw a coloured tile at a specific position
-    jsp_tile_put( 10, 15, PAPER_RED | INK_WHITE | BRIGHT, ' ' );
+    jsp_tile_put( 10, 15, PAPER_RED | INK_WHITE | BRIGHT, '*' );
 
     jsp_redraw();
     z80_delay_ms( 2000 );

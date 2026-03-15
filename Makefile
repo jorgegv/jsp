@@ -100,10 +100,10 @@ $(TESTS_DIR)/test_sprite_mask2.asm:
 	../zxtools/bin/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 \
 		--code-type asm -s _test_sprite_mask2_pixels \
-		-g sprite_mask -l columns --extra-bottom-row > $@
+		-g sprite_mask -l columns --extra-bottom-row --extra-top-rows > $@
 
 $(TESTS_DIR)/test_sprite_load1.asm:
 	../zxtools/bin/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 \
 		--code-type asm -s _test_sprite_load1_pixels \
-		-g sprite_load -l columns --extra-bottom-row > $@
+		-g sprite_load -l columns --extra-bottom-row --extra-top-rows > $@
