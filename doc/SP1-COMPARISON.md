@@ -47,14 +47,15 @@ The following SP1 functionalities are the subset that I deemed essential to be r
 
 The following additional functionalities (not supported by SP1) are nice-to-have:
 
-- Static definition of sprites at compile time(do away with `malloc`, `free` and the heap, and have everything statically allocated)
+- Static definition of sprites at compile time (do away with `malloc`, `free` and the heap, and have everything statically allocated)
+- Foreground tiles: individual background tiles can be marked as foreground, causing all sprites to pass behind them (implemented via FTT)
 
 The following special functions are explicitly _not_ supported:
 
 - 1-byte tile IDs (in JSP all tiles are defined by their data address)
 - Shuffling of destination screen address for any tile (see SP1 exampLe `ex5e.c` for an explanation of this)
 - Complex sprite priorities (in JSP you must handle the priorities instead, and draw the sprites in the order you need)
-- Mixed sprite/background priorities (in JSP either the background is below _all_ sprites, or it is above _all_ sprites)
+- Per-sprite Z-ordering against individual background tiles (in JSP foreground tiles apply globally to all sprites via the FTT mechanism)
 
 ## JSP Memory Map
 
@@ -66,19 +67,17 @@ The next structure (the Tile Array) can be discarded completely, since it is onl
 
 Finally, the biggest structure (the Update Array) has also been replaced with some more compact structures: the BTT (Background Tile Table), DRT (Drawing Record Table) and DTT (Dirty Tiles Table); see [ENGINE.md](ENGINE.md)) for the details.
 
-So according to the previous design, the JSP memory map for a 48K program is the following one:
+So according to the current design, the JSP memory map for a 48K program is the following one:
 
 | Range     | Contents                                          |
 |-----------|---------------------------------------------------|
 | F200-FFFF | Rotation tables (3.5 kB, 256-aligned)             |
 | EC00-F199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
 | E600-EB99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
-| E5E8-E5FF | Unused (18 bytes)                                 |
-| E5E5-E5E7 | "JP <isr>" opcodes (3 bytes)                      |
-| E585-E5E4 | Dirty Tiles Table, DTT (96 bytes)                 |
-| E501-E584 | Stack (132 bytes)                                 |
-| E400-E500 | IV table with value 0xE5 (257 bytes)              |
-| 5D00-E3FF | Available for main program (34560 bytes)          |
+| E5A0-E5FF | Dirty Tiles Table, DTT (96 bytes)                 |
+| E540-E59F | Foreground Tiles Table, FTT (96 bytes)            |
+| E240-E53F | Background Attribute Table, BAT (768 bytes)       |
+| 5D00-E23F | Available for main program (~34 KB free)          |
 | 5B00-5CFF | BASIC loader (512 bytes)                          |
 
-With this memory map, JSP allows a program size of 34560 bytes, versus 29440 bytes with SP1. That is 5120 additional bytes (additional 17.4% over SP1 size).
+With this memory map, JSP allows a program size of approximately 34 KB, versus 29440 bytes with SP1 — over 5 KB of additional space.
