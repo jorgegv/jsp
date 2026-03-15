@@ -76,7 +76,7 @@ tests: $(TEST_TAPS)
 # Pattern rule: compile test + all lib sources in one zcc invocation
 $(TESTS_DIR)/%.tap: $(TESTS_DIR)/%.c $(LIB_SRCS)
 	echo Building $@...
-	$(ZCC) $(CFLAGS) $(LDFLAGS) $^ -o $(@:.tap=) -create-app
+	$(ZCC) $(CFLAGS) $(LDFLAGS) $^ -o $(@:.tap=.bin) -create-app
 
 # Extra sprite data prerequisites for tests that use sprites
 $(TESTS_DIR)/test_sprite_draw.tap: $(SPRITE_MASK2_ASM)
@@ -89,7 +89,7 @@ run-test: $(TESTS_DIR)/$(TEST).tap
 
 clean-tests:
 	echo Cleaning tests...
-	-rm -f $(TEST_TAPS) $(TESTS:%=$(TESTS_DIR)/%) 2>/dev/null
+	-rm -f $(TEST_TAPS) $(TESTS:%=$(TESTS_DIR)/%.bin) 2>/dev/null
 	-rm -f $(TESTS_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
 
 ## extras
