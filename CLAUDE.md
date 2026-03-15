@@ -82,3 +82,5 @@ E5A0-E5FF  DTT (96 bytes)
 - Keep commit messages concise but informative
 - Ask for feedback when verification of visual/emulator behavior is needed
 - Work autonomously but avoid large untested modifications
+- Do not add Co-authored-by in commit messages
+- Beware when calling functions between C and ASM. SDCC may use IX register as a base pointer, and some ASM functions may use it and corrupt it. Take this interactions into account, errors with this are quite difficult to track.
