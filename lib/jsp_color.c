@@ -24,6 +24,7 @@ void jsp_apply_sprite_color( struct jsp_sprite_s *sp ) {
      * use inclusive end computed from pixel extents to cover all painted cells. */
     for ( r = r0; r <= (uint8_t)( (sp->ypos + (uint8_t)(sp->rows * 8) - 1) / 8 ); r++ ) {
         for ( c = c0; c <= (uint8_t)( (sp->xpos + (uint8_t)(sp->cols * 8) - 1) / 8 ); c++ ) {
+            if ( jsp_ftt_is_fg( r, c ) ) continue;
             attr = (volatile uint8_t *)( 0x5800 + (uint16_t)r * 32 + c );
             *attr = ( *attr & sp->color_mask ) | ( sp->color & ~sp->color_mask );
         }
