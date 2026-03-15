@@ -16,6 +16,12 @@ A "tile" is an 8x8 UDG stored top to down in memory (8 consecutive bytes)
 - FTT: Foreground tiles table: a table of 768 bits (_not_ bytes), indicating what
   tiles are on top of all sprites and should not be overwritten by them - 96 bytes
 
+- BAT: Background attribute table: a table of 768 bytes holding one ZX Spectrum
+  attribute byte per screen cell.  When a sprite moves, its old cells have their
+  colour attributes restored from the BAT so the background colours reappear
+  correctly.  FTT-protected cells are never written to by `jsp_apply_sprite_color()`
+  so their attributes are always preserved - 768 bytes
+
 ## SPRITE DEFINITIONS
 
 - Normal graphic definition ( M x N chars )
@@ -52,6 +58,9 @@ A "tile" is an 8x8 UDG stored top to down in memory (8 consecutive bytes)
 
   - Mark as dirty the cells corresponding to the previous position
 
+  - Restore the colour attributes of the old cells from the BAT (skipping
+    FTT-protected cells whose attributes must not be overwritten)
+
   - Save the new coordinates
 
   - Copy the background tiles for that sprite from the DRT cells to the
@@ -63,6 +72,11 @@ A "tile" is an 8x8 UDG stored top to down in memory (8 consecutive bytes)
   - Update the DRT cells corresponding to the sprite position to point to
     this sprite's PDB cells.  Doing this, sprites can be drawn over another
     and everything looks ok
+
+  - Write the sprite's colour attributes to the screen attribute area for
+    the new cells, using the sprite's color/color_mask fields; skip any
+    FTT-protected cells so foreground tile colours are preserved (BAT is
+    not updated here — it always holds background colours only)
 
   - Mark as dirty the DTT cells corresponding to the sprite position
 
