@@ -3,90 +3,95 @@
 #include "jsp.h"
 
 ///////////////////////////////////////////////////////////
-// Per-cell sprite coverage and compositing
+// Per-frame sprite precompute and per-cell compositing
 //
-// jsp_redraw() first calls jsp_sprite_covers_cell() to decide whether a
-// sprite touches a given dirty cell; if so it seeds an 8-byte scratch
-// with the background tile and calls jsp_composite_sprite_cell() for
-// each covering sprite, in z-order.  The final cell content is then
-// written to the screen with a single store — see jsp_redraw.c.
+// jsp_redraw_begin() runs once per frame: for every active sprite it
+// computes the constants the per-cell compositor needs (footprint
+// rectangle, pixel base, rotation selector, ...) into jsp_frame_sprites[].
+//
+// jsp_composite_frame_cell() then composites one cell using only those
+// precomputed values — no per-cell recomputation of per-sprite constants.
 //
 // Correct, readable C; can be optimised to assembly later if needed.
 ///////////////////////////////////////////////////////////
 
-// 1 if sprite sp's footprint covers cell (row,col) and that cell is
-// actually drawn (in-clip, not the empty trailing column of an aligned
-// sprite); 0 otherwise.
-uint8_t jsp_sprite_covers_cell( struct jsp_sprite_s *sp,
-                                uint8_t row, uint8_t col ) {
-    uint8_t r0 = sp->ypos >> 3;
-    uint8_t c0 = sp->xpos >> 3;
-    uint8_t i, j, lastcol;
+struct jsp_sprite_frame jsp_frame_sprites[ JSP_SPRITE_REGISTRY_SIZE ];
 
-    if ( row < r0 || col < c0 )
-        return 0;
-    i = row - r0;
-    j = col - c0;
-    if ( i > sp->rows || j > sp->cols )
-        return 0;
+// Fill jsp_frame_sprites[] for each active registered sprite; return count.
+uint8_t jsp_redraw_begin( void ) {
+    uint8_t i, n = 0;
 
-    // footprint is cols+1 wide when pixel-shifted, cols wide when aligned
-    lastcol = ( sp->xpos & 0x07 ) ? sp->cols : (uint8_t)( sp->cols - 1 );
-    if ( j > lastcol )
-        return 0;
+    for ( i = 0; i < jsp_sprite_registry_count; i++ ) {
+        struct jsp_sprite_s     *sp = jsp_sprite_registry[ i ];
+        struct jsp_sprite_frame *fs;
+        uint8_t xrot, yrot, cs;
 
-    if ( sp->clip && !jsp_cell_in_rect( row, col, sp->clip ) )
-        return 0;
+        if ( !sp->flags.initialized || !sp->flags.active )
+            continue;
 
-    return 1;
+        fs = &jsp_frame_sprites[ n++ ];
+
+        fs->r0 = sp->ypos >> 3;
+        fs->c0 = sp->xpos >> 3;
+        fs->r1 = fs->r0 + sp->rows;
+
+        xrot = sp->xpos & 0x07;
+        yrot = sp->ypos & 0x07;
+        // footprint is cols+1 wide when pixel-shifted, cols wide when aligned
+        fs->c1 = fs->c0 + ( xrot ? sp->cols : (uint8_t)( sp->cols - 1 ) );
+
+        fs->ismask2 = ( sp->type_ptr == JSP_TYPE_MASK2 );
+        cs          = fs->ismask2 ? 16 : 8;
+        fs->cs      = cs;
+        fs->cols    = sp->cols;
+
+        fs->rottbl_msb =
+            (uint8_t)( ( (uint16_t)jsp_rottbl >> 8 ) + 2 * xrot - 2 );
+        fs->base      = sp->pixels - (uint16_t)yrot * ( cs >> 3 );
+        fs->rowstride = (uint16_t)( sp->rows + 1 ) * cs;
+
+        fs->color      = sp->color;
+        fs->color_mask = sp->color_mask;
+        fs->clip       = sp->clip;
+    }
+    return n;
 }
 
-// Composite sprite sp's slice of cell (row,col) into scratch[8] (which
-// already holds the background and any lower-z sprite).  The caller MUST
-// have verified jsp_sprite_covers_cell() first.  *attr is updated if the
-// sprite has a colour.
-void jsp_composite_sprite_cell( struct jsp_sprite_s *sp,
-                                uint8_t row, uint8_t col,
-                                uint8_t *scratch, uint8_t *attr ) {
-    uint8_t  i = row - ( sp->ypos >> 3 );
-    uint8_t  j = col - ( sp->xpos >> 3 );
-    uint8_t  xrot = sp->xpos & 0x07;
-    uint8_t  yrot = sp->ypos & 0x07;
-    uint8_t  ismask2 = ( sp->type_ptr == JSP_TYPE_MASK2 );
-    uint8_t  cs = ismask2 ? 16 : 8;     // cell graphic size in bytes
+// Composite frame-sprite fs's slice of cell (row,col) into scratch[8]
+// (which already holds the background and any lower-z sprite). The caller
+// must have verified the cell is inside fs's [r0,r1]x[c0,c1] rectangle.
+void jsp_composite_frame_cell( struct jsp_sprite_frame *fs,
+                               uint8_t row, uint8_t col,
+                               uint8_t *scratch, uint8_t *attr ) {
+    uint8_t  i = row - fs->r0;
+    uint8_t  j = col - fs->c0;
     uint8_t  pdc;
-    uint8_t *base, *graph, *gleft;
-    uint16_t rowstride;
+    uint8_t *graph, *gleft;
 
-    // horizontal rotation table selector
-    jsp_current_rottbl_msb =
-        (uint8_t)( ( (uint16_t)jsp_rottbl >> 8 ) + 2 * xrot - 2 );
-
-    base      = sp->pixels - (uint16_t)yrot * ( cs >> 3 );
-    rowstride = (uint16_t)( sp->rows + 1 ) * cs;
+    jsp_current_rottbl_msb = fs->rottbl_msb;
 
     // data column feeding this footprint column:
     //   left border  (j==0)     -> column 0
     //   middle       (0<j<cols) -> column j
     //   right border (j>=cols)  -> column cols-1
     pdc = ( j == 0 )        ? 0
-        : ( j >= sp->cols ) ? (uint8_t)( sp->cols - 1 )
+        : ( j >= fs->cols ) ? (uint8_t)( fs->cols - 1 )
         :                     j;
 
-    graph = base + (uint16_t)pdc * rowstride + (uint16_t)i * cs;
+    graph = fs->base + (uint16_t)pdc * fs->rowstride + (uint16_t)i * fs->cs;
 
     if ( j == 0 ) {
-        if ( ismask2 ) sp1_draw_mask2lb( scratch, graph );
-        else           sp1_draw_load1lb( scratch, graph );
-    } else if ( j >= sp->cols ) {
-        if ( ismask2 ) sp1_draw_mask2rb( scratch, graph );
-        else           sp1_draw_load1rb( scratch, graph );
+        if ( fs->ismask2 ) sp1_draw_mask2lb( scratch, graph );
+        else               sp1_draw_load1lb( scratch, graph );
+    } else if ( j >= fs->cols ) {
+        if ( fs->ismask2 ) sp1_draw_mask2rb( scratch, graph );
+        else               sp1_draw_load1rb( scratch, graph );
     } else {
-        gleft = graph - rowstride;
-        if ( ismask2 ) sp1_draw_mask2( scratch, graph, gleft );
-        else           sp1_draw_load1( scratch, graph, gleft );
+        gleft = graph - fs->rowstride;
+        if ( fs->ismask2 ) sp1_draw_mask2( scratch, graph, gleft );
+        else               sp1_draw_load1( scratch, graph, gleft );
     }
 
-    if ( sp->color )
-        *attr = ( *attr & sp->color_mask ) | ( sp->color & ~sp->color_mask );
+    if ( fs->color )
+        *attr = ( *attr & fs->color_mask ) | ( fs->color & ~fs->color_mask );
 }

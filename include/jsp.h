@@ -192,17 +192,36 @@ void jsp_register_sprite( struct jsp_sprite_s *sp );
 void jsp_unregister_sprite( struct jsp_sprite_s *sp );
 void jsp_registry_reset( void );
 
-// 1 if sprite sp's footprint covers (and draws) cell (row,col), else 0.
-uint8_t jsp_sprite_covers_cell( struct jsp_sprite_s *sp,
-                                uint8_t row, uint8_t col );
+// Per-sprite per-frame precomputed compositing data.  jsp_redraw_begin()
+// fills one entry for each active sprite once per frame, so the per-cell
+// composite path does not recompute per-sprite constants.  Field offsets
+// are fixed (the asm redraw reads r0/c0/r1/c1 at +0..+3).
+struct jsp_sprite_frame {
+    uint8_t  r0, c0;            // ofs +0,+1  footprint origin cell
+    uint8_t  r1, c1;            // ofs +2,+3  last drawn row/col (inclusive)
+    uint8_t  cs;                // ofs +4     cell graphic size (8 or 16)
+    uint8_t  ismask2;           // ofs +5
+    uint8_t  rottbl_msb;        // ofs +6
+    uint8_t  cols;              // ofs +7
+    uint8_t  color;             // ofs +8
+    uint8_t  color_mask;        // ofs +9
+    uint8_t *base;              // ofs +10    pixel base (pixels - yrot*cs/8)
+    uint16_t rowstride;         // ofs +12    (rows+1)*cs
+    struct jsp_rect *clip;      // ofs +14
+};
 
-// Composite one sprite's contribution to cell (row,col) into an 8-byte
-// scratch buffer (used by jsp_redraw). The caller must have verified
-// jsp_sprite_covers_cell() first. *attr is updated if the sprite has a
-// colour.
-void jsp_composite_sprite_cell( struct jsp_sprite_s *sp,
-                                uint8_t row, uint8_t col,
-                                uint8_t *scratch, uint8_t *attr );
+extern struct jsp_sprite_frame jsp_frame_sprites[ JSP_SPRITE_REGISTRY_SIZE ];
+
+// Precompute jsp_frame_sprites[] for every active registered sprite.
+// Returns the number of entries filled (active sprite count).
+uint8_t jsp_redraw_begin( void );
+
+// Composite one frame-sprite's contribution to cell (row,col) into an
+// 8-byte scratch buffer. The caller must have verified the cell is inside
+// the frame-sprite's [r0,r1]x[c0,c1] rectangle. *attr gets the colour.
+void jsp_composite_frame_cell( struct jsp_sprite_frame *fs,
+                               uint8_t row, uint8_t col,
+                               uint8_t *scratch, uint8_t *attr );
 
 // 1 if cell (row,col) is inside rect (cell coordinates), else 0
 uint8_t jsp_cell_in_rect( uint8_t row, uint8_t col, struct jsp_rect *rect );
