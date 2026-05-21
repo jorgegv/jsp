@@ -12,6 +12,11 @@ BIN		= main
 FUSE		= fuse
 TAP		=$(BIN).tap
 
+# JNEXT emulator (override on the command line if installed elsewhere)
+JNEXT		= $(HOME)/src/spectrum/jnext/build/gui-release/jnext
+JNEXT_SD	= $(HOME)/src/spectrum/jnext/roms/nextzxos-1gb-fat32fix.img
+JNEXT_MACHINE	= 48k
+
 INCLUDE_DIR	= include
 
 C_SRCS		= $(wildcard lib/*.c) $(wildcard *.c)
@@ -63,6 +68,10 @@ $(TAP): $(BIN)
 # run it
 run: $(TAP)
 	$(FUSE) $(TAP)
+
+# run main.tap in the JNEXT emulator (GUI mode)
+run-jnext: $(TAP)
+	$(JNEXT) --sd-card $(JNEXT_SD) --machine $(JNEXT_MACHINE) --load $(TAP)
 
 ## tests
 
