@@ -20,6 +20,12 @@ ASM_SRCS	= $(wildcard lib/*.asm) $(wildcard *.asm)
 C_OBJS		= $(C_SRCS:.c=.o)
 ASM_OBJS	= $(ASM_SRCS:.asm=.o)
 
+# sprite pixel data referenced by the main.c test harness; these .asm files
+# live under tests/ (generated from PNGs) so they are not picked up by the
+# wildcards above and must be linked into the main binary explicitly.
+BIN_ASSET_ASMS	= tests/test_sprite_mask2.asm tests/test_sprite_load1.asm
+BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
+
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
@@ -47,9 +53,9 @@ clean: clean-tests
 	-rm -f lib/*.{map,lst,o,lis,sym,bin} 2>/dev/null
 
 # binary
-$(BIN): $(ASM_OBJS) $(C_OBJS)
+$(BIN): $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS)
 	echo Linking $@...
-	$(ZCC) $(LDFLAGS) $(ASM_OBJS) $(C_OBJS) -o $(BIN) -create-app
+	$(ZCC) $(LDFLAGS) $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS) -o $(BIN) -create-app
 	echo Created $(TAP)
 
 $(TAP): $(BIN)
