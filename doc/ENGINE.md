@@ -2,13 +2,20 @@
 
 A "tile" is an 8x8 UDG stored top to down in memory (8 consecutive bytes)
 
+JSP uses a **deferred recompositing** model: drawing/moving a sprite never
+touches the screen — it only updates sprite state and marks cells dirty.
+`jsp_redraw()` then recomputes the affected part of the screen from the
+background tables plus the *live* sprite state.  Nothing is "baked": the
+displayed image is recomputed each frame, so overlapping, independently
+moving and animated sprites all render correctly.  This matches the SP1
+sprite library's observable semantics (see `doc/RECOMPOSITE-REDESIGN.md`
+for the full rationale).
+
 ## ENGINE MEMORY AREAS
 
 - BTT: Background tiles table: a table of 768 pointers to the background tiles
-  (only background, no sprites) for each screen cell - 1536 bytes
-
-- DRT: Drawing records table: a table of 768 pointers to the final tile that will
-  be drawn (including sprites), for each screen cell - 1536 bytes
+  (only background, no sprites) for each screen cell - 1536 bytes.  For a
+  foreground cell, the BTT holds the foreground tile graphic.
 
 - DTT: Dirty tiles table: a table of 768 bits (_not_ bytes), indicating what
   tiles need to be redrawn on each frame - 96 bytes
@@ -17,102 +24,86 @@ A "tile" is an 8x8 UDG stored top to down in memory (8 consecutive bytes)
   tiles are on top of all sprites and should not be overwritten by them - 96 bytes
 
 - BAT: Background attribute table: a table of 768 bytes holding one ZX Spectrum
-  attribute byte per screen cell.  When a sprite moves, its old cells have their
-  colour attributes restored from the BAT so the background colours reappear
-  correctly.  FTT-protected cells are never written to by `jsp_apply_sprite_color()`
-  so their attributes are always preserved - 768 bytes
+  attribute byte per screen cell.  `jsp_redraw()` paints the BAT attribute for
+  every dirty cell, so a sprite's colour disappears automatically when the
+  sprite leaves the cell - 768 bytes
+
+There is **no DRT** (Drawing Records Table) and there are **no per-sprite
+drawing buffers (PDB)** any more — both belonged to the old baking model and
+were removed by the recompositing redesign.  The 1.5 KB formerly used by the
+DRT is now free.
 
 ## SPRITE DEFINITIONS
 
-- Normal graphic definition ( M x N chars )
+- Normal graphic definition ( M x N chars ), MASK2 (mask+graphics) or LOAD1
+  (graphics only) format.
 
-- Additionally, a private drawing buffer (PDB) of (M+1) x (N+1) chars. 
-  Since we can move about 10 simultaneous 16x16 sprites, that's 90 cells to
-  be drawn, so maximum overhead of 90 x 8 = 720 bytes
+- A sprite descriptor (`struct jsp_sprite_s`, ~13 bytes) holding size,
+  position, flags, pixel pointer, type, colour and an optional clip rect.
+  No drawing buffer is needed: sprites composite straight to the screen.
+
+- All sprites that must appear on screen are kept in a small bounded
+  **registry** (`JSP_SPRITE_REGISTRY_SIZE`).  A sprite registers itself the
+  first time it is drawn or moved; `jsp_redraw()` walks the registry in
+  registration order, which is the back-to-front z-order.
 
 ## WORKFLOW FOR DRAWING TILES
 
-- For drawing a _background_ tile, copy it's address (pointer to 8-byte
-  data) in its corresponding position in the BTT and reset the corresponding
-  bit in the FTT table
+- For drawing a _background_ tile, store its address (pointer to 8-byte
+  data) in the BTT, clear the FTT bit and mark the cell dirty.
 
-- For drawing a _foreground_ tile, copy it's address (pointer to 8-byte
-  data) in its corresponding position in the BTT and set the corresponding
-  bit in the FTT table
+- For drawing a _foreground_ tile, store its address in the BTT, set the
+  FTT bit and mark the cell dirty.
 
 - For removing a tile, just draw the default tile as a background tile on
-  the same position
+  the same position.
 
-## WORKFLOW FOR DRAWING SPRITES
+All tile operations are deferred: the actual screen drawing happens in the
+next `jsp_redraw()`.
 
-- FTT bits have been set up properly by the tile printing routines and will
-  not be touched by the updating routine
+## WORKFLOW FOR DRAWING / MOVING SPRITES (deferred)
 
-- DTT must be fully set to 0 (this is done by the drawing function after
-  drawing everything)
+Drawing, moving and parking never touch the screen.  They update the sprite
+descriptor and mark cells dirty:
 
-- DRT must contain the same pointers as BTT (this is done by the drawing
-  function after drawing everything)
+- `jsp_draw_sprite(sp,x,y)` — register the sprite, set position, set
+  `active`, mark the new footprint dirty (intersected with the clip rect).
 
-- For each sprite:
+- `jsp_move_sprite(sp,x,y)` — mark the **old** footprint dirty (unclipped),
+  reposition, mark the **new** footprint dirty (clipped).
 
-  - Mark as dirty the cells corresponding to the previous position
+- `jsp_sprite_park(sp)` — mark the footprint dirty, clear `active`.
 
-  - Restore the colour attributes of the old cells from the BAT (skipping
-    FTT-protected cells whose attributes must not be overwritten)
+The footprint of a sprite is `(rows+1) x (cols+1)` cells (the `+1` accounts
+for sub-cell pixel shifting).
 
-  - Save the new coordinates
+## WORKFLOW FOR REDRAWING THE SCREEN — `jsp_redraw()`
 
-  - Copy the background tiles for that sprite from the DRT cells to the
-    sprite's PDB
+**Pass 1 — background.**  Walk the DTT byte by byte (skipping zero bytes,
+the common case).  For each dirty cell, paint its BTT tile to the screen and
+its BAT attribute to attribute memory.  Foreground cells are painted here
+too — their BTT holds the foreground tile graphic.
 
-  - Draw the sprite on the PDB over the previous contents, with your
-    preferred method (masked, or, xor, etc.), preshifted, rotated, etc.
+**Pass 2 — sprites.**  Walk the sprite registry in z-order (back to front).
+For each active sprite, recomposite it: for every cell of its footprint that
+is dirty, in-clip and **not** a foreground cell, read the current screen
+cell (background painted by Pass 1, plus any lower-z sprite already drawn),
+composite the sprite's graphic slice into an 8-byte scratch, write it back,
+and apply the sprite's colour to attribute memory.
 
-  - Update the DRT cells corresponding to the sprite position to point to
-    this sprite's PDB cells.  Doing this, sprites can be drawn over another
-    and everything looks ok
+Because Pass 2 reads the live screen and writes back in z-order, sprite B
+drawn over sprite A correctly reads `bg+A` and produces `bg+A+B`.  Because
+it skips foreground cells, sprites pass *behind* foreground tiles.  Because
+it only touches dirty cells, a stationary sprite whose cells are not
+invalidated keeps its pixels (differential update); if another sprite moves
+through one of its cells, that cell becomes dirty and both sprites are
+recomposited there.
 
-  - Write the sprite's colour attributes to the screen attribute area for
-    the new cells, using the sprite's color/color_mask fields; skip any
-    FTT-protected cells so foreground tile colours are preserved (BAT is
-    not updated here — it always holds background colours only)
+**Finally**, the DTT is cleared for the next frame.
 
-  - Mark as dirty the DTT cells corresponding to the sprite position
-
-At this point, the sprites have been drawn in order (whatever your order
-is), the DTT contains the dirty cells that need to be redrawn, and the DRT
-contains the pointers to the contents to be drawn.
-
-## WORKFLOW FOR REDRAWING THE SCREEN
-
-- Walk the DTT and FTT byte by byte.  This can be done very quickly, since
-  we skip bytes that are 0 (which means those 8 cells need not be redrawn),
-  and most cells will _not_ be redrawn (i.e.  will be 0).
-
-- When some (DTT byte) && (~FTT byte) is not zero, process the anded bits
-  (DTT && ~FTT).  This way, only if it's dirty _and_ is NOT a foregound
-  tile, it will be redrawn.  For each bit:
-
-  - If it is 0, skip to next bit
-  - If it is 1:
-    - Get the address of the final tile to draw from the DRT an the position
-      of this cell
-    - Draw the tile to screen
-    - Reset the DTT bit to 0 (keep FTT bit untouched)
-    - Copy the pointer from BTT to DRT on the same position
-    - These last two operations are much faster if done inside the drawing
-    loop (max ~900T for DTT) than fully resetting DTT and DRT after the
-    drawing loop (~2000T for LDIR, ~2500T for LD (HL),A, for DTT)
-    
-At this point, all dirty cells have been redrawn, and the DTT and DRT have
-been reset for the next drawing cycle.
-
-Solution for initial draw of foreground tiles: `jsp_draw_foreground_tile()` draws
-the tile directly to screen via `jsp_draw_screen_tile()` at placement time, without
-touching the DTT.  The FTT bit protects the cell from the redraw loop from then on.
-`jsp_draw_background_tile()` and `jsp_delete_background_tile()` clear the FTT bit so
-a foreground tile can be demoted back to a normal background tile at any time.
+The current redraw and compositing code is a correct, readable C
+implementation; it can be optimised to assembly later if profiling shows it
+is needed.
 
 ## MEMORY MAPS
 
@@ -124,11 +115,11 @@ Be careful when using JSP with the standard ROM interrupt routine, some of its r
 |-----------|---------------------------------------------------|
 | F200-FFFF | Rotation tables (3.5 kB, 256-aligned)             |
 | EC00-F199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
-| E600-EB99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
+| E600-EBFF | free (1.5 kB) — was Drawing Records Table, DRT    |
 | E5A0-E5FF | Dirty Tiles Table, DTT (96 bytes)                 |
 | E540-E59F | Foreground Tiles Table, FTT (96 bytes)            |
 | E240-E53F | Background Attribute Table, BAT (768 bytes)       |
-| 5D00-E23F | free for program code and data (34368 bytes)      |
+| 5D00-E23F | free for program code and data                   |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
 
@@ -140,10 +131,10 @@ The layout is similar to 48K mode, but down 16K, in order to free up the C000-FF
 |-----------|---------------------------------------------------|
 | B200-BFFF | Rotation tables (3.5 kB, 256-aligned)             |
 | AC00-B199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
-| A600-AB99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
+| A600-ABFF | free (1.5 kB) — was Drawing Records Table, DRT    |
 | A5A0-A5FF | Dirty Tiles Table, DTT (96 bytes)                 |
 | A540-A59F | Foreground Tiles Table, FTT (96 bytes)            |
 | A240-A53F | Background Attribute Table, BAT (768 bytes)       |
-| 5D00-A23F | free for program code and data (17984 bytes)      |
+| 5D00-A23F | free for program code and data                   |
 
 - These structures should not be in contended memory, since they must be checked at top speed.

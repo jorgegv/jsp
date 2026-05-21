@@ -1,7 +1,16 @@
 # JSP RECOMPOSITE REDESIGN — Analysis, Design & Implementation Handover
 
-**Status:** DESIGN APPROVED — implementation pending (to be done in a new session in this repository).
-**Date:** 2026-05-19.
+**Status:** IMPLEMENTED on branch `feat/new_composite-design` (2026-05-21).
+The redesign below was implemented in C first (the redraw and compositing
+loops are `jsp_redraw.c` and `jsp_composite.c`); assembly optimisation is
+deferred.  Notable decisions taken during implementation:
+- **FTT kept** — foreground tiles are painted from BTT by Pass 1 and Pass 2
+  skips FTT cells, so no separate Pass 3 and no DRT-style side-table is
+  needed (§10.1).
+- **z-order = registration order** — sprites self-register on first
+  draw/move; `jsp_redraw` walks the registry back-to-front.  No explicit
+  `z` byte was added (§10.2 blessed pool/registration order as acceptable).
+- **Original design date:** 2026-05-19.
 **Scope:** Redesign of the JSP sprite/redraw model so JSP matches the SP1 sprite
 library's observable semantics, fixing the sprite-overlap / differential-update
 defects discovered during RAGE1's generic-sprite-library integration — while

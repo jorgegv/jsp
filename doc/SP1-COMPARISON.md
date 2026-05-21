@@ -65,7 +65,7 @@ If we want to allow 1-pixel positioning and we want to do it quickly, we need to
 
 The next structure (the Tile Array) can be discarded completely, since it is only used for the 1-byte tile IDs, and we will be using 2-byte addresses for tiles in JSP.
 
-Finally, the biggest structure (the Update Array) has also been replaced with some more compact structures: the BTT (Background Tile Table), DRT (Drawing Record Table) and DTT (Dirty Tiles Table); see [ENGINE.md](ENGINE.md)) for the details.
+Finally, the biggest structure (the Update Array) has been replaced with some more compact structures: the BTT (Background Tile Table) and DTT (Dirty Tiles Table); see [ENGINE.md](ENGINE.md) for the details.  (An earlier JSP design also kept a DRT (Drawing Record Table); the recompositing redesign removed it — see [RECOMPOSITE-REDESIGN.md](RECOMPOSITE-REDESIGN.md).)
 
 So according to the current design, the JSP memory map for a 48K program is the following one:
 
@@ -73,11 +73,13 @@ So according to the current design, the JSP memory map for a 48K program is the 
 |-----------|---------------------------------------------------|
 | F200-FFFF | Rotation tables (3.5 kB, 256-aligned)             |
 | EC00-F199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
-| E600-EB99 | Drawing Records Table, DRT (1.5 kB, 256-aligned)  |
+| E600-EBFF | free (1.5 kB) — was Drawing Records Table, DRT    |
 | E5A0-E5FF | Dirty Tiles Table, DTT (96 bytes)                 |
 | E540-E59F | Foreground Tiles Table, FTT (96 bytes)            |
 | E240-E53F | Background Attribute Table, BAT (768 bytes)       |
-| 5D00-E23F | Available for main program (~34 KB free)          |
+| 5D00-E23F | Available for main program                        |
 | 5B00-5CFF | BASIC loader (512 bytes)                          |
 
-With this memory map, JSP allows a program size of approximately 34 KB, versus 29440 bytes with SP1 — over 5 KB of additional space.
+With this memory map JSP needs even less fixed data than before: the DRT
+(1.5 KB) and the per-sprite drawing buffers were eliminated by the
+recompositing redesign, so JSP's footprint is well under half of SP1's.

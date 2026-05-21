@@ -44,44 +44,62 @@ Available tests: `test_dtt`, `test_btt_contents`, `test_btt_redraw`, `test_sprit
 
 ## Architecture
 
-The engine manages five memory tables:
+JSP uses a **deferred recompositing** model (see `doc/RECOMPOSITE-REDESIGN.md`):
+drawing/moving a sprite only updates its descriptor and marks cells dirty;
+`jsp_redraw()` recomputes the screen from the background tables plus *live*
+sprite state. Nothing is baked, so overlapping/moving/animated sprites
+render correctly (SP1-equivalent semantics).
+
+The engine manages four memory tables:
 
 | Table | Size | Purpose |
 |-------|------|---------|
-| BTT (Background Tiles Table) | 1536 B | 768 pointers to background tile data (one per screen cell) |
-| DRT (Drawing Records Table) | 1536 B | 768 pointers to what will actually be drawn (includes sprite overlays) |
+| BTT (Background Tiles Table) | 1536 B | 768 pointers to background tile data (one per cell); for a foreground cell, holds the foreground tile graphic |
 | DTT (Dirty Tiles Table) | 96 B | Bit per cell: 1 = needs redraw this frame |
-| FTT (Foreground Tiles Table) | 96 B | Bit per cell: 1 = foreground tile, drawn above sprites and never overwritten by them |
-| BAT (Background Attribute Table) | 768 B | One attribute byte per cell; restored after sprite passes through |
+| FTT (Foreground Tiles Table) | 96 B | Bit per cell: 1 = foreground tile; painted from BTT, never composited over by sprites |
+| BAT (Background Attribute Table) | 768 B | One attribute byte per cell; painted for every dirty cell by `jsp_redraw` |
+
+There is no DRT and no per-sprite drawing buffers — both were removed by the
+recompositing redesign.
 
 **Draw cycle** (per frame):
-1. For each sprite: mark old cells dirty → copy background tiles from DRT to sprite's PDB → draw sprite into PDB → update DRT to point at PDB cells → mark new cells dirty
-2. `jsp_redraw()`: walk DTT & FTT byte-by-byte; for each group of 8 cells, compute `DTT & ~FTT` and redraw those cells from DRT (non-foreground dirty cells only); for any remaining dirty FTT cells, restore DRT=BTT and clear DTT without drawing (keeps foreground tiles visible)
+1. Deferred ops: `jsp_draw_sprite`/`jsp_move_sprite`/`jsp_sprite_park` update
+   the sprite descriptor and mark old/new footprint cells dirty. Sprites
+   self-register in a bounded registry on first draw/move.
+2. `jsp_redraw()` — **Pass 1**: paint each dirty cell from BTT + BAT.
+   **Pass 2**: walk the sprite registry back-to-front (z-order); recomposite
+   each active sprite onto the live screen (read-modify-write) for its
+   dirty, in-clip, non-foreground cells. Then clear the DTT.
 
-**Foreground tiles**: drawn directly to screen at placement time via `jsp_draw_foreground_tile()`. The FTT bit then permanently protects the cell — sprites pass behind it. `jsp_apply_sprite_color()` also skips FTT cells to preserve foreground tile attributes. Use `jsp_draw_background_tile()` to demote a foreground tile back to background.
-
-**Sprite Private Drawing Buffer (PDB)**: each sprite has its own `(M+1)×(N+1)` char buffer where it composites background + sprite pixels. This is what allows overlapping sprites to work correctly.
+**Foreground tiles**: `jsp_draw_foreground_tile()` stores the tile in BTT,
+sets the FTT bit and marks the cell dirty. Pass 1 paints it; Pass 2 skips
+FTT cells, so sprites pass behind it. Use `jsp_draw_background_tile()` to
+demote a foreground tile back to background.
 
 **Memory layout (48K)**:
 ```
 F200-FFFF  Rotation tables (3.5 kB, 256-aligned)
 EC00-F199  BTT (1.5 kB)
-E600-EB99  DRT (1.5 kB)
+E600-EBFF  free (1.5 kB) — was DRT
 E5A0-E5FF  DTT (96 bytes)
 E540-E59F  FTT (96 bytes)
 E240-E53F  BAT (768 bytes)
-5D00-E23F  Program code/data (~34 KB free)
+5D00-E23F  Program code/data
 ```
 
 **Key implementation files**:
-- `lib/jsp_redraw.asm` — Screen refresh loop (hot path, performance-critical); handles FTT protection and DRT/DTT restoration for foreground cells
-- `lib/jsp_sprite.asm` — Sprite draw dispatch
-- `lib/jsp_sprite_c.c` — C wrappers for move/draw with parking and color support
+- `lib/jsp_redraw.c` — Two-pass recompositing screen refresh (C)
+- `lib/jsp_composite.c` — `jsp_composite_sprite()`: composite one sprite to screen (C)
+- `lib/jsp_sprite_c.c` — Deferred draw/move/park, sprite registry, type wrappers
+- `lib/jsp_tile.c` — Background/foreground tile placement (deferred)
 - `lib/jsp_color.c` — `jsp_apply_sprite_color()`: writes sprite attributes, skipping FTT-protected cells
 - `lib/jsp_pool.c` — Dynamic sprite allocation
 - `lib/jsp_init.c` — Engine initialization
 - `lib/sp1_draw_mask2*.asm` — Masked sprite draw (4 variants: normal, left-border, right-border, no-rotate)
 - `lib/sp1_draw_load1*.asm` — Load-mode sprite draw (4 variants, overwrites background)
+
+The redraw/compositing code is a correct C implementation; assembly
+optimisation is deferred until profiling shows it is needed.
 
 ## Development Requirements
 
