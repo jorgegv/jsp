@@ -7,6 +7,7 @@
 
 	public _jsp_draw_screen_tile
 	public _jsp_draw_screen_tile_attr
+	public jsp_draw_screen_tile_regs
 
 ; void jsp_draw_screen_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee;
 _jsp_draw_screen_tile:

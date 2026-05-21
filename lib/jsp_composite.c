@@ -16,9 +16,10 @@
 ///////////////////////////////////////////////////////////
 
 struct jsp_sprite_frame jsp_frame_sprites[ JSP_SPRITE_REGISTRY_SIZE ];
+uint8_t                 jsp_frame_count;
 
-// Fill jsp_frame_sprites[] for each active registered sprite; return count.
-uint8_t jsp_redraw_begin( void ) {
+// Fill jsp_frame_sprites[] for each active registered sprite; set count.
+void jsp_redraw_begin( void ) {
     uint8_t i, n = 0;
 
     for ( i = 0; i < jsp_sprite_registry_count; i++ ) {
@@ -54,7 +55,39 @@ uint8_t jsp_redraw_begin( void ) {
         fs->color_mask = sp->color_mask;
         fs->clip       = sp->clip;
     }
-    return n;
+    jsp_frame_count = n;
+}
+
+// Render one cell that the asm redraw flagged as sprite-covered: seed an
+// 8-byte scratch with the background tile, composite every covering frame
+// sprite in z-order, and draw the result with a single store.  Called by
+// jsp_redraw (asm) via __z88dk_fastcall; rowcol = (row << 8) | col.
+void jsp_redraw_covered_cell( uint16_t rowcol ) __z88dk_fastcall {
+    uint8_t  row = (uint8_t)( rowcol >> 8 );
+    uint8_t  col = (uint8_t)rowcol;
+    uint16_t cell = (uint16_t)row * 32 + col;
+    uint8_t  scratch[ 8 ];
+    uint8_t  attr = jsp_bat[ cell ];
+    uint8_t  covered = 0, i;
+
+    for ( i = 0; i < jsp_frame_count; i++ ) {
+        struct jsp_sprite_frame *fs = &jsp_frame_sprites[ i ];
+        if ( row < fs->r0 || row > fs->r1 || col < fs->c0 || col > fs->c1 )
+            continue;
+        if ( fs->clip && !jsp_cell_in_rect( row, col, fs->clip ) )
+            continue;
+        if ( !covered ) {
+            jsp_memcpy( scratch, jsp_btt[ cell ], 8 );
+            covered = 1;
+        }
+        jsp_composite_frame_cell( fs, row, col, scratch, &attr );
+    }
+
+    if ( covered )
+        jsp_draw_screen_tile( row, col, scratch );
+    else
+        jsp_draw_screen_tile( row, col, jsp_btt[ cell ] );
+    *( (volatile uint8_t *)( 0x5800 + cell ) ) = attr;
 }
 
 // Composite frame-sprite fs's slice of cell (row,col) into scratch[8]
