@@ -192,9 +192,14 @@ void jsp_register_sprite( struct jsp_sprite_s *sp );
 void jsp_unregister_sprite( struct jsp_sprite_s *sp );
 void jsp_registry_reset( void );
 
+// 1 if sprite sp's footprint covers (and draws) cell (row,col), else 0.
+uint8_t jsp_sprite_covers_cell( struct jsp_sprite_s *sp,
+                                uint8_t row, uint8_t col );
+
 // Composite one sprite's contribution to cell (row,col) into an 8-byte
-// scratch buffer (used by jsp_redraw). No-op if the sprite does not cover
-// the cell. *attr is updated if the sprite has a colour.
+// scratch buffer (used by jsp_redraw). The caller must have verified
+// jsp_sprite_covers_cell() first. *attr is updated if the sprite has a
+// colour.
 void jsp_composite_sprite_cell( struct jsp_sprite_s *sp,
                                 uint8_t row, uint8_t col,
                                 uint8_t *scratch, uint8_t *attr );

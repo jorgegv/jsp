@@ -3,53 +3,60 @@
 #include "jsp.h"
 
 ///////////////////////////////////////////////////////////
-// Per-cell sprite compositing
+// Per-cell sprite coverage and compositing
 //
-// jsp_composite_sprite_cell() composites one cell's slice of one sprite
-// into an 8-byte scratch buffer that already holds the background (and
-// any lower-z sprite already composited).  jsp_redraw() calls it for
-// every active sprite, for every dirty cell, so the final cell content
-// is assembled in the scratch and written to the screen with a single
-// store — see jsp_redraw.c.
+// jsp_redraw() first calls jsp_sprite_covers_cell() to decide whether a
+// sprite touches a given dirty cell; if so it seeds an 8-byte scratch
+// with the background tile and calls jsp_composite_sprite_cell() for
+// each covering sprite, in z-order.  The final cell content is then
+// written to the screen with a single store — see jsp_redraw.c.
 //
-// If the sprite does not cover (row,col) the call is a cheap no-op.
-//
-// Correct, readable C implementation; optimise to assembly later only
-// if profiling requires it.
+// Correct, readable C; can be optimised to assembly later if needed.
 ///////////////////////////////////////////////////////////
 
-// Composite sprite sp's contribution to cell (row,col) into scratch[8].
-// If sp covers the cell and has a colour, *attr is updated too.
-void jsp_composite_sprite_cell( struct jsp_sprite_s *sp,
-                                uint8_t row, uint8_t col,
-                                uint8_t *scratch, uint8_t *attr ) {
-    uint8_t  r0, c0, i, j, xrot, yrot, cs, ismask2, lastcol, pdc;
-    uint8_t *base, *graph, *gleft;
-    uint16_t rowstride;
+// 1 if sprite sp's footprint covers cell (row,col) and that cell is
+// actually drawn (in-clip, not the empty trailing column of an aligned
+// sprite); 0 otherwise.
+uint8_t jsp_sprite_covers_cell( struct jsp_sprite_s *sp,
+                                uint8_t row, uint8_t col ) {
+    uint8_t r0 = sp->ypos >> 3;
+    uint8_t c0 = sp->xpos >> 3;
+    uint8_t i, j, lastcol;
 
-    r0 = sp->ypos >> 3;
-    c0 = sp->xpos >> 3;
-
-    // reject cells outside the sprite's footprint
     if ( row < r0 || col < c0 )
-        return;
+        return 0;
     i = row - r0;
     j = col - c0;
     if ( i > sp->rows || j > sp->cols )
-        return;
+        return 0;
 
-    xrot = sp->xpos & 0x07;
     // footprint is cols+1 wide when pixel-shifted, cols wide when aligned
-    lastcol = xrot ? sp->cols : (uint8_t)( sp->cols - 1 );
+    lastcol = ( sp->xpos & 0x07 ) ? sp->cols : (uint8_t)( sp->cols - 1 );
     if ( j > lastcol )
-        return;     // aligned sprite: trailing column is empty
+        return 0;
 
     if ( sp->clip && !jsp_cell_in_rect( row, col, sp->clip ) )
-        return;     // per-cell clipping
+        return 0;
 
-    yrot    = sp->ypos & 0x07;
-    ismask2 = ( sp->type_ptr == JSP_TYPE_MASK2 );
-    cs      = ismask2 ? 16 : 8;     // cell graphic size in bytes
+    return 1;
+}
+
+// Composite sprite sp's slice of cell (row,col) into scratch[8] (which
+// already holds the background and any lower-z sprite).  The caller MUST
+// have verified jsp_sprite_covers_cell() first.  *attr is updated if the
+// sprite has a colour.
+void jsp_composite_sprite_cell( struct jsp_sprite_s *sp,
+                                uint8_t row, uint8_t col,
+                                uint8_t *scratch, uint8_t *attr ) {
+    uint8_t  i = row - ( sp->ypos >> 3 );
+    uint8_t  j = col - ( sp->xpos >> 3 );
+    uint8_t  xrot = sp->xpos & 0x07;
+    uint8_t  yrot = sp->ypos & 0x07;
+    uint8_t  ismask2 = ( sp->type_ptr == JSP_TYPE_MASK2 );
+    uint8_t  cs = ismask2 ? 16 : 8;     // cell graphic size in bytes
+    uint8_t  pdc;
+    uint8_t *base, *graph, *gleft;
+    uint16_t rowstride;
 
     // horizontal rotation table selector
     jsp_current_rottbl_msb =
