@@ -192,8 +192,12 @@ void jsp_register_sprite( struct jsp_sprite_s *sp );
 void jsp_unregister_sprite( struct jsp_sprite_s *sp );
 void jsp_registry_reset( void );
 
-// Composite one sprite onto the screen (used by jsp_redraw, Pass 2).
-void jsp_composite_sprite( struct jsp_sprite_s *sp );
+// Composite one sprite's contribution to cell (row,col) into an 8-byte
+// scratch buffer (used by jsp_redraw). No-op if the sprite does not cover
+// the cell. *attr is updated if the sprite has a colour.
+void jsp_composite_sprite_cell( struct jsp_sprite_s *sp,
+                                uint8_t row, uint8_t col,
+                                uint8_t *scratch, uint8_t *attr );
 
 // 1 if cell (row,col) is inside rect (cell coordinates), else 0
 uint8_t jsp_cell_in_rect( uint8_t row, uint8_t col, struct jsp_rect *rect );

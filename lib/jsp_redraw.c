@@ -3,53 +3,68 @@
 #include "jsp.h"
 
 ///////////////////////////////////////////////////////////
-// jsp_redraw — deferred recompositing screen refresh
+// jsp_redraw — flicker-free single-pass recompositing
 //
-// PASS 1 — background
-//   For each dirty cell: paint its BTT tile and its BAT attribute.
-//   Foreground cells are painted here too (their BTT holds the
-//   foreground tile graphic) and are then protected from Pass 2.
+// For each DIRTY cell the final image is built in an 8-byte scratch
+// buffer and then written to the screen with a SINGLE store:
 //
-// PASS 2 — sprites
-//   For each registered active sprite (registration order = back-to-front
-//   z-order): recomposite it onto the screen.  jsp_composite_sprite only
-//   touches dirty, in-clip, non-foreground cells, so it reads the live
-//   background painted by Pass 1 (and any lower-z sprite already drawn)
-//   and produces the correct stacked image.
+//   1. copy the background tile (BTT) into the scratch
+//   2. composite every active sprite that covers the cell, in z-order
+//      (registration order = back-to-front)
+//   3. store the scratch to the screen cell, and the attribute
 //
-// FINALLY — clear the Dirty Tiles Table.
+// A cell is therefore written exactly once per frame, straight to its
+// final content — the screen never shows an intermediate "background
+// only" state, so sprites do not flicker.  Foreground cells (FTT) are
+// left as the plain background tile, so sprites pass behind them.
 //
 // The displayed image is recomputed from BTT + live sprite state every
-// redraw; nothing is baked.  This matches SP1's slist semantics.
-//
-// Correct, readable C implementation — optimise to assembly later only
-// if profiling requires it.
+// redraw; nothing is baked.  This is a correct, readable C
+// implementation; it can be optimised to assembly later if needed.
 ///////////////////////////////////////////////////////////
 
 void jsp_redraw( void ) {
-    uint8_t  g, b, i;
+    uint8_t g, b, i, k;
 
-    // PASS 1 — background: walk the DTT byte by byte (8 cells per byte)
+    // walk the DTT byte by byte (8 cells per byte); skip clean bytes
     for ( g = 0; g < 96; g++ ) {
         uint8_t bits = jsp_dtt[ g ];
         if ( !bits )
             continue;
         for ( b = 0; b < 8; b++ ) {
-            if ( bits & ( 1 << b ) ) {
-                uint16_t cell = ( (uint16_t)g << 3 ) + b;
-                uint8_t  row  = cell >> 5;
-                uint8_t  col  = cell & 31;
-                jsp_draw_screen_tile( row, col, jsp_btt[ cell ] );
-                *( (volatile uint8_t *)( 0x5800 + cell ) ) = jsp_bat[ cell ];
-            }
-        }
-    }
+            uint16_t cell;
+            uint8_t  row, col, attr;
+            uint8_t  scratch[ 8 ];
+            uint8_t *bg;
 
-    // PASS 2 — sprites: recomposite every active registered sprite
-    for ( i = 0; i < jsp_sprite_registry_count; i++ ) {
-        struct jsp_sprite_s *sp = jsp_sprite_registry[ i ];
-        if ( sp->flags.initialized && sp->flags.active )
-            jsp_composite_sprite( sp );
+            if ( !( bits & ( 1 << b ) ) )
+                continue;
+
+            cell = ( (uint16_t)g << 3 ) + b;
+            row  = cell >> 5;
+            col  = cell & 31;
+
+            // 1. start from the background tile
+            bg = jsp_btt[ cell ];
+            for ( k = 0; k < 8; k++ )
+                scratch[ k ] = bg[ k ];
+            attr = jsp_bat[ cell ];
+
+            // 2. composite every active sprite covering this cell, in
+            //    z-order; foreground cells keep the plain background so
+            //    sprites pass behind them
+            if ( !jsp_ftt_is_fg( row, col ) ) {
+                for ( i = 0; i < jsp_sprite_registry_count; i++ ) {
+                    struct jsp_sprite_s *sp = jsp_sprite_registry[ i ];
+                    if ( sp->flags.initialized && sp->flags.active )
+                        jsp_composite_sprite_cell( sp, row, col, scratch, &attr );
+                }
+            }
+
+            // 3. single store of the final cell content — no flicker
+            jsp_draw_screen_tile( row, col, scratch );
+            *( (volatile uint8_t *)( 0x5800 + cell ) ) = attr;
+        }
     }
 
     // clear all dirty bits

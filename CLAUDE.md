@@ -66,10 +66,11 @@ recompositing redesign.
 1. Deferred ops: `jsp_draw_sprite`/`jsp_move_sprite`/`jsp_sprite_park` update
    the sprite descriptor and mark old/new footprint cells dirty. Sprites
    self-register in a bounded registry on first draw/move.
-2. `jsp_redraw()` — **Pass 1**: paint each dirty cell from BTT + BAT.
-   **Pass 2**: walk the sprite registry back-to-front (z-order); recomposite
-   each active sprite onto the live screen (read-modify-write) for its
-   dirty, in-clip, non-foreground cells. Then clear the DTT.
+2. `jsp_redraw()` — single-pass, flicker-free: for each dirty cell, build the
+   final image in an 8-byte scratch (copy BTT tile, then composite every
+   active sprite covering the cell in z-order), then write it to the screen
+   with one store (plus the BAT/sprite-colour attribute). Then clear the DTT.
+   The screen is never left in an intermediate background-only state.
 
 **Foreground tiles**: `jsp_draw_foreground_tile()` stores the tile in BTT,
 sets the FTT bit and marks the cell dirty. Pass 1 paints it; Pass 2 skips
@@ -88,8 +89,8 @@ E240-E53F  BAT (768 bytes)
 ```
 
 **Key implementation files**:
-- `lib/jsp_redraw.c` — Two-pass recompositing screen refresh (C)
-- `lib/jsp_composite.c` — `jsp_composite_sprite()`: composite one sprite to screen (C)
+- `lib/jsp_redraw.c` — Single-pass flicker-free recompositing screen refresh (C)
+- `lib/jsp_composite.c` — `jsp_composite_sprite_cell()`: composite one sprite's slice of one cell into a scratch buffer (C)
 - `lib/jsp_sprite_c.c` — Deferred draw/move/park, sprite registry, type wrappers
 - `lib/jsp_tile.c` — Background/foreground tile placement (deferred)
 - `lib/jsp_color.c` — `jsp_apply_sprite_color()`: writes sprite attributes, skipping FTT-protected cells

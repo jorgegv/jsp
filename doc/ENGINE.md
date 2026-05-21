@@ -79,31 +79,34 @@ for sub-cell pixel shifting).
 
 ## WORKFLOW FOR REDRAWING THE SCREEN — `jsp_redraw()`
 
-**Pass 1 — background.**  Walk the DTT byte by byte (skipping zero bytes,
-the common case).  For each dirty cell, paint its BTT tile to the screen and
-its BAT attribute to attribute memory.  Foreground cells are painted here
-too — their BTT holds the foreground tile graphic.
+`jsp_redraw()` is **single-pass and flicker-free**.  It walks the DTT byte
+by byte (skipping zero bytes, the common case) and, for each dirty cell,
+assembles the final image in an 8-byte scratch buffer and writes it to the
+screen with **one** store:
 
-**Pass 2 — sprites.**  Walk the sprite registry in z-order (back to front).
-For each active sprite, recomposite it: for every cell of its footprint that
-is dirty, in-clip and **not** a foreground cell, read the current screen
-cell (background painted by Pass 1, plus any lower-z sprite already drawn),
-composite the sprite's graphic slice into an 8-byte scratch, write it back,
-and apply the sprite's colour to attribute memory.
+1. copy the cell's BTT tile into the scratch (the background);
+2. unless the cell is a foreground cell, composite — in z-order
+   (registry/registration order, back to front) — every active sprite
+   whose footprint covers the cell, intersected with its clip rect;
+3. store the scratch to the screen cell, and the BAT attribute (merged
+   with any covering sprite's colour) to attribute memory.
 
-Because Pass 2 reads the live screen and writes back in z-order, sprite B
-drawn over sprite A correctly reads `bg+A` and produces `bg+A+B`.  Because
-it skips foreground cells, sprites pass *behind* foreground tiles.  Because
-it only touches dirty cells, a stationary sprite whose cells are not
-invalidated keeps its pixels (differential update); if another sprite moves
-through one of its cells, that cell becomes dirty and both sprites are
-recomposited there.
+A cell is therefore written exactly once per frame, straight to its final
+`background + sprites` content.  The screen is **never** left in an
+intermediate "background only" state, so sprites do not flicker — every
+screen write is a plain store of final pixels, never an erase.
+
+Compositing in z-order means sprite B drawn over sprite A produces
+`bg+A+B`.  Foreground cells are left as the plain background tile, so
+sprites pass *behind* them.  Only dirty cells are touched, so a stationary
+sprite whose cells are not invalidated keeps its pixels (differential
+update); if another sprite moves through one of its cells, that cell
+becomes dirty and both sprites are recomposited there.
 
 **Finally**, the DTT is cleared for the next frame.
 
-The current redraw and compositing code is a correct, readable C
-implementation; it can be optimised to assembly later if profiling shows it
-is needed.
+The redraw and compositing code is a correct, readable C implementation;
+it can be optimised to assembly later if profiling shows it is needed.
 
 ## MEMORY MAPS
 

@@ -3,10 +3,17 @@
 **Status:** IMPLEMENTED on branch `feat/new_composite-design` (2026-05-21).
 The redesign below was implemented in C first (the redraw and compositing
 loops are `jsp_redraw.c` and `jsp_composite.c`); assembly optimisation is
-deferred.  Notable decisions taken during implementation:
-- **FTT kept** — foreground tiles are painted from BTT by Pass 1 and Pass 2
-  skips FTT cells, so no separate Pass 3 and no DRT-style side-table is
-  needed (§10.1).
+deferred.  Notable decisions / refinements taken during implementation:
+- **Single-pass, flicker-free redraw** (refines §6.5).  The two/three-pass
+  design in §6.5 writes each sprite-covered cell twice — Pass 1 stores the
+  background, Pass 2 overwrites with background+sprite — leaving a visible
+  background-only window that flickers.  The implementation instead does
+  **one pass**: for each dirty cell it builds `background + sprites` in an
+  8-byte scratch and writes the cell **once**.  Every screen write is a
+  plain store of final pixels; nothing is ever erased.
+- **FTT kept** — foreground cells are left as the plain background tile and
+  sprites are not composited there, so sprites pass behind them; no
+  separate pass and no DRT-style side-table is needed (§10.1).
 - **z-order = registration order** — sprites self-register on first
   draw/move; `jsp_redraw` walks the registry back-to-front.  No explicit
   `z` byte was added (§10.2 blessed pool/registration order as acceptable).
