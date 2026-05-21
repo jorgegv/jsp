@@ -9,13 +9,7 @@
 extern uint8_t test_sprite_mask2_pixels[];
 
 #define TEST_POOL_SIZE  2
-#define TEST_MAX_ROWS   2
-#define TEST_MAX_COLS   2
-#define TEST_PDB_SIZE   ((TEST_MAX_ROWS+1)*(TEST_MAX_COLS+1)*8)
 static struct jsp_sprite_s test_pool[ TEST_POOL_SIZE ];
-static uint8_t test_pdb_0[ TEST_PDB_SIZE ];
-static uint8_t test_pdb_1[ TEST_PDB_SIZE ];
-static uint8_t *test_pdbs[ TEST_POOL_SIZE ];
 
 // a closed box tile for the foreground band
 static uint8_t tile_box[] = { 0xFF, 0xFF, 0xC3, 0xC3, 0xC3, 0xC3, 0xFF, 0xFF };
@@ -38,22 +32,21 @@ void test_foreground_tiles( void ) {
     jsp_redraw();
 
     // draw foreground bars: one horizontal band and two vertical bars
-    // sprites should pass behind these tiles
+    // sprites should pass behind these tiles.  The attribute goes into BAT
+    // so jsp_redraw paints it (drawing is deferred in the new model).
     for ( j = 0; j < 32; j++ ) {
         jsp_draw_foreground_tile( 11, j, tile_box );
-        *( volatile uint8_t * )( 0x5800 + 11 * 32 + j ) = PAPER_YELLOW | INK_BLUE;
+        jsp_bat[ 11 * 32 + j ] = PAPER_YELLOW | INK_BLUE;
     }
     for ( i = 0; i < 24; i++ ) {
         jsp_draw_foreground_tile( i, 10, tile_box );
-        *( volatile uint8_t * )( 0x5800 + (uint16_t)i * 32 + 10 ) = PAPER_YELLOW | INK_BLUE;
+        jsp_bat[ (uint16_t)i * 32 + 10 ] = PAPER_YELLOW | INK_BLUE;
         jsp_draw_foreground_tile( i, 21, tile_box );
-        *( volatile uint8_t * )( 0x5800 + (uint16_t)i * 32 + 21 ) = PAPER_YELLOW | INK_BLUE;
+        jsp_bat[ (uint16_t)i * 32 + 21 ] = PAPER_YELLOW | INK_BLUE;
     }
 
-    // set up pool and allocate sprites (runtime init required — z88dk/SDCC static pointer init is unreliable)
-    test_pdbs[0] = test_pdb_0;
-    test_pdbs[1] = test_pdb_1;
-    jsp_sprite_pool_init( test_pool, test_pdbs, TEST_POOL_SIZE );
+    // set up pool and allocate sprites
+    jsp_sprite_pool_init( test_pool, TEST_POOL_SIZE );
 
     x[0] = 20;  y[0] = 20;  dx[0] = 1;  dy[0] = 1;
     x[1] = 180; y[1] = 140; dx[1] = -1; dy[1] = -1;

@@ -28,16 +28,13 @@ void test_sprite_draw( void ) {
 
     jsp_init_sprite( &test_sprite );
 
-    // draw a sprite
-    jsp_draw_sprite( &test_sprite, 219, 12 );	// ASM version
-
-    // check the sprite's pdbuf after drawing
-    for ( i = 0; i < 3; i++ )
-        for ( j = 0; j < 3; j++ )
-            jsp_draw_screen_tile_attr( 19 + i, 2 + j, &test_sprite.pdbuf[ 8 * ( 3 * i + j ) ], PAPER_YELLOW | BRIGHT );
+    // draw a sprite (deferred — composited by jsp_redraw)
+    jsp_draw_sprite( &test_sprite, 219, 12 );
 
     // update screen
     jsp_redraw();
+
+    (void)i; (void)j;
 }
 
 void main( void ) {

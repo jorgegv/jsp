@@ -14,25 +14,34 @@
 // #define SPECTRUM_128 to use the 128K memory layout.  If not
 // defined, 48K memory layout will be used by default
 
+// Maximum number of sprites the redraw loop will composite.  All sprites
+// drawn/moved are registered here so jsp_redraw() can recomposite them.
+// Override with -DJSP_SPRITE_REGISTRY_SIZE=N at build time if needed.
+#ifndef JSP_SPRITE_REGISTRY_SIZE
+#define JSP_SPRITE_REGISTRY_SIZE 16
+#endif
+
 /////////////////////////////////////////
 // Engine functions
 /////////////////////////////////////////
 
 // initialize engine, set default background tile and default attribute
 void jsp_init( uint8_t *default_bg_tile, uint8_t default_attr );
-// redraw dirty parts of screen
+// redraw dirty parts of screen (three-pass recompositing)
 void jsp_redraw( void );
 
 /////////////////////////////////////////
 // Background tile functions
 /////////////////////////////////////////
 
-// draw 8x8 tile to BTT (clears foreground flag)
-void jsp_draw_background_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee;
-// restores default background (clears foreground flag)
-void jsp_delete_background_tile( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
-// draw 8x8 foreground tile: updates BTT/DRT, sets foreground flag, draws directly to screen
-void jsp_draw_foreground_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee;
+// draw 8x8 tile to BTT (clears foreground flag, marks cell dirty)
+void jsp_draw_background_tile( uint8_t row, uint8_t col, uint8_t *pix );
+// restores default background (clears foreground flag, marks cell dirty)
+void jsp_delete_background_tile( uint8_t row, uint8_t col );
+// draw 8x8 foreground tile: updates BTT, sets foreground flag, marks cell dirty.
+// Foreground cells are painted from BTT by jsp_redraw and never composited over
+// by sprites (sprites pass behind them).
+void jsp_draw_foreground_tile( uint8_t row, uint8_t col, uint8_t *pix );
 
 /////////////////////////////////////////
 // Sprite functions and data structures
@@ -58,34 +67,36 @@ struct jsp_sprite_s {
 
     // sprite flags
     struct {
-        int initialized:1;  // bit 0
-        int parked:1;       // bit 1 - sprite is off-screen; skip old-position marking on next draw
+        int initialized:1;  // bit 0 - slot is in use
+        int active:1;       // bit 1 - sprite is composited each redraw
+        int registered:1;   // bit 2 - sprite is present in the redraw registry
     } flags;		// ofs: +4
 
-    // pointer to pixel data - they can be changed at any moment, for
-    // animations, etc.
+    // pointer to pixel data - can be changed at any moment (animation, etc.)
     uint8_t *pixels;	// ofs: +5
 
-    // pointer to Private Drawing Buffer of (m+1)x(n+1) chars
-    uint8_t *pdbuf;	// ofs: +7
-
     // sprite type (16 bits) - pointer to table of drawing functions,
-    // but it's handled automatically by macros
-    uint8_t *type_ptr;	// ofs: +9
+    // handled automatically by the jsp_*_mask2 / jsp_*_load1 wrappers
+    uint8_t *type_ptr;	// ofs: +7
 
     // sprite colour attribute applied each frame (0 = no colour management)
-    uint8_t color;		// ofs: +11
+    uint8_t color;		// ofs: +9
     // colour mask: 0xF8 = preserve PAPER/BRIGHT, replace INK only; 0x00 = full replace
-    uint8_t color_mask;	// ofs: +12
+    uint8_t color_mask;	// ofs: +10
+
+    // clip rectangle (cell coords); NULL = no clipping.  Sprite cells outside
+    // this rect are not composited (per-cell clipping, matches SP1).
+    struct jsp_rect *clip;	// ofs: +11
 };
 
 void jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall;
 
-// Low-level asm sprite functions (generic dispatch via type_ptr, no parked/colour handling)
-void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
-void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) __smallc __z88dk_callee;
+// Deferred sprite operations: they update sprite state and mark cells dirty;
+// the actual compositing happens in the next jsp_redraw().
+void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
+void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
 
-// C-level wrappers: set type, handle parked flag, apply colour
+// C-level wrappers: set sprite type, then defer draw/move
 void jsp_draw_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
 void jsp_move_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
 void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
@@ -94,7 +105,7 @@ void jsp_move_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos 
 // Safe off-screen parking: mark cells dirty and flag sprite as inactive
 void jsp_sprite_park( struct jsp_sprite_s *sp );
 
-// Frame-based movement (sets pixels, handles parked + colour)
+// Frame-based movement (sets pixels, then defers move)
 void jsp_move_sprite_mask2_frame( struct jsp_sprite_s *sp, uint8_t *frame,
                                   uint8_t xpos, uint8_t ypos );
 void jsp_move_sprite_load1_frame( struct jsp_sprite_s *sp, uint8_t *frame,
@@ -107,11 +118,12 @@ uint8_t jsp_sprite_in_rect( struct jsp_sprite_s *sp,
                             struct jsp_rect *rect,
                             uint8_t xpos, uint8_t ypos );
 
-// Dynamic sprite pool — caller supplies storage, JSP manages slot allocation
-// pdbs is an array of pointers, one per slot; each points to a PDB buffer of
-// at least (rows+1)*(cols+1)*8 bytes for the sprite that will occupy that slot.
-void jsp_sprite_pool_init( struct jsp_sprite_s *pool, uint8_t **pdbs,
-                           uint8_t pool_size );
+// Set the per-cell clip rectangle for a sprite (NULL = no clipping)
+void jsp_sprite_set_clip( struct jsp_sprite_s *sp, struct jsp_rect *clip );
+
+// Dynamic sprite pool — caller supplies storage, JSP manages slot allocation.
+// No per-sprite drawing buffers are needed any more (recompositing model).
+void jsp_sprite_pool_init( struct jsp_sprite_s *pool, uint8_t pool_size );
 struct jsp_sprite_s *jsp_sprite_alloc( uint8_t rows, uint8_t cols );
 void jsp_sprite_free( struct jsp_sprite_s *sp );
 
@@ -151,24 +163,40 @@ void jsp_tile_register( uint8_t idx, uint8_t *gfx_ptr );
 // Draw tile at (row,col) with colour attribute; tile<256 = table lookup, else direct pointer
 void jsp_tile_put( uint8_t row, uint8_t col, uint8_t attr, uint16_t tile );
 
-#define DEFINE_SPRITE(_name,_rows,_cols,_pixels,_xpos,_ypos,_type) uint8_t _name##_pdbuf[ ( (_rows) + 1 ) * ( (_cols) + 1 ) * 8 ]; struct jsp_sprite_s _name = { .rows = (_rows), .cols = (_cols), .xpos = (_xpos), .ypos = (_ypos), .flags.initialized = 1, .pixels = (_pixels), .pdbuf = _name##_pdbuf, .type_ptr = _type }
+// Define a standalone sprite (not pool-allocated).  No drawing buffer is
+// needed any more — sprites composite straight to the screen during redraw.
+#define DEFINE_SPRITE(_name,_rows,_cols,_pixels,_xpos,_ypos,_type) \
+    struct jsp_sprite_s _name = { .rows = (_rows), .cols = (_cols), \
+        .xpos = (_xpos), .ypos = (_ypos), .flags.initialized = 1, \
+        .pixels = (_pixels), .type_ptr = (_type) }
 
 //////////////////////////////////////////////////////
 // Internal JSP Library functions and library data
 //////////////////////////////////////////////////////
 
 extern uint8_t	jsp_rottbl[];
-extern uint16_t	*jsp_btt[];
-extern uint16_t	*jsp_drt[];
+extern uint8_t	*jsp_btt[];
 extern uint8_t	jsp_dtt[];
 extern uint8_t	jsp_ftt[];
 extern uint8_t	jsp_bat[];
 extern uint8_t	*jsp_default_bg_tile;
-extern uint8_t jsp_current_rottbl_msb;
+extern uint8_t  jsp_current_rottbl_msb;
 
 extern uint8_t JSP_TYPE_LOAD1[];
 extern uint8_t JSP_TYPE_MASK2[];
 
+// Sprite registry — walked by jsp_redraw to recomposite all active sprites.
+extern struct jsp_sprite_s *jsp_sprite_registry[ JSP_SPRITE_REGISTRY_SIZE ];
+extern uint8_t              jsp_sprite_registry_count;
+void jsp_register_sprite( struct jsp_sprite_s *sp );
+void jsp_unregister_sprite( struct jsp_sprite_s *sp );
+void jsp_registry_reset( void );
+
+// Composite one sprite onto the screen (used by jsp_redraw, Pass 2).
+void jsp_composite_sprite( struct jsp_sprite_s *sp );
+
+// 1 if cell (row,col) is inside rect (cell coordinates), else 0
+uint8_t jsp_cell_in_rect( uint8_t row, uint8_t col, struct jsp_rect *rect );
 
 // mark/unmark one cell for redraw
 void jsp_dtt_mark_dirty( uint8_t row, uint8_t col ) __smallc __z88dk_callee;

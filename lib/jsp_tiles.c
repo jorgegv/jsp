@@ -5,7 +5,7 @@
 extern uint8_t jsp_bat[];
 
 ///////////////////////////////////////////////////////////
-// P1-8: Tile table (256-entry pointer table)
+// Tile table (256-entry pointer table)
 ///////////////////////////////////////////////////////////
 
 // 256-entry tile table; entries 32-127 pre-filled with ROM font by jsp_init.
@@ -26,7 +26,8 @@ void jsp_tile_register( uint8_t idx, uint8_t *gfx_ptr ) {
 // Draw tile at (row, col) with colour attribute.
 //   tile < 256  : look up via jsp_tile_table
 //   tile >= 256 : treat as direct 8-byte graphic pointer
-// Writes attr to ZX Spectrum attribute memory and BAT.
+// Deferred: stores pixels in BTT and the attribute in BAT, marks the cell
+// dirty.  jsp_redraw() paints both — no immediate screen writes.
 void jsp_tile_put( uint8_t row, uint8_t col, uint8_t attr, uint16_t tile ) {
     uint8_t  *pix;
     uint16_t  idx = (uint16_t)row * 32 + col;
@@ -36,18 +37,16 @@ void jsp_tile_put( uint8_t row, uint8_t col, uint8_t attr, uint16_t tile ) {
     else
         pix = (uint8_t *)tile;
 
-    // Draw pixel data via BTT/DRT (marks cell dirty for next jsp_redraw)
-    jsp_draw_background_tile( row, col, pix );
-
-    // Set colour attribute directly and store in BAT
-    *( (volatile uint8_t *)( 0x5800 + idx ) ) = attr;
     jsp_bat[idx] = attr;
+    jsp_draw_background_tile( row, col, pix );  // updates BTT, marks dirty
 }
 
 ///////////////////////////////////////////////////////////
-// P1-9: Rectangle clear
+// Rectangle clear
 ///////////////////////////////////////////////////////////
 
+// Deferred clear: updates BTT / BAT and marks cells dirty; jsp_redraw()
+// performs the actual screen drawing.
 void jsp_clear_rect( struct jsp_rect *rect, uint8_t attr,
                      uint8_t ch, uint8_t flags ) {
     uint8_t r, c;
@@ -64,18 +63,20 @@ void jsp_clear_rect( struct jsp_rect *rect, uint8_t attr,
     for ( r = rect->row; r < rect->row + rect->height; r++ ) {
         for ( c = rect->col; c < rect->col + rect->width; c++ ) {
             uint16_t idx = (uint16_t)r * 32 + c;
-            if ( flags & JSP_RFLAG_TILE )
-                jsp_draw_background_tile( r, c, tile_ptr );
-            if ( flags & JSP_RFLAG_COLOUR ) {
-                *( (volatile uint8_t *)( 0x5800 + idx ) ) = attr;
+            if ( flags & JSP_RFLAG_COLOUR )
                 jsp_bat[idx] = attr;
+            if ( flags & JSP_RFLAG_TILE ) {
+                jsp_draw_background_tile( r, c, tile_ptr );  // marks dirty
+            } else if ( flags & JSP_RFLAG_COLOUR ) {
+                // colour-only: still needs a redraw to push the attribute
+                jsp_dtt_mark_dirty( r, c );
             }
         }
     }
 }
 
 ///////////////////////////////////////////////////////////
-// P1-10: Rectangle invalidation
+// Rectangle invalidation
 ///////////////////////////////////////////////////////////
 
 void jsp_invalidate_rect( struct jsp_rect *rect ) {

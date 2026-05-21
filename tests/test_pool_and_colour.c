@@ -10,14 +10,7 @@
 extern uint8_t test_sprite_mask2_pixels[];
 
 #define TEST_POOL_SIZE  3
-#define TEST_MAX_ROWS   2
-#define TEST_MAX_COLS   2
-#define TEST_PDB_SIZE   ((TEST_MAX_ROWS+1)*(TEST_MAX_COLS+1)*8)
 static struct jsp_sprite_s test_pool[ TEST_POOL_SIZE ];
-static uint8_t test_pdb_0[ TEST_PDB_SIZE ];
-static uint8_t test_pdb_1[ TEST_PDB_SIZE ];
-static uint8_t test_pdb_2[ TEST_PDB_SIZE ];
-static uint8_t *test_pdbs[ TEST_POOL_SIZE ];
 
 void test_pool_and_colour( void ) {
     uint8_t i, j;
@@ -37,11 +30,8 @@ void test_pool_and_colour( void ) {
     }
     jsp_redraw();
 
-    // set up pool (runtime init required — z88dk/SDCC static pointer init is unreliable)
-    test_pdbs[0] = test_pdb_0;
-    test_pdbs[1] = test_pdb_1;
-    test_pdbs[2] = test_pdb_2;
-    jsp_sprite_pool_init( test_pool, test_pdbs, TEST_POOL_SIZE );
+    // set up pool
+    jsp_sprite_pool_init( test_pool, TEST_POOL_SIZE );
 
     // allocate sprites from pool, set colours, initial positions and velocities
     srand( 42 );
