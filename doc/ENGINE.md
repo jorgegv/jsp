@@ -143,7 +143,7 @@ program area below the block.
 | EBA0-EBFF | Dirty Tiles Table, DTT (96 bytes)                 |
 | EB40-EB9F | Foreground Tiles Table, FTT (96 bytes)            |
 | E840-EB3F | Background Attribute Table, BAT (768 bytes)       |
-| 5D00-E83F | free for program code and data (was DRT region)   |
+| 5D00-E83F | free for program code and data                    |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
 
@@ -158,6 +158,6 @@ The layout is similar to 48K mode, but down 16K, in order to free up the C000-FF
 | ABA0-ABFF | Dirty Tiles Table, DTT (96 bytes)                 |
 | AB40-AB9F | Foreground Tiles Table, FTT (96 bytes)            |
 | A840-AB3F | Background Attribute Table, BAT (768 bytes)       |
-| 5D00-A83F | free for program code and data (was DRT region)   |
+| 5D00-A83F | free for program code and data                    |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
