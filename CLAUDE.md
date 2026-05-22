@@ -66,16 +66,21 @@ recompositing redesign.
 1. Deferred ops: `jsp_draw_sprite`/`jsp_move_sprite`/`jsp_sprite_park` update
    the sprite descriptor and mark old/new footprint cells dirty. Sprites
    self-register in a bounded registry on first draw/move.
-2. `jsp_redraw()` — single-pass, flicker-free: for each dirty cell, build the
-   final image in an 8-byte scratch (copy BTT tile, then composite every
-   active sprite covering the cell in z-order), then write it to the screen
-   with one store (plus the BAT/sprite-colour attribute). Then clear the DTT.
-   The screen is never left in an intermediate background-only state.
+2. `jsp_redraw()` — single-pass, flicker-free. `jsp_redraw_begin()` first
+   precomputes each active sprite's footprint rectangle + compositing
+   constants into `jsp_frame_sprites[]`. The asm DTT-walk then visits each
+   dirty cell: a foreground or uncovered cell is blitted straight from BTT +
+   BAT (the common case — no scratch); a sprite-covered cell goes to the C
+   helper `jsp_redraw_covered_cell()`, which builds the final image in an
+   8-byte scratch (BTT tile + every covering sprite in z-order) and writes it
+   with one store. Each cell is written exactly once — no intermediate
+   background-only state. Then the DTT is cleared.
 
 **Foreground tiles**: `jsp_draw_foreground_tile()` stores the tile in BTT,
-sets the FTT bit and marks the cell dirty. Pass 1 paints it; Pass 2 skips
-FTT cells, so sprites pass behind it. Use `jsp_draw_background_tile()` to
-demote a foreground tile back to background.
+sets the FTT bit and marks the cell dirty. `jsp_redraw` blits foreground
+cells from BTT and never composites sprites onto them, so sprites pass
+behind. Use `jsp_draw_background_tile()` to demote a foreground tile back
+to background.
 
 **Memory layout (48K)**:
 ```
@@ -89,18 +94,21 @@ E240-E53F  BAT (768 bytes)
 ```
 
 **Key implementation files**:
-- `lib/jsp_redraw.c` — Single-pass flicker-free recompositing screen refresh (C)
-- `lib/jsp_composite.c` — `jsp_composite_sprite_cell()`: composite one sprite's slice of one cell into a scratch buffer (C)
+- `lib/jsp_redraw.asm` — Single-pass flicker-free redraw: the DTT-walk hot loop, with the inline background-cell blit (assembly)
+- `lib/jsp_composite.c` — `jsp_redraw_begin()` (per-frame per-sprite precompute), `jsp_composite_frame_cell()` and `jsp_redraw_covered_cell()` (per-covered-cell compositing) (C)
 - `lib/jsp_sprite_c.c` — Deferred draw/move/park, sprite registry, type wrappers
 - `lib/jsp_tile.c` — Background/foreground tile placement (deferred)
 - `lib/jsp_color.c` — `jsp_apply_sprite_color()`: writes sprite attributes, skipping FTT-protected cells
 - `lib/jsp_pool.c` — Dynamic sprite allocation
 - `lib/jsp_init.c` — Engine initialization
+- `lib/jsp_screen.asm` — `jsp_draw_screen_tile` (8-byte cell blit; register entry `jsp_draw_screen_tile_regs`)
 - `lib/sp1_draw_mask2*.asm` — Masked sprite draw (4 variants: normal, left-border, right-border, no-rotate)
 - `lib/sp1_draw_load1*.asm` — Load-mode sprite draw (4 variants, overwrites background)
 
-The redraw/compositing code is a correct C implementation; assembly
-optimisation is deferred until profiling shows it is needed.
+The redraw splits work between an assembly DTT-walk hot loop and C
+(per-frame precompute, per-covered-cell compositing); the pixel
+rotation/masking kernels are the original SP1 assembler. New library code
+is written in C first and selectively moved to assembly once correct.
 
 ## Development Requirements
 

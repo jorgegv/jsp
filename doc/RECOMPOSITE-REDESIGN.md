@@ -1,22 +1,30 @@
 # JSP RECOMPOSITE REDESIGN — Analysis, Design & Implementation Handover
 
-**Status:** IMPLEMENTED on branch `feat/new_composite-design` (2026-05-21).
-The redesign below was implemented in C first (the redraw and compositing
-loops are `jsp_redraw.c` and `jsp_composite.c`); assembly optimisation is
-deferred.  Notable decisions / refinements taken during implementation:
+**Status:** IMPLEMENTED on branch `feat/new_composite-design`
+(redesign 2026-05-21, redraw optimisation 2026-05-22).
+The redesign below was implemented in C first, then the redraw hot path
+was selectively moved to assembly.  Notable decisions / refinements taken
+during implementation:
 - **Single-pass, flicker-free redraw** (refines §6.5).  The two/three-pass
   design in §6.5 writes each sprite-covered cell twice — Pass 1 stores the
   background, Pass 2 overwrites with background+sprite — leaving a visible
   background-only window that flickers.  The implementation instead does
-  **one pass**: for each dirty cell it builds `background + sprites` in an
-  8-byte scratch and writes the cell **once**.  Every screen write is a
-  plain store of final pixels; nothing is ever erased.
+  **one pass**: each cell is written exactly once, straight to its final
+  `background + sprites` content.  Every screen write is a plain store of
+  final pixels; nothing is ever erased.
 - **FTT kept** — foreground cells are left as the plain background tile and
   sprites are not composited there, so sprites pass behind them; no
   separate pass and no DRT-style side-table is needed (§10.1).
 - **z-order = registration order** — sprites self-register on first
   draw/move; `jsp_redraw` walks the registry back-to-front.  No explicit
   `z` byte was added (§10.2 blessed pool/registration order as acceptable).
+- **Redraw structure (current).**  `jsp_redraw_begin()` (C) precomputes a
+  per-sprite `jsp_sprite_frame` (footprint rectangle + compositing
+  constants) once per frame.  The DTT-walk hot loop is assembly
+  (`jsp_redraw.asm`): it blits foreground / uncovered cells straight from
+  BTT inline, and hands sprite-covered cells to the C compositor
+  (`jsp_redraw_covered_cell`).  The SP1 `sp1_draw_*` pixel kernels are
+  reused unchanged.
 - **Original design date:** 2026-05-19.
 **Scope:** Redesign of the JSP sprite/redraw model so JSP matches the SP1 sprite
 library's observable semantics, fixing the sprite-overlap / differential-update
@@ -82,15 +90,15 @@ game data, `minimal_jsp` (JSP) **must** render pixel-identically to `minimal`
 
 ### 3.1 Per-cell tables (768 cells, 32×24 screen), from `lib/jsp_data.c`
 
-| Table | Type | Size | Purpose |
-|-------|------|------|---------|
-| `jsp_rottbl` | byte[7·2·256] | 3584 B | horizontal pixel rotation tables |
-| `jsp_btt` | ptr[768] | 1536 B | Background Tiles Table — bg tile graphic per cell |
-| `jsp_drt` | ptr[768] | 1536 B | Drawing Records Table — pointer to the *final* (composited) tile per cell |
-| `jsp_dtt` | bit[768] | 96 B | Dirty Tiles Table — cells needing redraw |
-| `jsp_ftt` | bit[768] | 96 B | Foreground Tiles Table — cells whose tile is above sprites |
-| `jsp_bat` | byte[768] | 768 B | Background Attribute Table — bg attribute per cell |
-| `jsp_tile_table` | ptr[256] | 512 B | tile-code → graphic lookup |
+| Table            | Type          | Size   | Purpose                                                                   |
+|------------------|---------------|--------|---------------------------------------------------------------------------|
+| `jsp_rottbl`     | byte[7·2·256] | 3584 B | horizontal pixel rotation tables                                          |
+| `jsp_btt`        | ptr[768]      | 1536 B | Background Tiles Table — bg tile graphic per cell                         |
+| `jsp_drt`        | ptr[768]      | 1536 B | Drawing Records Table — pointer to the *final* (composited) tile per cell |
+| `jsp_dtt`        | bit[768]      | 96 B   | Dirty Tiles Table — cells needing redraw                                  |
+| `jsp_ftt`        | bit[768]      | 96 B   | Foreground Tiles Table — cells whose tile is above sprites                |
+| `jsp_bat`        | byte[768]     | 768 B  | Background Attribute Table — bg attribute per cell                        |
+| `jsp_tile_table` | ptr[256]      | 512 B  | tile-code → graphic lookup                                                |
 
 Fixed JSP region (48K map, `jspdata`): `0xE240–0xFFFF` = **7616 B**
 (`rottbl+btt+drt+dtt+ftt+bat`); plus `jsp_tile_table` 512 B elsewhere.
@@ -136,23 +144,23 @@ CORRECT against source; one severity was corrected (overstated).
 
 ### 4.1 API mapping (RAGE1 `gfx_*` → backends)
 
-| `gfx_*` op | SP1 symbol | JSP symbol |
-|---|---|---|
-| `gfx_init` | `sp1_Initialize` + invalidate + update | `jsp_init` + `jsp_sprite_pool_init` + invalidate + update |
-| `gfx_invalidate` | `sp1_Invalidate` | `jsp_invalidate_rect` |
-| `gfx_update` | `sp1_UpdateNow` | `jsp_redraw` |
-| `gfx_sprite_create` | `sp1_CreateSpr` + `sp1_AddColSpr` loop | `jsp_sprite_alloc` |
-| `gfx_sprite_destroy` | `sp1_DeleteSpr` | `jsp_sprite_free` |
-| `gfx_sprite_set_color` | `sp1_IterateSprChar` + callback | `jsp_sprite_set_color` |
-| `gfx_sprite_set_threshold` | sets `xthresh`/`ythresh` | no-op |
-| `gfx_sprite_move_pixel` | `sp1_MoveSprPix` | `gfx_jsp_move_sprite_clipped` → `jsp_move_sprite_mask2_frame` |
-| `gfx_sprite_move_cell` | `sp1_MoveSprAbs(...,r,c,0,0)` | `gfx_jsp_move_sprite_clipped(...,c·8,r·8)` |
-| `gfx_sprite_get_row/col/width/height` | struct fields | `ypos/8`, `xpos/8`, `cols`, `rows` |
-| `gfx_tile_put` | `sp1_PrintAtInv` | `jsp_tile_put` |
-| `gfx_tile_register` | `sp1_TileEntry` | `jsp_tile_register` |
-| `gfx_clear_rect` | `sp1_ClearRectInv` | `jsp_clear_rect` |
-| `gfx_print_set_pos` | `sp1_SetPrintPos` | `jsp_print_set_pos` |
-| `gfx_print_string` | `sp1_PrintString` | `jsp_print_string` |
+| `gfx_*` op                            | SP1 symbol                             | JSP symbol                                                    |
+|---------------------------------------|----------------------------------------|---------------------------------------------------------------|
+| `gfx_init`                            | `sp1_Initialize` + invalidate + update | `jsp_init` + `jsp_sprite_pool_init` + invalidate + update     |
+| `gfx_invalidate`                      | `sp1_Invalidate`                       | `jsp_invalidate_rect`                                         |
+| `gfx_update`                          | `sp1_UpdateNow`                        | `jsp_redraw`                                                  |
+| `gfx_sprite_create`                   | `sp1_CreateSpr` + `sp1_AddColSpr` loop | `jsp_sprite_alloc`                                            |
+| `gfx_sprite_destroy`                  | `sp1_DeleteSpr`                        | `jsp_sprite_free`                                             |
+| `gfx_sprite_set_color`                | `sp1_IterateSprChar` + callback        | `jsp_sprite_set_color`                                        |
+| `gfx_sprite_set_threshold`            | sets `xthresh`/`ythresh`               | no-op                                                         |
+| `gfx_sprite_move_pixel`               | `sp1_MoveSprPix`                       | `gfx_jsp_move_sprite_clipped` → `jsp_move_sprite_mask2_frame` |
+| `gfx_sprite_move_cell`                | `sp1_MoveSprAbs(...,r,c,0,0)`          | `gfx_jsp_move_sprite_clipped(...,c·8,r·8)`                    |
+| `gfx_sprite_get_row/col/width/height` | struct fields                          | `ypos/8`, `xpos/8`, `cols`, `rows`                            |
+| `gfx_tile_put`                        | `sp1_PrintAtInv`                       | `jsp_tile_put`                                                |
+| `gfx_tile_register`                   | `sp1_TileEntry`                        | `jsp_tile_register`                                           |
+| `gfx_clear_rect`                      | `sp1_ClearRectInv`                     | `jsp_clear_rect`                                              |
+| `gfx_print_set_pos`                   | `sp1_SetPrintPos`                      | `jsp_print_set_pos`                                           |
+| `gfx_print_string`                    | `sp1_PrintString`                      | `jsp_print_string`                                            |
 
 ### 4.2 The six mismatches
 

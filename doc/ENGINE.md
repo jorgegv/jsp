@@ -79,34 +79,51 @@ for sub-cell pixel shifting).
 
 ## WORKFLOW FOR REDRAWING THE SCREEN — `jsp_redraw()`
 
-`jsp_redraw()` is **single-pass and flicker-free**.  It walks the DTT byte
-by byte (skipping zero bytes, the common case) and, for each dirty cell,
-assembles the final image in an 8-byte scratch buffer and writes it to the
-screen with **one** store:
+`jsp_redraw()` is **single-pass and flicker-free**: each screen cell is
+written exactly once per frame, straight to its final `background+sprites`
+content.  The screen is never left in an intermediate "background only"
+state, so sprites do not flicker — every screen write is a plain store of
+final pixels, never an erase.
 
-1. copy the cell's BTT tile into the scratch (the background);
-2. unless the cell is a foreground cell, composite — in z-order
-   (registry/registration order, back to front) — every active sprite
-   whose footprint covers the cell, intersected with its clip rect;
-3. store the scratch to the screen cell, and the BAT attribute (merged
-   with any covering sprite's colour) to attribute memory.
+It runs in three steps:
 
-A cell is therefore written exactly once per frame, straight to its final
-`background + sprites` content.  The screen is **never** left in an
-intermediate "background only" state, so sprites do not flicker — every
-screen write is a plain store of final pixels, never an erase.
+**1. Per-frame precompute — `jsp_redraw_begin()`.**  Walks the sprite
+registry and, for every *active* sprite, fills one `jsp_sprite_frame`
+entry in `jsp_frame_sprites[]`: the sprite's footprint rectangle
+(`r0,c0,r1,c1`) plus the constants the compositor needs (rotation-table
+selector, pixel base pointer, row stride, cell size, colour).  Doing this
+once per frame keeps it out of the per-cell path.
 
-Compositing in z-order means sprite B drawn over sprite A produces
-`bg+A+B`.  Foreground cells are left as the plain background tile, so
-sprites pass *behind* them.  Only dirty cells are touched, so a stationary
-sprite whose cells are not invalidated keeps its pixels (differential
-update); if another sprite moves through one of its cells, that cell
-becomes dirty and both sprites are recomposited there.
+**2. The DTT walk (assembly, `lib/jsp_redraw.asm`).**  Walks the DTT byte
+by byte, skipping zero bytes (the common case) and, more importantly,
+skipping them without losing place — the 96 *groups* are always iterated
+in order even though most are clean.  For each dirty cell:
 
-**Finally**, the DTT is cleared for the next frame.
+- **foreground cell, or no active sprite covers it** — the common case
+  (the whole initial redraw, every sprite trail): blit the cell's BTT tile
+  and BAT attribute straight to the screen.  No scratch buffer, no copy.
+- **a sprite covers it** — hand the cell to the C helper
+  `jsp_redraw_covered_cell()`: it seeds an 8-byte scratch with the BTT
+  tile, composites every covering frame-sprite in z-order (registration
+  order, back to front), merges sprite colour into the attribute, and
+  writes the cell with a single store.
 
-The redraw and compositing code is a correct, readable C implementation;
-it can be optimised to assembly later if profiling shows it is needed.
+Coverage is a plain rectangle test against the precomputed
+`jsp_frame_sprites[]` entries.
+
+**3.** The DTT is cleared for the next frame.
+
+Compositing in z-order means sprite B over sprite A produces `bg+A+B`.
+Foreground cells keep the plain background tile, so sprites pass *behind*
+them.  Only dirty cells are touched, so a stationary sprite whose cells
+are not invalidated keeps its pixels (differential update); if another
+sprite moves through one of its cells, that cell becomes dirty and both
+sprites are recomposited there.
+
+The DTT-walk hot loop is assembly; the per-frame precompute and the
+per-covered-cell compositing are C (`lib/jsp_composite.c`).  The actual
+pixel rotation/masking is still done by the original SP1 `sp1_draw_*`
+assembler kernels.
 
 ## MEMORY MAPS
 
