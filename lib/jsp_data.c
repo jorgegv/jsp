@@ -6,23 +6,30 @@
 // The recompositing redesign removed the DRT (Drawing Records Table):
 // there is no longer a "current composite" pointer per cell — the screen
 // is recomputed from BTT + live sprite state on every jsp_redraw().
-// The 1.5 KB region formerly used by DRT is now free.
+//
+// The five JSP tables are packed into one contiguous block at the top of
+// RAM (ROTTBL + BTT + DTT + FTT + BAT, 6080 bytes); the space formerly
+// taken by the DRT is now plain free RAM contiguous with the program
+// area, below that block.  ROTTBL stays 256-aligned (jsp_current_rottbl_msb
+// is derived from its high byte).
+//
+//   48K : block 0xE840-0xFFFF, free RAM below 0xE840
+//   128K: block 0xA840-0xBFFF, free RAM below 0xA840 (C000-FFFF stays
+//         clear for banking)
 /////////////////////////////////////////////////////////////////////
 
 #ifdef SPECTRUM_128
     #define ROTTBL_ADDR		0xB200
     #define BTT_ADDR		0xAC00
-    // 0xA600-0xABFF (1.5 KB) free — was DRT
-    #define DTT_ADDR		0xA5A0
-    #define FTT_ADDR		0xA540
-    #define BAT_ADDR		0xA240
+    #define DTT_ADDR		0xABA0
+    #define FTT_ADDR		0xAB40
+    #define BAT_ADDR		0xA840
 #else
     #define ROTTBL_ADDR		0xF200
     #define BTT_ADDR		0xEC00
-    // 0xE600-0xEBFF (1.5 KB) free — was DRT
-    #define DTT_ADDR		0xE5A0
-    #define FTT_ADDR		0xE540
-    #define BAT_ADDR		0xE240
+    #define DTT_ADDR		0xEBA0
+    #define FTT_ADDR		0xEB40
+    #define BAT_ADDR		0xE840
 #endif
 
 // rotation tables

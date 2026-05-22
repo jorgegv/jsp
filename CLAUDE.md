@@ -85,15 +85,16 @@ cells from BTT and never composites sprites onto them, so sprites pass
 behind. Use `jsp_draw_background_tile()` to demote a foreground tile back
 to background.
 
-**Memory layout (48K)**:
+**Memory layout (48K)** — the five JSP tables form one contiguous block
+at the top of RAM; the space the DRT used is now free, contiguous with
+the program area:
 ```
 F200-FFFF  Rotation tables (3.5 kB, 256-aligned)
-EC00-F199  BTT (1.5 kB)
-E600-EBFF  free (1.5 kB) — was DRT
-E5A0-E5FF  DTT (96 bytes)
-E540-E59F  FTT (96 bytes)
-E240-E53F  BAT (768 bytes)
-5D00-E23F  Program code/data
+EC00-F1FF  BTT (1.5 kB)
+EBA0-EBFF  DTT (96 bytes)
+EB40-EB9F  FTT (96 bytes)
+E840-EB3F  BAT (768 bytes)
+5D00-E83F  Program code/data + free (was DRT region)
 ```
 
 **Key implementation files**:

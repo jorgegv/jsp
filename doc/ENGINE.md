@@ -31,7 +31,8 @@ for the full rationale).
 There is **no DRT** (Drawing Records Table) and there are **no per-sprite
 drawing buffers (PDB)** any more — both belonged to the old baking model and
 were removed by the recompositing redesign.  The 1.5 KB formerly used by the
-DRT is now free.
+DRT is now free RAM, contiguous with the program area (see the memory map
+below: the five JSP tables are packed into one block at the top of RAM).
 
 ## SPRITE DEFINITIONS
 
@@ -131,15 +132,18 @@ Be careful when using JSP with the standard ROM interrupt routine, some of its r
 
 **48K MODE**
 
+The five JSP tables form one contiguous block at the top of RAM; the
+space the DRT used to occupy is now plain free RAM, contiguous with the
+program area below the block.
+
 | Range     | Contents                                          |
 |-----------|---------------------------------------------------|
 | F200-FFFF | Rotation tables (3.5 kB, 256-aligned)             |
-| EC00-F199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
-| E600-EBFF | free (1.5 kB) — was Drawing Records Table, DRT    |
-| E5A0-E5FF | Dirty Tiles Table, DTT (96 bytes)                 |
-| E540-E59F | Foreground Tiles Table, FTT (96 bytes)            |
-| E240-E53F | Background Attribute Table, BAT (768 bytes)       |
-| 5D00-E23F | free for program code and data                   |
+| EC00-F1FF | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
+| EBA0-EBFF | Dirty Tiles Table, DTT (96 bytes)                 |
+| EB40-EB9F | Foreground Tiles Table, FTT (96 bytes)            |
+| E840-EB3F | Background Attribute Table, BAT (768 bytes)       |
+| 5D00-E83F | free for program code and data (was DRT region)   |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
 
@@ -150,11 +154,10 @@ The layout is similar to 48K mode, but down 16K, in order to free up the C000-FF
 | Range     | Contents                                          |
 |-----------|---------------------------------------------------|
 | B200-BFFF | Rotation tables (3.5 kB, 256-aligned)             |
-| AC00-B199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
-| A600-ABFF | free (1.5 kB) — was Drawing Records Table, DRT    |
-| A5A0-A5FF | Dirty Tiles Table, DTT (96 bytes)                 |
-| A540-A59F | Foreground Tiles Table, FTT (96 bytes)            |
-| A240-A53F | Background Attribute Table, BAT (768 bytes)       |
-| 5D00-A23F | free for program code and data                   |
+| AC00-B1FF | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
+| ABA0-ABFF | Dirty Tiles Table, DTT (96 bytes)                 |
+| AB40-AB9F | Foreground Tiles Table, FTT (96 bytes)            |
+| A840-AB3F | Background Attribute Table, BAT (768 bytes)       |
+| 5D00-A83F | free for program code and data (was DRT region)   |
 
 - These structures should not be in contended memory, since they must be checked at top speed.

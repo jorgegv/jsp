@@ -72,13 +72,16 @@ So according to the current design, the JSP memory map for a 48K program is the 
 | Range     | Contents                                          |
 |-----------|---------------------------------------------------|
 | F200-FFFF | Rotation tables (3.5 kB, 256-aligned)             |
-| EC00-F199 | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
-| E600-EBFF | free (1.5 kB) — was Drawing Records Table, DRT    |
-| E5A0-E5FF | Dirty Tiles Table, DTT (96 bytes)                 |
-| E540-E59F | Foreground Tiles Table, FTT (96 bytes)            |
-| E240-E53F | Background Attribute Table, BAT (768 bytes)       |
-| 5D00-E23F | Available for main program                        |
+| EC00-F1FF | Background Tiles Table, BTT (1.5 kB, 256-aligned) |
+| EBA0-EBFF | Dirty Tiles Table, DTT (96 bytes)                 |
+| EB40-EB9F | Foreground Tiles Table, FTT (96 bytes)            |
+| E840-EB3F | Background Attribute Table, BAT (768 bytes)       |
+| 5D00-E83F | Available for main program (was DRT region)       |
 | 5B00-5CFF | BASIC loader (512 bytes)                          |
+
+The five JSP tables are packed into a single contiguous block at the top
+of RAM (E840-FFFF); the 1.5 kB the DRT used to take is now plain free RAM,
+contiguous with the main program area.
 
 With this memory map JSP needs even less fixed data than before: the DRT
 (1.5 KB) and the per-sprite drawing buffers were eliminated by the
