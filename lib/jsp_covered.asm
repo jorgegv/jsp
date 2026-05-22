@@ -161,8 +161,15 @@ cc_clip_ok:
 	ld d,(hl)			; DE = jsp_btt[cell] tile pointer
 	ld hl,cc_scratch
 	ex de,hl			; HL = src, DE = dst
-	ld bc,8
-	ldir
+	;; 8-byte contiguous copy: 8x LDI (128 T) beats LDIR (163 T)
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
 cc_seeded:
 
 	;; --- composite this frame sprite's slice into cc_scratch ---
