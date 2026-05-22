@@ -497,6 +497,13 @@ Rotation table: JSP 3584 B; SP1 `SP1V_ROTTBL` 3584 B. Tile lookup: both 512 B.
 (The empirical 11795 B for SP1 matches the component sum of the SP1 memory map
 in `doc/SP1-COMPARISON.md`.)
 
+> **Memory-map note (post-implementation).** This redesign was carried out:
+> removing the `DRT` shrank `jspdata` from 7616 B to 6080 B as projected.
+> The five remaining tables (ROTTBL + BTT + DTT + FTT + BAT) were later
+> packed into a single contiguous block at the top of RAM, so the freed
+> 1.5 KB is now plain free RAM contiguous with the program area rather
+> than an isolated gap. See the current map in `doc/ENGINE.md`.
+
 ### 8.5 Verdict
 
 The redesign makes JSP **both correct and smaller**:
