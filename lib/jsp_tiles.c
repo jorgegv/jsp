@@ -79,7 +79,7 @@ void jsp_clear_rect( struct jsp_rect *rect, uint8_t attr,
 // Rectangle invalidation
 ///////////////////////////////////////////////////////////
 
-void jsp_invalidate_rect( struct jsp_rect *rect ) {
+void jsp_invalidate_rect( struct jsp_rect *rect ) __z88dk_fastcall {
     uint8_t r, c;
     for ( r = rect->row; r < rect->row + rect->height; r++ )
         for ( c = rect->col; c < rect->col + rect->width; c++ )

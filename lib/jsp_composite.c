@@ -58,6 +58,13 @@ void jsp_redraw_begin( void ) {
     jsp_frame_count = n;
 }
 
+// Working storage for jsp_redraw_covered_cell, kept off the (small)
+// Spectrum stack per the CLAUDE.md guideline.  The function is not
+// re-entrant (one cell at a time), so file-scope buffers are safe and
+// spare it an IX stack frame.
+static uint8_t jsp_covered_scratch[ 8 ];
+static uint8_t jsp_covered_attr;
+
 // Render one cell that the asm redraw flagged as sprite-covered: seed an
 // 8-byte scratch with the background tile, composite every covering frame
 // sprite in z-order, and draw the result with a single store.  Called by
@@ -66,9 +73,9 @@ void jsp_redraw_covered_cell( uint16_t rowcol ) __z88dk_fastcall {
     uint8_t  row = (uint8_t)( rowcol >> 8 );
     uint8_t  col = (uint8_t)rowcol;
     uint16_t cell = (uint16_t)row * 32 + col;
-    uint8_t  scratch[ 8 ];
-    uint8_t  attr = jsp_bat[ cell ];
     uint8_t  covered = 0, i;
+
+    jsp_covered_attr = jsp_bat[ cell ];
 
     for ( i = 0; i < jsp_frame_count; i++ ) {
         struct jsp_sprite_frame *fs = &jsp_frame_sprites[ i ];
@@ -77,17 +84,18 @@ void jsp_redraw_covered_cell( uint16_t rowcol ) __z88dk_fastcall {
         if ( fs->clip && !jsp_cell_in_rect( row, col, fs->clip ) )
             continue;
         if ( !covered ) {
-            jsp_memcpy( scratch, jsp_btt[ cell ], 8 );
+            jsp_memcpy( jsp_covered_scratch, jsp_btt[ cell ], 8 );
             covered = 1;
         }
-        jsp_composite_frame_cell( fs, row, col, scratch, &attr );
+        jsp_composite_frame_cell( fs, row, col,
+                                  jsp_covered_scratch, &jsp_covered_attr );
     }
 
     if ( covered )
-        jsp_draw_screen_tile( row, col, scratch );
+        jsp_draw_screen_tile( row, col, jsp_covered_scratch );
     else
         jsp_draw_screen_tile( row, col, jsp_btt[ cell ] );
-    *( (volatile uint8_t *)( 0x5800 + cell ) ) = attr;
+    *( (volatile uint8_t *)( 0x5800 + cell ) ) = jsp_covered_attr;
 }
 
 // Composite frame-sprite fs's slice of cell (row,col) into scratch[8]

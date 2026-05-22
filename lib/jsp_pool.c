@@ -52,7 +52,7 @@ struct jsp_sprite_s *jsp_sprite_alloc( uint8_t rows, uint8_t cols ) {
 }
 
 // Return a sprite slot to the pool.
-void jsp_sprite_free( struct jsp_sprite_s *sp ) {
+void jsp_sprite_free( struct jsp_sprite_s *sp ) __z88dk_fastcall {
     jsp_unregister_sprite( sp );
     sp->flags.initialized = 0;
     sp->flags.active      = 0;

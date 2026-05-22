@@ -21,7 +21,7 @@ void jsp_registry_reset( void ) {
     jsp_sprite_registry_count = 0;
 }
 
-void jsp_register_sprite( struct jsp_sprite_s *sp ) {
+void jsp_register_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall {
     if ( sp->flags.registered )
         return;
     if ( jsp_sprite_registry_count >= JSP_SPRITE_REGISTRY_SIZE )
@@ -30,7 +30,7 @@ void jsp_register_sprite( struct jsp_sprite_s *sp ) {
     jsp_sprite_registry[ jsp_sprite_registry_count++ ] = sp;
 }
 
-void jsp_unregister_sprite( struct jsp_sprite_s *sp ) {
+void jsp_unregister_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall {
     uint8_t i, j;
     if ( !sp->flags.registered )
         return;
@@ -106,7 +106,7 @@ void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) {
 }
 
 // park: mark footprint dirty and deactivate (no longer composited)
-void jsp_sprite_park( struct jsp_sprite_s *sp ) {
+void jsp_sprite_park( struct jsp_sprite_s *sp ) __z88dk_fastcall {
     if ( sp->flags.active )
         mark_footprint_dirty( sp, 0 );
     sp->flags.active = 0;

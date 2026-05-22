@@ -103,7 +103,7 @@ void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos 
 void jsp_move_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
 
 // Safe off-screen parking: mark cells dirty and flag sprite as inactive
-void jsp_sprite_park( struct jsp_sprite_s *sp );
+void jsp_sprite_park( struct jsp_sprite_s *sp ) __z88dk_fastcall;
 
 // Frame-based movement (sets pixels, then defers move)
 void jsp_move_sprite_mask2_frame( struct jsp_sprite_s *sp, uint8_t *frame,
@@ -125,7 +125,7 @@ void jsp_sprite_set_clip( struct jsp_sprite_s *sp, struct jsp_rect *clip );
 // No per-sprite drawing buffers are needed any more (recompositing model).
 void jsp_sprite_pool_init( struct jsp_sprite_s *pool, uint8_t pool_size );
 struct jsp_sprite_s *jsp_sprite_alloc( uint8_t rows, uint8_t cols );
-void jsp_sprite_free( struct jsp_sprite_s *sp );
+void jsp_sprite_free( struct jsp_sprite_s *sp ) __z88dk_fastcall;
 
 // Set the colour applied to all sprite cells each frame.
 void jsp_sprite_set_color( struct jsp_sprite_s *sp, uint8_t color, uint8_t color_mask );
@@ -154,7 +154,7 @@ void jsp_print_string( struct jsp_print_ctx *ctx, const char *str );
 void jsp_clear_rect( struct jsp_rect *rect, uint8_t attr,
                      uint8_t ch, uint8_t flags );
 // Mark all cells in rect as dirty (redrawn on next jsp_redraw)
-void jsp_invalidate_rect( struct jsp_rect *rect );
+void jsp_invalidate_rect( struct jsp_rect *rect ) __z88dk_fastcall;
 
 // Tile table (256 entries; 32-127 pre-filled with ROM font by jsp_init)
 extern uint8_t *jsp_tile_table[256];
@@ -188,8 +188,8 @@ extern uint8_t JSP_TYPE_MASK2[];
 // Sprite registry — walked by jsp_redraw to recomposite all active sprites.
 extern struct jsp_sprite_s *jsp_sprite_registry[ JSP_SPRITE_REGISTRY_SIZE ];
 extern uint8_t              jsp_sprite_registry_count;
-void jsp_register_sprite( struct jsp_sprite_s *sp );
-void jsp_unregister_sprite( struct jsp_sprite_s *sp );
+void jsp_register_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall;
+void jsp_unregister_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall;
 void jsp_registry_reset( void );
 
 // Per-sprite per-frame precomputed compositing data.  jsp_redraw_begin()
