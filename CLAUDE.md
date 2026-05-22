@@ -8,6 +8,9 @@ JSP (Jorge's Sprite Library) is an experimental sprite and background tile manag
 
 ## Build Commands
 
+The Makefile is self-documenting: `make` with no target prints the list of
+available targets and what each does.
+
 ```bash
 make build   # Clean rebuild → produces main.tap
 make run     # Build and launch in FUSE emulator
