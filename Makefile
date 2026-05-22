@@ -83,10 +83,10 @@ SPRITE_LOAD1_ASM = $(TESTS_DIR)/test_sprite_load1.asm
 
 TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
 		  test_sprite_move test_pool_and_colour test_tiles_and_print \
-		  test_foreground_tiles
+		  test_foreground_tiles test_redraw_bench
 TEST_TAPS	= $(TESTS:%=$(TESTS_DIR)/%.tap)
 
-.PHONY: tests
+.PHONY: tests bench
 tests: $(TEST_TAPS)
 
 # Pattern rule: compile test + all lib sources in one zcc invocation
@@ -99,10 +99,17 @@ $(TESTS_DIR)/test_sprite_draw.tap: $(SPRITE_MASK2_ASM)
 $(TESTS_DIR)/test_sprite_move.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
 $(TESTS_DIR)/test_pool_and_colour.tap: $(SPRITE_MASK2_ASM)
 $(TESTS_DIR)/test_foreground_tiles.tap: $(SPRITE_MASK2_ASM)
+$(TESTS_DIR)/test_redraw_bench.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
 
 # run a single test (usage: make run-test TEST=test_dtt)
 run-test: $(TESTS_DIR)/$(TEST).tap
 	fuse $(TESTS_DIR)/$(TEST).tap
+
+# build and run the redraw speed benchmark headless in JNEXT
+bench: $(TESTS_DIR)/test_redraw_bench.tap
+	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
+		--load $< --magic-port 0x00FF --magic-port-mode ascii \
+		--delayed-automatic-exit 300 2>&1 | grep -E '^(A0?=|B=|END)'
 
 clean-tests:
 	echo Cleaning tests...
