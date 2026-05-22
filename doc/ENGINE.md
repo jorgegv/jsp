@@ -8,7 +8,7 @@ touches the screen — it only updates sprite state and marks cells dirty.
 background tables plus the *live* sprite state.  Nothing is "baked": the
 displayed image is recomputed each frame, so overlapping, independently
 moving and animated sprites all render correctly.  This matches the SP1
-sprite library's observable semantics (see `doc/RECOMPOSITE-REDESIGN.md`
+sprite library's observable semantics (see `doc/legacy/RECOMPOSITE-REDESIGN.md`
 for the full rationale).
 
 ## ENGINE MEMORY AREAS

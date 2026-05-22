@@ -65,7 +65,7 @@ If we want to allow 1-pixel positioning and we want to do it quickly, we need to
 
 The next structure (the Tile Array) can be discarded completely, since it is only used for the 1-byte tile IDs, and we will be using 2-byte addresses for tiles in JSP.
 
-Finally, the biggest structure (the Update Array) has been replaced with some more compact structures: the BTT (Background Tile Table) and DTT (Dirty Tiles Table); see [ENGINE.md](ENGINE.md) for the details.  (An earlier JSP design also kept a DRT (Drawing Record Table); the recompositing redesign removed it — see [RECOMPOSITE-REDESIGN.md](RECOMPOSITE-REDESIGN.md).)
+Finally, the biggest structure (the Update Array) has been replaced with some more compact structures: the BTT (Background Tile Table) and DTT (Dirty Tiles Table); see [ENGINE.md](ENGINE.md) for the details.  (An earlier JSP design also kept a DRT (Drawing Record Table); the recompositing redesign removed it — see [legacy/RECOMPOSITE-REDESIGN.md](legacy/RECOMPOSITE-REDESIGN.md).)
 
 So according to the current design, the JSP memory map for a 48K program is the following one:
 

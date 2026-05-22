@@ -44,7 +44,7 @@ Available tests: `test_dtt`, `test_btt_contents`, `test_btt_redraw`, `test_sprit
 
 ## Architecture
 
-JSP uses a **deferred recompositing** model (see `doc/RECOMPOSITE-REDESIGN.md`):
+JSP uses a **deferred recompositing** model (see `doc/legacy/RECOMPOSITE-REDESIGN.md`):
 drawing/moving a sprite only updates its descriptor and marks cells dirty;
 `jsp_redraw()` recomputes the screen from the background tables plus *live*
 sprite state. Nothing is baked, so overlapping/moving/animated sprites
@@ -52,12 +52,12 @@ render correctly (SP1-equivalent semantics).
 
 The engine manages four memory tables:
 
-| Table | Size | Purpose |
-|-------|------|---------|
-| BTT (Background Tiles Table) | 1536 B | 768 pointers to background tile data (one per cell); for a foreground cell, holds the foreground tile graphic |
-| DTT (Dirty Tiles Table) | 96 B | Bit per cell: 1 = needs redraw this frame |
-| FTT (Foreground Tiles Table) | 96 B | Bit per cell: 1 = foreground tile; painted from BTT, never composited over by sprites |
-| BAT (Background Attribute Table) | 768 B | One attribute byte per cell; painted for every dirty cell by `jsp_redraw` |
+| Table                            | Size   | Purpose                                                                                                       |
+|----------------------------------|--------|---------------------------------------------------------------------------------------------------------------|
+| BTT (Background Tiles Table)     | 1536 B | 768 pointers to background tile data (one per cell); for a foreground cell, holds the foreground tile graphic |
+| DTT (Dirty Tiles Table)          | 96 B   | Bit per cell: 1 = needs redraw this frame                                                                     |
+| FTT (Foreground Tiles Table)     | 96 B   | Bit per cell: 1 = foreground tile; painted from BTT, never composited over by sprites                         |
+| BAT (Background Attribute Table) | 768 B  | One attribute byte per cell; painted for every dirty cell by `jsp_redraw`                                     |
 
 There is no DRT and no per-sprite drawing buffers — both were removed by the
 recompositing redesign.
@@ -119,3 +119,8 @@ is written in C first and selectively moved to assembly once correct.
 - Work autonomously but avoid large untested modifications
 - Do not add Co-authored-by in commit messages
 - Beware when calling functions between C and ASM. SDCC may use IX register as a base pointer, and some ASM functions may use it and corrupt it. Take this interactions into account, errors with this are quite difficult to track.
+
+## Development guidelines
+
+- Spectrum memory maps tend to have a small stack (typically 100-150 bytes). Avoid allocating lots of variables, or big variables (e.g. arrays) on the stack. If a function needs to have several local variables, allocate them as global variables just beside the function, and initialize them manually inside the function if needed. Try to keep only counters and similar as local variables.
+- If a function receives a single argument (8/16 bits) always declare it with `__z88dk_fastcall` qualifier, for speed.
