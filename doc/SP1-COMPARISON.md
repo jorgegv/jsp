@@ -65,7 +65,7 @@ If we want to allow 1-pixel positioning and we want to do it quickly, we need to
 
 The next structure (the Tile Array) can be discarded completely, since it is only used for the 1-byte tile IDs, and we will be using 2-byte addresses for tiles in JSP.
 
-Finally, the biggest structure (the Update Array) has been replaced with some more compact structures: the BTT (Background Tile Table) and DTT (Dirty Tiles Table); see [ENGINE.md](ENGINE.md) for the details.  (An earlier JSP design also kept a DRT (Drawing Record Table); the recompositing redesign removed it — see [legacy/RECOMPOSITE-REDESIGN.md](legacy/RECOMPOSITE-REDESIGN.md).)
+Finally, the biggest structure (the Update Array) has been replaced with some more compact structures: the BTT (Background Tile Table) and DTT (Dirty Tiles Table); see [ENGINE.md](ENGINE.md) for the details.
 
 So according to the current design, the JSP memory map for a 48K program is the following one:
 
@@ -76,13 +76,13 @@ So according to the current design, the JSP memory map for a 48K program is the 
 | EBA0-EBFF | Dirty Tiles Table, DTT (96 bytes)                 |
 | EB40-EB9F | Foreground Tiles Table, FTT (96 bytes)            |
 | E840-EB3F | Background Attribute Table, BAT (768 bytes)       |
-| 5D00-E83F | Available for main program (was DRT region)       |
+| 5D00-E83F | Available for main program                        |
 | 5B00-5CFF | BASIC loader (512 bytes)                          |
 
 The five JSP tables are packed into a single contiguous block at the top
-of RAM (E840-FFFF); the 1.5 kB the DRT used to take is now plain free RAM,
-contiguous with the main program area.
+of RAM (E840-FFFF), with the main program area and free RAM contiguous
+below it.
 
-With this memory map JSP needs even less fixed data than before: the DRT
-(1.5 KB) and the per-sprite drawing buffers were eliminated by the
-recompositing redesign, so JSP's footprint is well under half of SP1's.
+With this memory map JSP needs much less fixed data than SP1: there are
+no per-sprite drawing buffers and no update array, so JSP's footprint is
+well under half of SP1's.

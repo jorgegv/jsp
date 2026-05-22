@@ -39,7 +39,7 @@ _jsp_memcpy:
 	ldir
 	ret
 
-;; jsp_rowcolindex: calculates index of (r,c) pair into DRT,DTT,BTT tables
+;; jsp_rowcolindex: calculates index of (r,c) pair into the DTT/BTT tables
 ;; input: D = row, E = col
 ;; return: HL = row * 32 + col (0-767)
 ;; trashes HL,DE

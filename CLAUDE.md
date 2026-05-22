@@ -62,8 +62,8 @@ The engine manages four memory tables:
 | FTT (Foreground Tiles Table)     | 96 B   | Bit per cell: 1 = foreground tile; painted from BTT, never composited over by sprites                         |
 | BAT (Background Attribute Table) | 768 B  | One attribute byte per cell; painted for every dirty cell by `jsp_redraw`                                     |
 
-There is no DRT and no per-sprite drawing buffers — both were removed by the
-recompositing redesign.
+Sprites have no per-sprite drawing buffers — they composite straight to the
+screen during `jsp_redraw`.
 
 **Draw cycle** (per frame):
 1. Deferred ops: `jsp_draw_sprite`/`jsp_move_sprite`/`jsp_sprite_park` update
@@ -86,15 +86,14 @@ behind. Use `jsp_draw_background_tile()` to demote a foreground tile back
 to background.
 
 **Memory layout (48K)** — the five JSP tables form one contiguous block
-at the top of RAM; the space the DRT used is now free, contiguous with
-the program area:
+at the top of RAM, with the program area and free RAM contiguous below it:
 ```
 F200-FFFF  Rotation tables (3.5 kB, 256-aligned)
 EC00-F1FF  BTT (1.5 kB)
 EBA0-EBFF  DTT (96 bytes)
 EB40-EB9F  FTT (96 bytes)
 E840-EB3F  BAT (768 bytes)
-5D00-E83F  Program code/data + free (was DRT region)
+5D00-E83F  Program code/data + free
 ```
 
 **Key implementation files**:

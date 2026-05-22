@@ -3,15 +3,13 @@
 /////////////////////////////////////////////////////////////////////
 // JSP data structures at fixed addresses, according to memory map
 //
-// The recompositing redesign removed the DRT (Drawing Records Table):
-// there is no longer a "current composite" pointer per cell — the screen
-// is recomputed from BTT + live sprite state on every jsp_redraw().
+// JSP recomputes the screen from the BTT plus live sprite state on every
+// jsp_redraw(); there is no per-cell "current composite" state to store.
 //
 // The five JSP tables are packed into one contiguous block (ROTTBL + BTT
-// + DTT + FTT + BAT, 6080 bytes); the space formerly taken by the DRT is
-// now plain free RAM contiguous with the program area, below that block.
-// ROTTBL stays 256-aligned (jsp_current_rottbl_msb is derived from its
-// high byte).
+// + DTT + FTT + BAT, 6080 bytes); the program area and free RAM sit
+// contiguously below that block.  ROTTBL stays 256-aligned
+// (jsp_current_rottbl_msb is derived from its high byte).
 //
 // The block's location is a compile-time choice.  Both layouts are valid
 // in 48K and 128K mode without restriction — the flag only governs where

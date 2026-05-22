@@ -28,11 +28,10 @@ for the full rationale).
   every dirty cell, so a sprite's colour disappears automatically when the
   sprite leaves the cell - 768 bytes
 
-There is **no DRT** (Drawing Records Table) and there are **no per-sprite
-drawing buffers (PDB)** any more — both belonged to the old baking model and
-were removed by the recompositing redesign.  The 1.5 KB formerly used by the
-DRT is now free RAM, contiguous with the program area (see the memory map
-below: the five JSP tables are packed into one block at the top of RAM).
+There are **no per-sprite drawing buffers**: a sprite holds only a small
+descriptor and composites straight to the screen during `jsp_redraw()`.
+The five JSP tables are packed into one contiguous block (see the memory
+map below), with the program area and free RAM contiguous below it.
 
 ## SPRITE DEFINITIONS
 
@@ -131,8 +130,7 @@ assembler kernels.
 Be careful when using JSP with the standard ROM interrupt routine, some of its routines use the IY register!
 
 The five JSP tables form one contiguous block (ROTTBL + BTT + DTT + FTT +
-BAT); the space the DRT used to occupy is now plain free RAM, contiguous
-with the program area below the block.
+BAT); the program area and free RAM sit contiguously below the block.
 
 Where that block sits is a **compile-time choice**, selected by defining
 `JSPDATA_BANK3` or `JSPDATA_BANK2`.  Both layouts are valid in 48K and
