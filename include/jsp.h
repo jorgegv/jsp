@@ -236,6 +236,10 @@ void jsp_dtt_mark_dirty( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 void jsp_dtt_mark_clean( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 uint8_t jsp_dtt_is_dirty( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 
+// mark every cell of the inclusive rectangle [r0..r1] x [c0..c1] dirty
+// (clamped to the 24x32 screen)
+void jsp_dtt_mark_rect( uint8_t r0, uint8_t c0, uint8_t r1, uint8_t c1 );
+
 // mark/unmark one cell as foreground
 void jsp_ftt_mark_fg( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 void jsp_ftt_mark_bg( uint8_t row, uint8_t col ) __smallc __z88dk_callee;

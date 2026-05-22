@@ -80,8 +80,7 @@ void jsp_clear_rect( struct jsp_rect *rect, uint8_t attr,
 ///////////////////////////////////////////////////////////
 
 void jsp_invalidate_rect( struct jsp_rect *rect ) __z88dk_fastcall {
-    uint8_t r, c;
-    for ( r = rect->row; r < rect->row + rect->height; r++ )
-        for ( c = rect->col; c < rect->col + rect->width; c++ )
-            jsp_dtt_mark_dirty( r, c );
+    jsp_dtt_mark_rect( rect->row, rect->col,
+                       rect->row + rect->height - 1,
+                       rect->col + rect->width  - 1 );
 }
