@@ -34,7 +34,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext tests run-test bench clean-tests
+.PHONY: help default build clean run run-jnext tests run-test bench bench-sp1 clean-tests
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -129,9 +129,24 @@ bench: $(TESTS_DIR)/test_redraw_bench.tap
 		--load $< --magic-port 0x00FF --magic-port-mode ascii \
 		--delayed-automatic-exit 300 2>&1 | grep -E '^(A0?=|B=|END)'
 
+## SP1 benchmark — standalone SP1 program, built with the z88dk new C
+## library (-clib=sdcc_iy): sdcc then uses IY as its frame pointer, so
+## SP1's asm (which trashes IX) does not corrupt C frames.  No JSP sources.
+$(TESTS_DIR)/bench_sp1.tap: $(TESTS_DIR)/bench_sp1.c
+	echo Building $@...
+	$(ZCC) -vn -SO3 --max-allocs-per-node200000 -startup=31 -clib=sdcc_iy -m \
+		$< -o $(@:.tap=.bin) -create-app
+
+# Build and run the SP1 redraw benchmark headless (JSP-vs-SP1 comparison)
+bench-sp1: $(TESTS_DIR)/bench_sp1.tap
+	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
+		--load $< --magic-port 0x00FF --magic-port-mode ascii \
+		--delayed-automatic-exit 600 2>&1 | grep -E '^(A0?=|B=|END)'
+
 clean-tests:
 	echo Cleaning tests...
 	-rm -f $(TEST_TAPS) $(TESTS:%=$(TESTS_DIR)/%.bin) 2>/dev/null
+	-rm -f $(TESTS_DIR)/bench_sp1.tap 2>/dev/null
 	-rm -f $(TESTS_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
 
 ## extras
