@@ -196,15 +196,15 @@ cc_seeded:
 	ld a,(ix+7)
 	dec a				; pdc = cols-1
 cc_pdc_done:
-	ld (cc_pdc),a
+	;; pdc is now in A; the ld r,(ix+d) below do not touch A, so it
+	;; stays live straight into the rowstride-add count.
 
 	;; graph = base + pdc*rowstride + i*cs  (repeated addition)
 	ld l,(ix+10)
 	ld h,(ix+11)			; HL = base
 	ld e,(ix+12)
 	ld d,(ix+13)			; DE = rowstride
-	ld a,(cc_pdc)
-	or a
+	or a				; A = pdc
 	jr z,cc_no_pdc
 	ld b,a
 cc_pdc_add:
@@ -377,7 +377,6 @@ cc_attr:		db 0
 cc_covered:		db 0
 cc_i:			db 0
 cc_j:			db 0
-cc_pdc:			db 0
 cc_color:		db 0
 cc_cmask:		db 0
 cc_graph:		dw 0

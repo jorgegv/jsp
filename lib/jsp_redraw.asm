@@ -149,11 +149,12 @@ rd_bg_cell:
 
 	ld hl,(rd_cell)
 	ld de,_jsp_bat
-	add hl,de
+	add hl,de			; HL = &jsp_bat[cell]
 	ld a,(hl)			; A = jsp_bat[cell]
 
-	ld hl,(rd_cell)
-	ld de,0x5800
+	;; attribute address = 0x5800 + cell = &jsp_bat[cell] + (0x5800 -
+	;; jsp_bat); derive it from HL rather than reloading the cell index.
+	ld de,0x5800-_jsp_bat
 	add hl,de			; HL = 0x5800 + cell (attribute address)
 	ld (hl),a			; store attribute
 
