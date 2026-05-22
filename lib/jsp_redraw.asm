@@ -14,6 +14,10 @@
 ;;
 ;; All loop state lives in memory, so the C calls (which trash the
 ;; registers) are harmless; nothing relies on IX/IY here.
+;;
+;; Per-cell dispatch is kept lean: the per-bit mask is rotated (not
+;; recomputed with a shift loop), and the cell index / column are
+;; running counters advanced once per bit instead of recomputed.
 
 	section code_compiler
 
@@ -54,59 +58,42 @@ rd_group:
 	ld a,(hl)
 	ld (rd_ftt),a			; A = jsp_ftt[g]
 
-	;; derive row / colbase / cellbase from g
+	;; row = g >> 2
 	ld a,(rd_g)
 	srl a
-	srl a				; A = g >> 2 = row
+	srl a
 	ld (rd_row),a
 
+	;; rd_col = colbase = (g & 3) << 3  (running, ++ per bit)
 	ld a,(rd_g)
 	and 3
 	add a,a
 	add a,a
-	add a,a				; A = (g & 3) << 3 = colbase
-	ld (rd_colbase),a
+	add a,a
+	ld (rd_col),a
 
+	;; rd_cell = cellbase = g << 3  (running, ++ per bit)
 	ld a,(rd_g)
 	ld l,a
 	ld h,0
 	add hl,hl
 	add hl,hl
-	add hl,hl			; HL = g << 3 = cellbase (row*32+colbase)
-	ld (rd_cellbase),hl
+	add hl,hl
+	ld (rd_cell),hl
 
-	xor a
-	ld (rd_bit),a
+	;; rd_mask_v = 1  (rotated left per bit)
+	ld a,1
+	ld (rd_mask_v),a
 
 ;; ---- per-bit loop: 8 cells in the group ----
 rd_bit_loop:
-	;; mask = 1 << rd_bit
-	ld a,(rd_bit)
-	ld b,a
-	ld a,1
-	inc b
-rd_mask:
-	dec b
-	jr z,rd_mask_done
-	add a,a
-	jr rd_mask
-rd_mask_done:
-	ld (rd_mask_v),a		; rd_mask_v = 1 << bit
-
-	ld c,a
+	ld a,(rd_mask_v)
+	ld c,a				; C = mask, kept for the FTT test
 	ld a,(rd_dtt)
 	and c
 	jp z,rd_bit_next		; this cell is not dirty
 
-	;; dirty cell: rd_col = colbase + bit
-	ld a,(rd_colbase)
-	ld hl,rd_bit
-	add a,(hl)
-	ld (rd_col),a
-
 	;; foreground cell? (FTT bit set) -> background path
-	ld a,(rd_mask_v)
-	ld c,a
 	ld a,(rd_ftt)
 	and c
 	jp nz,rd_bg_cell
@@ -130,13 +117,7 @@ rd_mask_done:
 
 ;; ---- background-only cell: blit BTT tile + BAT attribute ----
 rd_bg_cell:
-	ld hl,(rd_cellbase)
-	ld a,(rd_bit)
-	ld e,a
-	ld d,0
-	add hl,de			; HL = cell index (0..767)
-	push hl				; save cell
-
+	ld hl,(rd_cell)			; HL = cell index (0..767)
 	add hl,hl			; HL = cell * 2
 	ld de,_jsp_btt
 	add hl,de			; HL = &jsp_btt[cell]
@@ -150,27 +131,26 @@ rd_bg_cell:
 	ld l,a				; H = row, L = col
 	call jsp_draw_screen_tile_regs	; blit DE -> screen cell (8 bytes)
 
-	pop hl				; HL = cell
+	ld hl,(rd_cell)
 	ld de,_jsp_bat
 	add hl,de
 	ld a,(hl)			; A = jsp_bat[cell]
-	ld e,a				; stash attr in E
 
-	ld hl,(rd_cellbase)
-	ld a,(rd_bit)
-	ld c,a
-	ld b,0
-	add hl,bc			; HL = cell
-	ld bc,0x5800
-	add hl,bc			; HL = 0x5800 + cell (attribute address)
-	ld (hl),e			; store attribute
+	ld hl,(rd_cell)
+	ld de,0x5800
+	add hl,de			; HL = 0x5800 + cell (attribute address)
+	ld (hl),a			; store attribute
 
 rd_bit_next:
-	ld a,(rd_bit)
-	inc a
-	ld (rd_bit),a
-	cp 8
-	jp c,rd_bit_loop
+	ld hl,rd_col
+	inc (hl)			; rd_col++
+	ld hl,(rd_cell)
+	inc hl
+	ld (rd_cell),hl			; rd_cell++
+	ld a,(rd_mask_v)
+	add a,a				; mask <<= 1 ; Z set after bit 7 (0x80->0)
+	ld (rd_mask_v),a
+	jp nz,rd_bit_loop
 
 rd_group_next:
 	ld a,(rd_g)
@@ -247,9 +227,7 @@ rd_cov_skip:
 rd_g:		db 0
 rd_row:		db 0
 rd_col:		db 0
-rd_colbase:	db 0
-rd_bit:		db 0
 rd_dtt:		db 0
 rd_ftt:		db 0
 rd_mask_v:	db 0
-rd_cellbase:	dw 0
+rd_cell:	dw 0
