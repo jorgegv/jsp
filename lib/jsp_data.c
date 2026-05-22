@@ -11,23 +11,23 @@
 // contiguously below that block.  ROTTBL stays 256-aligned
 // (jsp_current_rottbl_msb is derived from its high byte).
 //
-// The block's location is a compile-time choice.  Both layouts are valid
-// in 48K and 128K mode without restriction — the flag only governs where
-// the JSP data is located in memory:
+// The block's location is a compile-time choice; the names refer to the
+// Z80's 16K memory slots.  Both layouts are valid in 48K and 128K mode
+// without restriction — the flag only governs where the JSP data lives:
 //
-//   JSPDATA_BANK3 (default) : block 0xE840-0xFFFF (the top 16K)
-//   JSPDATA_BANK2           : block 0xA840-0xBFFF, which keeps the
-//                             0xC000-0xFFFF bank free of JSP data
+//   JSPDATA_SLOT3 (default) : block 0xE840-0xFFFF (slot 3, the top 16K)
+//   JSPDATA_SLOT2           : block 0xA840-0xBFFF (slot 2), which keeps
+//                             slot 3 (0xC000-0xFFFF) free of JSP data
 //                             (useful for 128K bank switching)
 /////////////////////////////////////////////////////////////////////
 
-#ifdef JSPDATA_BANK2
+#ifdef JSPDATA_SLOT2
     #define ROTTBL_ADDR		0xB200
     #define BTT_ADDR		0xAC00
     #define DTT_ADDR		0xABA0
     #define FTT_ADDR		0xAB40
     #define BAT_ADDR		0xA840
-#else	// JSPDATA_BANK3 (default)
+#else	// JSPDATA_SLOT3 (default)
     #define ROTTBL_ADDR		0xF200
     #define BTT_ADDR		0xEC00
     #define DTT_ADDR		0xEBA0

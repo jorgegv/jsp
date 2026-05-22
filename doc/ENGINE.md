@@ -133,13 +133,15 @@ The five JSP tables form one contiguous block (ROTTBL + BTT + DTT + FTT +
 BAT); the program area and free RAM sit contiguously below the block.
 
 Where that block sits is a **compile-time choice**, selected by defining
-`JSPDATA_BANK3` or `JSPDATA_BANK2`.  Both layouts are valid in 48K and
-128K mode without restriction — the flag does not select a "machine
-mode", it only governs where the JSP data is located in memory.  The
-reason `JSPDATA_BANK2` exists is to keep the `C000-FFFF` bank entirely
-free of JSP data, so that range stays available for 128K bank switching.
+`JSPDATA_SLOT3` or `JSPDATA_SLOT2`.  The names refer to the Z80's 16K
+memory slots — slot 2 is `8000-BFFF`, slot 3 is `C000-FFFF`.  Both
+layouts are valid in 48K and 128K mode without restriction — the flag
+does not select a "machine mode", it only governs where the JSP data is
+located in memory.  `JSPDATA_SLOT2` exists so that slot 3 — the window
+the 128K machine pages its banks into — can be kept entirely free of JSP
+data, leaving it available for bank switching.
 
-**JSPDATA_BANK3** (the default) places the block in the top 16K
+**JSPDATA_SLOT3** (the default) places the block in slot 3, the top 16K
 (`C000-FFFF`):
 
 | Range     | Contents                                          |
@@ -151,8 +153,8 @@ free of JSP data, so that range stays available for 128K bank switching.
 | E840-EB3F | Background Attribute Table, BAT (768 bytes)       |
 | 5D00-E83F | free for program code and data                    |
 
-**JSPDATA_BANK2** places the same block 16K lower (`8000-BFFF`), leaving
-the `C000-FFFF` bank free of JSP data:
+**JSPDATA_SLOT2** places the same block in slot 2 (`8000-BFFF`), leaving
+slot 3 (`C000-FFFF`) free of JSP data:
 
 | Range     | Contents                                          |
 |-----------|---------------------------------------------------|
