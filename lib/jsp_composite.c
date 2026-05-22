@@ -18,6 +18,14 @@
 struct jsp_sprite_frame jsp_frame_sprites[ JSP_SPRITE_REGISTRY_SIZE ];
 uint8_t                 jsp_frame_count;
 
+// Row-sweep state for jsp_redraw_covered_cell: the frame-sprite indices
+// whose [r0,r1] span includes the row last processed.  Rebuilt only when
+// the row changes, so the per-cell test becomes a column check over the
+// few sprites on this row instead of a scan of every frame sprite.
+static uint8_t jsp_row_active[ JSP_SPRITE_REGISTRY_SIZE ];
+static uint8_t jsp_row_active_n;
+static uint8_t jsp_row_active_row;
+
 // Fill jsp_frame_sprites[] for each active registered sprite; set count.
 void jsp_redraw_begin( void ) {
     uint8_t i, n = 0;
@@ -56,6 +64,9 @@ void jsp_redraw_begin( void ) {
         fs->clip       = sp->clip;
     }
     jsp_frame_count = n;
+
+    // invalidate the row-sweep set so the first covered cell rebuilds it
+    jsp_row_active_row = 0xFF;
 }
 
 // Working storage for jsp_redraw_covered_cell, kept off the (small)
@@ -73,13 +84,26 @@ void jsp_redraw_covered_cell( uint16_t rowcol ) __z88dk_fastcall {
     uint8_t  row = (uint8_t)( rowcol >> 8 );
     uint8_t  col = (uint8_t)rowcol;
     uint16_t cell = (uint16_t)row * 32 + col;
-    uint8_t  covered = 0, i;
+    uint8_t  covered = 0, k;
 
     jsp_covered_attr = jsp_bat[ cell ];
 
-    for ( i = 0; i < jsp_frame_count; i++ ) {
-        struct jsp_sprite_frame *fs = &jsp_frame_sprites[ i ];
-        if ( row < fs->r0 || row > fs->r1 || col < fs->c0 || col > fs->c1 )
+    // Row-sweep: when the row changes, rebuild jsp_row_active[] — the
+    // sprites whose vertical span includes this row.  Cells then need
+    // only a column test against that short list, not a full scan.
+    if ( row != jsp_row_active_row ) {
+        jsp_row_active_row = row;
+        jsp_row_active_n = 0;
+        for ( k = 0; k < jsp_frame_count; k++ ) {
+            struct jsp_sprite_frame *fs = &jsp_frame_sprites[ k ];
+            if ( row >= fs->r0 && row <= fs->r1 )
+                jsp_row_active[ jsp_row_active_n++ ] = k;
+        }
+    }
+
+    for ( k = 0; k < jsp_row_active_n; k++ ) {
+        struct jsp_sprite_frame *fs = &jsp_frame_sprites[ jsp_row_active[ k ] ];
+        if ( col < fs->c0 || col > fs->c1 )
             continue;
         if ( fs->clip && !jsp_cell_in_rect( row, col, fs->clip ) )
             continue;
@@ -104,10 +128,12 @@ void jsp_redraw_covered_cell( uint16_t rowcol ) __z88dk_fastcall {
 void jsp_composite_frame_cell( struct jsp_sprite_frame *fs,
                                uint8_t row, uint8_t col,
                                uint8_t *scratch, uint8_t *attr ) {
-    uint8_t  i = row - fs->r0;
-    uint8_t  j = col - fs->c0;
-    uint8_t  pdc;
-    uint8_t *graph, *gleft;
+    uint8_t   i = row - fs->r0;
+    uint8_t   j = col - fs->c0;
+    uint8_t   pdc, k;
+    uint16_t  rowstride = fs->rowstride;
+    uint8_t   cs = fs->cs;
+    uint8_t  *graph, *gleft;
 
     jsp_current_rottbl_msb = fs->rottbl_msb;
 
@@ -119,7 +145,12 @@ void jsp_composite_frame_cell( struct jsp_sprite_frame *fs,
         : ( j >= fs->cols ) ? (uint8_t)( fs->cols - 1 )
         :                     j;
 
-    graph = fs->base + (uint16_t)pdc * fs->rowstride + (uint16_t)i * fs->cs;
+    // graph = base + pdc*rowstride + i*cs, by repeated addition: pdc and
+    // i are small, so this beats a 16-bit multiply for any valid sprite
+    // size and needs no extra memory.
+    graph = fs->base;
+    for ( k = 0; k < pdc; k++ )  graph += rowstride;
+    for ( k = 0; k < i;   k++ )  graph += cs;
 
     if ( j == 0 ) {
         if ( fs->ismask2 ) sp1_draw_mask2lb( scratch, graph );
@@ -128,7 +159,7 @@ void jsp_composite_frame_cell( struct jsp_sprite_frame *fs,
         if ( fs->ismask2 ) sp1_draw_mask2rb( scratch, graph );
         else               sp1_draw_load1rb( scratch, graph );
     } else {
-        gleft = graph - fs->rowstride;
+        gleft = graph - rowstride;
         if ( fs->ismask2 ) sp1_draw_mask2( scratch, graph, gleft );
         else               sp1_draw_load1( scratch, graph, gleft );
     }
