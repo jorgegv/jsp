@@ -68,12 +68,21 @@ struct sp1bench_sprite {
     struct sp1_ss *s;
 };
 
+// Workload: by default 2 MASK2 + 3 LOAD2 sprites (matches the JSP
+// benchmark).  Build with -DBENCH_ALL_MASK2 (make bench-sp1-mask2) for an
+// all-MASK2 workload.
+#ifdef BENCH_ALL_MASK2
+#define BENCH_M3 1
+#else
+#define BENCH_M3 0
+#endif
+
 struct sp1bench_sprite bench_sprites[ NUM_SPRITES ] = {
-    {  3,  2, 1,  4,  4, 0 },
-    { -2,  3, 1,  8, 16, 0 },
-    {  2, -3, 0, 14, 24, 0 },
-    { -3, -2, 0, 18,  8, 0 },
-    {  3,  1, 0,  6, 26, 0 },
+    {  3,  2,        1,  4,  4, 0 },
+    { -2,  3,        1,  8, 16, 0 },
+    {  2, -3, BENCH_M3, 14, 24, 0 },
+    { -3, -2, BENCH_M3, 18,  8, 0 },
+    {  3,  1, BENCH_M3,  6, 26, 0 },
 };
 
 // loop counters / scratch — file scope
