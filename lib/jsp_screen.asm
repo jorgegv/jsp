@@ -8,6 +8,7 @@
 	public _jsp_draw_screen_tile
 	public _jsp_draw_screen_tile_attr
 	public jsp_draw_screen_tile_regs
+	public jsp_draw_screen_tile_saddr
 
 ; void jsp_draw_screen_tile( uint8_t row, uint8_t col, uint8_t *pix ) __smallc __z88dk_callee;
 _jsp_draw_screen_tile:
@@ -25,6 +26,8 @@ _jsp_draw_screen_tile:
 jsp_draw_screen_tile_regs:	;; alternate entry point
 
 	call asm_zx_cxy2saddr	; expects H = row, L = col, returns addr in HL
+
+jsp_draw_screen_tile_saddr:	;; alternate entry: HL = screen addr, DE = src data
 
 	ex de,hl	; DE = screen addr, HL = src data
 

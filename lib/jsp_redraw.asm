@@ -29,7 +29,7 @@
 	extern _jsp_btt
 	extern _jsp_bat
 	extern _jsp_redraw_covered_cell
-	extern jsp_draw_screen_tile_regs
+	extern jsp_draw_screen_tile_saddr
 
 	public _jsp_redraw
 
@@ -125,11 +125,25 @@ rd_bg_cell:
 	inc hl
 	ld d,(hl)			; DE = jsp_btt[cell] (tile gfx ptr)
 
+	;; HL = cell screen address = rd_rowtab[row] + col.  Computing it
+	;; from the constant char-row table — only here, on the background
+	;; path — replaces asm_zx_cxy2saddr and adds nothing to the
+	;; sprite-covered path.  DE (the BTT tile pointer) is preserved.
 	ld a,(rd_row)
-	ld h,a
+	add a,a				; A = row * 2 (index into the dw table)
+	ld l,a
+	ld h,0
+	ld bc,rd_rowtab
+	add hl,bc
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a				; HL = char-row base screen address
 	ld a,(rd_col)
-	ld l,a				; H = row, L = col
-	call jsp_draw_screen_tile_regs	; blit DE -> screen cell (8 bytes)
+	ld c,a
+	ld b,0
+	add hl,bc			; HL = rowbase + col
+	call jsp_draw_screen_tile_saddr	; blit DE -> screen cell (8 bytes)
 
 	ld hl,(rd_cell)
 	ld de,_jsp_bat
@@ -231,3 +245,11 @@ rd_dtt:		db 0
 rd_ftt:		db 0
 rd_mask_v:	db 0
 rd_cell:	dw 0
+
+;; Screen address of the top pixel row of column 0 of each of the 24
+;; character rows.  Fixed by the ZX Spectrum display layout, so this is a
+;; constant table: a cell's screen address is rd_rowtab[row] + col.
+rd_rowtab:
+	dw 0x4000,0x4020,0x4040,0x4060,0x4080,0x40A0,0x40C0,0x40E0
+	dw 0x4800,0x4820,0x4840,0x4860,0x4880,0x48A0,0x48C0,0x48E0
+	dw 0x5000,0x5020,0x5040,0x5060,0x5080,0x50A0,0x50C0,0x50E0
