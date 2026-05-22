@@ -11,8 +11,11 @@
 
 #include <stdint.h>
 
-// #define SPECTRUM_128 to use the 128K memory layout.  If not
-// defined, 48K memory layout will be used by default
+// JSP data block placement (compile-time): define JSPDATA_BANK2 to put
+// the JSP data block at 0xA840-0xBFFF, keeping the 0xC000-0xFFFF bank
+// free of JSP data; the default (JSPDATA_BANK3) places it at
+// 0xE840-0xFFFF.  Both layouts work in 48K and 128K mode without
+// restriction — see doc/ENGINE.md.
 
 // Maximum number of sprites the redraw loop will composite.  All sprites
 // drawn/moved are registered here so jsp_redraw() can recomposite them.

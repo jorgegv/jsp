@@ -7,24 +7,29 @@
 // there is no longer a "current composite" pointer per cell — the screen
 // is recomputed from BTT + live sprite state on every jsp_redraw().
 //
-// The five JSP tables are packed into one contiguous block at the top of
-// RAM (ROTTBL + BTT + DTT + FTT + BAT, 6080 bytes); the space formerly
-// taken by the DRT is now plain free RAM contiguous with the program
-// area, below that block.  ROTTBL stays 256-aligned (jsp_current_rottbl_msb
-// is derived from its high byte).
+// The five JSP tables are packed into one contiguous block (ROTTBL + BTT
+// + DTT + FTT + BAT, 6080 bytes); the space formerly taken by the DRT is
+// now plain free RAM contiguous with the program area, below that block.
+// ROTTBL stays 256-aligned (jsp_current_rottbl_msb is derived from its
+// high byte).
 //
-//   48K : block 0xE840-0xFFFF, free RAM below 0xE840
-//   128K: block 0xA840-0xBFFF, free RAM below 0xA840 (C000-FFFF stays
-//         clear for banking)
+// The block's location is a compile-time choice.  Both layouts are valid
+// in 48K and 128K mode without restriction — the flag only governs where
+// the JSP data is located in memory:
+//
+//   JSPDATA_BANK3 (default) : block 0xE840-0xFFFF (the top 16K)
+//   JSPDATA_BANK2           : block 0xA840-0xBFFF, which keeps the
+//                             0xC000-0xFFFF bank free of JSP data
+//                             (useful for 128K bank switching)
 /////////////////////////////////////////////////////////////////////
 
-#ifdef SPECTRUM_128
+#ifdef JSPDATA_BANK2
     #define ROTTBL_ADDR		0xB200
     #define BTT_ADDR		0xAC00
     #define DTT_ADDR		0xABA0
     #define FTT_ADDR		0xAB40
     #define BAT_ADDR		0xA840
-#else
+#else	// JSPDATA_BANK3 (default)
     #define ROTTBL_ADDR		0xF200
     #define BTT_ADDR		0xEC00
     #define DTT_ADDR		0xEBA0

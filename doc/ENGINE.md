@@ -130,11 +130,19 @@ assembler kernels.
 
 Be careful when using JSP with the standard ROM interrupt routine, some of its routines use the IY register!
 
-**48K MODE**
+The five JSP tables form one contiguous block (ROTTBL + BTT + DTT + FTT +
+BAT); the space the DRT used to occupy is now plain free RAM, contiguous
+with the program area below the block.
 
-The five JSP tables form one contiguous block at the top of RAM; the
-space the DRT used to occupy is now plain free RAM, contiguous with the
-program area below the block.
+Where that block sits is a **compile-time choice**, selected by defining
+`JSPDATA_BANK3` or `JSPDATA_BANK2`.  Both layouts are valid in 48K and
+128K mode without restriction — the flag does not select a "machine
+mode", it only governs where the JSP data is located in memory.  The
+reason `JSPDATA_BANK2` exists is to keep the `C000-FFFF` bank entirely
+free of JSP data, so that range stays available for 128K bank switching.
+
+**JSPDATA_BANK3** (the default) places the block in the top 16K
+(`C000-FFFF`):
 
 | Range     | Contents                                          |
 |-----------|---------------------------------------------------|
@@ -145,11 +153,8 @@ program area below the block.
 | E840-EB3F | Background Attribute Table, BAT (768 bytes)       |
 | 5D00-E83F | free for program code and data                    |
 
-- These structures should not be in contended memory, since they must be checked at top speed.
-
-**128K MODE**
-
-The layout is similar to 48K mode, but down 16K, in order to free up the C000-FFFF range for banking:
+**JSPDATA_BANK2** places the same block 16K lower (`8000-BFFF`), leaving
+the `C000-FFFF` bank free of JSP data:
 
 | Range     | Contents                                          |
 |-----------|---------------------------------------------------|
