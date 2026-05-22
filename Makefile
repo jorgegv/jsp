@@ -34,7 +34,24 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-# generic rules
+.PHONY: help default build clean run run-jnext tests run-test bench clean-tests
+
+## Self-documenting help — `make` with no target lists every target that has
+## a `#` comment on the line immediately above it (names print in bold red).
+.DEFAULT_GOAL := help
+
+# Show this help
+help:
+	@if [ -t 1 ] && [ -z "$$NO_COLOR" ]; then c='\033[1;31m'; r='\033[0m'; else c=; r=; fi; \
+	awk -v c="$$c" -v r="$$r" 'BEGIN { FS = ":" } \
+		/^# / { desc = substr($$0, 3); next } \
+		/^[a-zA-Z0-9][a-zA-Z0-9_.-]*:($$|[^=])/ { \
+			if (desc != "") { printf "  %s%-18s%s %s\n", c, $$1, r, desc; desc = "" } \
+			next \
+		} \
+		{ desc = "" }' $(MAKEFILE_LIST)
+
+## generic rules
 %.o: %.c
 	echo Compiling $*.c...
 	$(ZCC) $(CFLAGS) -c $*.c
@@ -43,21 +60,22 @@ MAKEFLAGS 	+= --no-print-directory -j4
 	echo Assembling $*.asm...
 	$(ZCC) $(CFLAGS) -c $*.asm
 
+# Build main.tap incrementally
 default: $(BIN)
 
-# full build
+# Clean rebuild — produces main.tap
 build:
 	make clean
 	make $(TAP)
 	echo Build successful
 
-# clean
+# Remove all build artifacts
 clean: clean-tests
 	echo Cleaning up...
 	-rm -f $(BIN) $(TAP) *.{map,lst,o,lis,sym,bin} 2>/dev/null
 	-rm -f lib/*.{map,lst,o,lis,sym,bin} 2>/dev/null
 
-# binary
+## binary
 $(BIN): $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS)
 	echo Linking $@...
 	$(ZCC) $(LDFLAGS) $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS) -o $(BIN) -create-app
@@ -65,11 +83,11 @@ $(BIN): $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS)
 
 $(TAP): $(BIN)
 
-# run it
+# Build and launch main.tap in the FUSE emulator
 run: $(TAP)
 	$(FUSE) $(TAP)
 
-# run main.tap in the JNEXT emulator (GUI mode)
+# Build and launch main.tap in the JNEXT emulator (GUI)
 run-jnext: $(TAP)
 	$(JNEXT) --sd-card $(JNEXT_SD) --machine $(JNEXT_MACHINE) --load $(TAP)
 
@@ -86,26 +104,26 @@ TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
 		  test_foreground_tiles test_redraw_bench
 TEST_TAPS	= $(TESTS:%=$(TESTS_DIR)/%.tap)
 
-.PHONY: tests bench
+# Build all test taps
 tests: $(TEST_TAPS)
 
-# Pattern rule: compile test + all lib sources in one zcc invocation
+## Pattern rule: compile test + all lib sources in one zcc invocation
 $(TESTS_DIR)/%.tap: $(TESTS_DIR)/%.c $(LIB_SRCS)
 	echo Building $@...
 	$(ZCC) $(CFLAGS) $(LDFLAGS) $^ -o $(@:.tap=.bin) -create-app
 
-# Extra sprite data prerequisites for tests that use sprites
+## Extra sprite data prerequisites for tests that use sprites
 $(TESTS_DIR)/test_sprite_draw.tap: $(SPRITE_MASK2_ASM)
 $(TESTS_DIR)/test_sprite_move.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
 $(TESTS_DIR)/test_pool_and_colour.tap: $(SPRITE_MASK2_ASM)
 $(TESTS_DIR)/test_foreground_tiles.tap: $(SPRITE_MASK2_ASM)
 $(TESTS_DIR)/test_redraw_bench.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
 
-# run a single test (usage: make run-test TEST=test_dtt)
+# Build and launch one test in FUSE (usage: make run-test TEST=test_dtt)
 run-test: $(TESTS_DIR)/$(TEST).tap
 	fuse $(TESTS_DIR)/$(TEST).tap
 
-# build and run the redraw speed benchmark headless in JNEXT
+# Build and run the redraw speed benchmark headless in JNEXT
 bench: $(TESTS_DIR)/test_redraw_bench.tap
 	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
 		--load $< --magic-port 0x00FF --magic-port-mode ascii \
