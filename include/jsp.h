@@ -93,8 +93,10 @@ void jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall;
 
 // Deferred sprite operations: they update sprite state and mark cells dirty;
 // the actual compositing happens in the next jsp_redraw().
-void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
-void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
+void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos )
+    __smallc __z88dk_callee;
+void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos )
+    __smallc __z88dk_callee;
 
 // C-level wrappers: set sprite type, then defer draw/move
 void jsp_draw_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
@@ -232,7 +234,8 @@ uint8_t jsp_dtt_is_dirty( uint8_t row, uint8_t col ) __smallc __z88dk_callee;
 
 // mark every cell of the inclusive rectangle [r0..r1] x [c0..c1] dirty
 // (clamped to the 24x32 screen)
-void jsp_dtt_mark_rect( uint8_t r0, uint8_t c0, uint8_t r1, uint8_t c1 );
+void jsp_dtt_mark_rect( uint8_t r0, uint8_t c0, uint8_t r1, uint8_t c1 )
+    __smallc __z88dk_callee;
 
 // mark/unmark one cell as foreground
 void jsp_ftt_mark_fg( uint8_t row, uint8_t col ) __smallc __z88dk_callee;

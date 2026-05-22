@@ -129,3 +129,4 @@ is written in C first and selectively moved to assembly once correct.
 
 - Spectrum memory maps tend to have a small stack (typically 100-150 bytes). Avoid allocating lots of variables, or big variables (e.g. arrays) on the stack. If a function needs to have several local variables, allocate them as global variables just beside the function, and initialize them manually inside the function if needed. Try to keep only counters and similar as local variables.
 - If a function receives a single argument (8/16 bits) always declare it with `__z88dk_fastcall` qualifier, for speed.
+- When converting a C function to assembly for efficiency, the C source shall be preserved as a comment block just above the converted ASM function, for reference.
