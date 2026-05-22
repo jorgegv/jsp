@@ -35,6 +35,8 @@
 
 ; void jsp_redraw( void );
 _jsp_redraw:
+	push ix				; jsp_redraw_covered_cell clobbers IX;
+					; preserve the C caller's frame pointer
 	call _jsp_redraw_begin		; fill jsp_frame_sprites[], set _jsp_frame_count
 
 	xor a
@@ -181,6 +183,7 @@ rd_group_next:
 	ld (hl),0
 	ld bc,95
 	ldir
+	pop ix				; restore the C caller's frame pointer
 	ret
 
 ;; ---- rd_is_covered -------------------------------------------------
