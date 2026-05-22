@@ -217,15 +217,9 @@ extern uint8_t                 jsp_frame_count;
 // registered sprite. Called once per frame at the start of jsp_redraw.
 void jsp_redraw_begin( void );
 
-// Composite one frame-sprite's contribution to cell (row,col) into an
-// 8-byte scratch buffer. The caller must have verified the cell is inside
-// the frame-sprite's [r0,r1]x[c0,c1] rectangle. *attr gets the colour.
-void jsp_composite_frame_cell( struct jsp_sprite_frame *fs,
-                               uint8_t row, uint8_t col,
-                               uint8_t *scratch, uint8_t *attr );
-
-// Render one sprite-covered cell (composite + draw). Called by the asm
-// jsp_redraw; rowcol = (row << 8) | col.
+// Render one sprite-covered cell (composite + draw). Implemented in
+// jsp_composite.asm; called by the asm jsp_redraw with rowcol =
+// (row << 8) | col.
 void jsp_redraw_covered_cell( uint16_t rowcol ) __z88dk_fastcall;
 
 // 1 if cell (row,col) is inside rect (cell coordinates), else 0

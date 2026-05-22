@@ -73,7 +73,7 @@ recompositing redesign.
    precomputes each active sprite's footprint rectangle + compositing
    constants into `jsp_frame_sprites[]`. The asm DTT-walk then visits each
    dirty cell: a foreground or uncovered cell is blitted straight from BTT +
-   BAT (the common case — no scratch); a sprite-covered cell goes to the C
+   BAT (the common case — no scratch); a sprite-covered cell goes to the asm
    helper `jsp_redraw_covered_cell()`, which builds the final image in an
    8-byte scratch (BTT tile + every covering sprite in z-order) and writes it
    with one store. Each cell is written exactly once — no intermediate
@@ -99,7 +99,8 @@ E840-EB3F  BAT (768 bytes)
 
 **Key implementation files**:
 - `lib/jsp_redraw.asm` — Single-pass flicker-free redraw: the DTT-walk hot loop, with the inline background-cell blit (assembly)
-- `lib/jsp_composite.c` — `jsp_redraw_begin()` (per-frame per-sprite precompute), `jsp_composite_frame_cell()` and `jsp_redraw_covered_cell()` (per-covered-cell compositing) (C)
+- `lib/jsp_composite.c` — `jsp_redraw_begin()` (per-frame per-sprite precompute) (C)
+- `lib/jsp_covered.asm` — `jsp_redraw_covered_cell()`: per-covered-cell compositing (seed scratch from BTT, composite all covering sprites in z-order, single store) (assembly)
 - `lib/jsp_sprite_c.c` — Deferred draw/move/park, sprite registry, type wrappers
 - `lib/jsp_tile.c` — Background/foreground tile placement (deferred)
 - `lib/jsp_color.c` — `jsp_apply_sprite_color()`: writes sprite attributes, skipping FTT-protected cells
