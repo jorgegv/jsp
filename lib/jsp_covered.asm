@@ -37,31 +37,24 @@
 
 	public _jsp_redraw_covered_cell
 	public _jsp_cc_row_active_row
+	public cc_cell			; cell-index input, written by jsp_redraw
 
 ;; void jsp_redraw_covered_cell( uint16_t rowcol ) __z88dk_fastcall;
 ;; HL = (row << 8) | col
+;; The caller must also store the cell index (row*32 + col) in cc_cell
+;; before the call; jsp_redraw already has it, so this avoids recomputing
+;; it here.  (Internal helper — only jsp_redraw calls it.)
 _jsp_redraw_covered_cell:
 	ld a,h
 	ld (cc_row),a
 	ld a,l
 	ld (cc_col),a
 
-	;; cell = row*32 + col
-	ld a,(cc_row)
-	ld l,a
-	ld h,0
-	add hl,hl			; *2
-	add hl,hl			; *4
-	add hl,hl			; *8
-	add hl,hl			; *16
-	add hl,hl			; *32
-	ld a,(cc_col)
-	ld c,a
-	ld b,0
-	add hl,bc			; HL = cell
-	ld (cc_cell),hl
+	;; cell index is supplied by the caller (jsp_redraw) in cc_cell — it
+	;; already has it, so we avoid recomputing row*32 + col here.
 
 	;; cc_attr = jsp_bat[cell]
+	ld hl,(cc_cell)
 	ld de,_jsp_bat
 	add hl,de
 	ld a,(hl)

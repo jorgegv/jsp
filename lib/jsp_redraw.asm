@@ -29,6 +29,7 @@
 	extern _jsp_btt
 	extern _jsp_bat
 	extern _jsp_redraw_covered_cell
+	extern cc_cell			; cell-index input to jsp_redraw_covered_cell
 	extern jsp_draw_screen_tile_saddr
 
 	public _jsp_redraw
@@ -164,6 +165,7 @@ rd_dirty:
 	;; covered cell: spill loop state to memory, composite via the C helper,
 	;; reload (the C helper clobbers all registers).
 	ld (rd_cell),hl			; spill cell
+	ld (cc_cell),hl			; pass cell index to jsp_redraw_covered_cell
 	ld a,c
 	ld (rd_dtt),a			; spill (rotated) dtt
 	ld a,d
