@@ -16,6 +16,12 @@ TAP		=$(BIN).tap
 JNEXT		= $(HOME)/src/spectrum/jnext/build/gui-release/jnext
 JNEXT_SD	= $(HOME)/src/spectrum/jnext/roms/nextzxos-1gb-fat32fix.img
 JNEXT_MACHINE	= 48k
+JNEXT_HEATMAP	= $(HOME)/src/spectrum/jnext/tools/get-function-heatmap.pl
+
+# CPU T-state profiler tunables (override on the command line)
+PROFILE_DAT	= /tmp/$(BIN)_profile.dat
+PROFILE_EXIT	= 8
+PROFILE_TOP	= 25
 
 INCLUDE_DIR	= include
 
@@ -34,7 +40,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -90,6 +96,15 @@ run: $(TAP)
 # Build and launch main.tap in the JNEXT emulator (GUI)
 run-jnext: $(TAP)
 	$(JNEXT) --sd-card $(JNEXT_SD) --machine $(JNEXT_MACHINE) --load $(TAP)
+
+# Profile main.tap headless and print the hottest functions (T-state heatmap)
+profile: $(TAP)
+	echo Profiling $(TAP) for $(PROFILE_EXIT)s...
+	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
+		--load $(TAP) --profile --profile-output $(PROFILE_DAT) \
+		--delayed-automatic-exit $(PROFILE_EXIT) >/dev/null 2>&1
+	echo "Top $(PROFILE_TOP) functions by T-states:"
+	$(JNEXT_HEATMAP) -m $(BIN).map < $(PROFILE_DAT) 2>/dev/null | head -$(PROFILE_TOP)
 
 ## tests
 

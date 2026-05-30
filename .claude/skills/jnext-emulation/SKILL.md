@@ -131,6 +131,62 @@ deterministic state with keypresses.
 - `--compositor-trace FILE` — dump a per-pixel compositor trace (CSV) for
   one frame; `--compositor-trace-frame N` selects the frame (default 250).
 
+## Profiling (CPU T-state profiler)
+
+`--profile` enables a per-instruction CPU profiler that accumulates the
+**T-states** spent at each executed address — the canonical way to find
+JSP's hot code and decide what to optimize next. Cost is branch-gated, so
+runs without `--profile` pay nothing.
+
+- `--profile` — enable the profiler. On exit it writes the histogram to
+  `--profile-output`.
+- `--profile-output FILE` — output path (default `profile.dat`).
+
+The output is a plain-text histogram, one line per touched byte, sorted by
+physical key ascending:
+
+```
+<phys_hex_6digit> <log_hex_4digit> <tstates_decimal>
+```
+
+`phys_hex` is the 21-bit physical SRAM address; `log_hex` is the last
+logical PC seen executing from that byte (for 48K code these match the
+familiar logical addresses). Join the **logical** column against a z88dk
+`.map` file with the bundled Perl tool to get a per-function heatmap:
+
+```bash
+~/src/spectrum/jnext/tools/get-function-heatmap.pl -m FILE.map < profile.dat
+```
+
+It keeps only `type=addr` symbols in `code*` sections, attributes each
+sample's T-states to the enclosing function, and prints
+`<function> <accumulated_tstates>` sorted hottest-first. T-states from PCs
+below the first code label (ROM, CRT0 boot) are summed and reported on
+stderr as a `# skipped …` line — that's normal, not an error.
+
+The JSP build already emits `main.map` (the `zcc -m` flag); test taps get
+their map alongside the tap. Full JSP workflow:
+
+```bash
+make build          # produces main.tap + main.map
+~/src/spectrum/jnext/build/gui-release/jnext --headless --machine 48k \
+  --sd-card ~/src/spectrum/jnext/roms/nextzxos-1gb-fat32fix.img \
+  --load main.tap \
+  --profile --profile-output /tmp/jsp_profile.dat \
+  --delayed-automatic-exit 8
+~/src/spectrum/jnext/tools/get-function-heatmap.pl -m main.map \
+  < /tmp/jsp_profile.dat | head -20
+# top lines are the functions burning the most T-states this run
+```
+
+Notes:
+- The histogram accumulates over the **whole run** (boot + load + program),
+  so let the program reach and exercise the code path you care about before
+  the automatic exit; drive it with `--delayed-keypress-frames` if needed.
+- The tool needs core Perl 5 only (no CPAN).
+- Physical-address joins (`bbNNNN` map format) are deferred; v1 joins on the
+  logical column, which is what 48K JSP code uses.
+
 ## Recording
 
 - `--record FILE` — record video+audio to an MP4 (needs `ffmpeg`).
