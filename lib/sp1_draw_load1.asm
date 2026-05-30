@@ -12,6 +12,9 @@
 	extern _SP1_DRAW_LOAD1NR
 	extern _jsp_current_rottbl_msb
 	extern _jsp_rottbl
+	extern cc_scratch		; dst is always the JSP compositing buffer,
+					; so dst bytes are written absolutely (13T)
+					; instead of via (iy+d) (19T)
 
 ; void sp1_draw_load1( uint8_t *dst, uint8_t *graph, uint8_t *graph_left ) __smallc __z88dk_callee;
 ; Trashes DE'!
@@ -40,22 +43,19 @@ _SP1_DRAW_LOAD1:
 	cp _jsp_rottbl/256 - 2
 	jp z, _SP1_DRAW_LOAD1NR
 
-	push iy	; save
 	push ix	; save
 
 	push de
 	pop ix
 
 	ex de,hl
-	push bc
-	pop iy
 
 	ld h,a
 
 	;  h = shift table
 	; de = sprite def (graph only)
 	; ix = left sprite def
-	; iy = dst buf
+	; dst = cc_scratch (fixed buffer, written absolutely below)
 
 _SP1Load1Rotate:
 
@@ -68,7 +68,7 @@ _SP1Load1Rotate:
 	inc h
 	ld l,(ix+0)
 	or (hl)
-	ld (iy+0),a
+	ld (cc_scratch+0),a
 	ld l,(ix+1)
 	ld b,(hl)
 	dec h
@@ -77,7 +77,7 @@ _SP1Load1Rotate:
 	ld l,a
 	ld a,b
 	or (hl)
-	ld (iy+1),a
+	ld (cc_scratch+1),a
 
 	; 1
 
@@ -88,7 +88,7 @@ _SP1Load1Rotate:
 	inc h
 	ld l,(ix+2)
 	or (hl)
-	ld (iy+2),a
+	ld (cc_scratch+2),a
 	ld l,(ix+3)
 	ld b,(hl)
 	dec h
@@ -97,7 +97,7 @@ _SP1Load1Rotate:
 	ld l,a
 	ld a,b
 	or (hl)
-	ld (iy+3),a
+	ld (cc_scratch+3),a
 
 	; 2
 
@@ -108,7 +108,7 @@ _SP1Load1Rotate:
 	inc h
 	ld l,(ix+4)
 	or (hl)
-	ld (iy+4),a
+	ld (cc_scratch+4),a
 	ld l,(ix+5)
 	ld b,(hl)
 	dec h
@@ -117,7 +117,7 @@ _SP1Load1Rotate:
 	ld l,a
 	ld a,b
 	or (hl)
-	ld (iy+5),a
+	ld (cc_scratch+5),a
 
 	; 3
 
@@ -128,7 +128,7 @@ _SP1Load1Rotate:
 	inc h
 	ld l,(ix+6)
 	or (hl)
-	ld (iy+6),a
+	ld (cc_scratch+6),a
 	ld l,(ix+7)
 	ld b,(hl)
 	dec h
@@ -136,8 +136,7 @@ _SP1Load1Rotate:
 	ld l,a
 	ld a,b
 	or (hl)
-	ld (iy+7),a
+	ld (cc_scratch+7),a
 
 	pop ix	; restore
-	pop iy	; restore
 	ret

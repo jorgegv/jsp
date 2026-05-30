@@ -13,6 +13,9 @@
 	extern _SP1_DRAW_LOAD1NR
 	extern _jsp_current_rottbl_msb
 	extern _jsp_rottbl
+	extern cc_scratch		; dst is always the JSP compositing buffer,
+					; so dst bytes are written absolutely (13T)
+					; instead of via (ix+d) (19T)
 
 ; void sp1_draw_load1lb( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 _sp1_draw_load1lb:
@@ -38,15 +41,9 @@ _SP1_DRAW_LOAD1LB:
 
 _SP1_DRAW_LOAD1LB_ALT:
 
-	push ix	; save!
-
-	push bc
-	pop ix
-	
-
 	;  d = shift table
 	; hl = sprite def (graph only)
-	; ix = dst buf
+	; dst = cc_scratch (fixed buffer, written absolutely below)
 
 _SP1Load1LBRotate:
 
@@ -55,55 +52,54 @@ _SP1Load1LBRotate:
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (ix+0),a
+	ld (cc_scratch+0),a
 
 	; 1
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (ix+1),a
+	ld (cc_scratch+1),a
 
 	; 2
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (ix+2),a
+	ld (cc_scratch+2),a
 
 	; 3
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (ix+3),a
+	ld (cc_scratch+3),a
 
 	; 4
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (ix+4),a
+	ld (cc_scratch+4),a
 
 	; 5
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (ix+5),a
+	ld (cc_scratch+5),a
 
 	; 6
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (ix+6),a
+	ld (cc_scratch+6),a
 
 	; 7
 
 	ld e,(hl)
 	ld a,(de)
-	ld (ix+7),a
+	ld (cc_scratch+7),a
 
-	pop ix	; restore!
 	ret
