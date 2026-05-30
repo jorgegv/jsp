@@ -74,6 +74,26 @@ rd_group:
 	srl a
 	ld (rd_row),a
 
+	;; All 8 cells of a group share one character row, so the screen
+	;; char-row base address (rd_rowtab[row]) is group-constant.  Compute
+	;; it once here instead of per cell — the screen is not linearly
+	;; addressed, so this table lookup is the only expensive per-cell
+	;; address (BTT/BAT are linear in cell and stay cell-indexed).
+	;; Index rd_rowtab with an A-into-HL add: C and D already hold the
+	;; dtt/ftt loop state here, so we must not touch BC/DE.
+	add a,a				; A = row * 2 (index into the dw table)
+	ld hl,rd_rowtab
+	add a,l
+	ld l,a
+	ld a,0
+	adc a,h
+	ld h,a				; HL = &rd_rowtab[row]
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a				; HL = char-row base screen address
+	ld (rd_pixbase),hl
+
 	;; cellbase = g << 3  (HL = cell index, inc per bit)
 	ld a,(rd_g)
 	ld l,a
@@ -176,20 +196,10 @@ rd_bg_cell:				; loop state ACTIVE in MAIN, HL = cell
 	inc hl
 	ld d,(hl)			; DE = jsp_btt[cell] (tile gfx ptr)
 
-	;; HL = cell screen address = rd_rowtab[row] + col.  Computing it
-	;; from the constant char-row table — only here, on the background
-	;; path — replaces asm_zx_cxy2saddr and adds nothing to the
-	;; sprite-covered path.  DE (the BTT tile pointer) is preserved.
-	ld a,(rd_row)
-	add a,a				; A = row * 2 (index into the dw table)
-	ld l,a
-	ld h,0
-	ld bc,rd_rowtab
-	add hl,bc
-	ld a,(hl)
-	inc hl
-	ld h,(hl)
-	ld l,a				; HL = char-row base screen address
+	;; HL = cell screen address = rd_pixbase (group-constant char-row
+	;; base, precomputed in rd_group) + col.  DE (the BTT tile pointer)
+	;; is preserved.
+	ld hl,(rd_pixbase)		; HL = char-row base screen address
 	ld a,(rd_cell)			; col = cell & 31 (low byte of cell)
 	and 31
 	ld c,a
@@ -272,6 +282,7 @@ rd_dtt:		db 0
 rd_ftt:		db 0
 rd_bitc:	db 0
 rd_cell:	dw 0
+rd_pixbase:	dw 0
 
 ;; Screen address of the top pixel row of column 0 of each of the 24
 ;; character rows.  Fixed by the ZX Spectrum display layout, so this is a
