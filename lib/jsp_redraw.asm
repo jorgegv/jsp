@@ -43,6 +43,14 @@ _jsp_redraw:
 	ld (rd_g),a			; g = 0
 
 ;; ---- per-group loop: 96 groups of 8 cells ----
+;; The per-bit loop holds its state in the MAIN register set:
+;;   B = bit counter (8 -> 0, djnz)   C = dtt byte (rrc per bit, CY=dirty)
+;;   D = ftt byte (rrc per bit, CY=fg) HL = cell index (inc per bit)
+;; row is group-constant in memory; col = cell & 31.  The background path
+;; and rd_is_covered would clobber these MAIN registers, so they exx to
+;; PARK the loop state in the alternate set (which jsp_draw_screen_tile_saddr
+;; preserves) while they run, then exx back.  The rare sprite-covered path
+;; spills to memory around the C helper instead.
 rd_group:
 	ld a,(rd_g)
 	ld e,a
@@ -54,51 +62,66 @@ rd_group:
 	or a
 	jp z,rd_group_next		; clean group: skip fast
 
-	ld (rd_dtt),a
+	ld c,a				; C = dtt (rrc per bit, CY = dirty)
 	ld hl,_jsp_ftt
 	add hl,de
 	ld a,(hl)
-	ld (rd_ftt),a			; A = jsp_ftt[g]
+	ld d,a				; D = ftt (rrc per bit, CY = foreground)
 
-	;; row = g >> 2
+	;; row = g >> 2  (group-constant; kept in memory for rd_is_covered)
 	ld a,(rd_g)
 	srl a
 	srl a
 	ld (rd_row),a
 
-	;; rd_col = colbase = (g & 3) << 3  (running, ++ per bit)
-	ld a,(rd_g)
-	and 3
-	add a,a
-	add a,a
-	add a,a
-	ld (rd_col),a
-
-	;; rd_cell = cellbase = g << 3  (running, ++ per bit)
+	;; cellbase = g << 3  (HL = cell index, inc per bit)
 	ld a,(rd_g)
 	ld l,a
 	ld h,0
 	add hl,hl
 	add hl,hl
-	add hl,hl
-	ld (rd_cell),hl
+	add hl,hl			; HL = cellbase
 
-	;; rd_mask_v = 1  (rotated left per bit)
-	ld a,1
-	ld (rd_mask_v),a
+	ld b,8				; B = bit counter
 
-;; ---- per-bit loop: 8 cells in the group ----
+;; ---- per-bit loop: 8 cells in the group (loop state in MAIN) ----
+;; The hot loop is kept tight: the common clean/advance path falls
+;; straight through to rd_advance so the djnz back-branch stays in JR
+;; range.  Dirty-cell handling (foreground/covered/background) is
+;; out-of-line below the ret, reached by long jp.
 rd_bit_loop:
-	ld a,(rd_mask_v)
-	ld c,a				; C = mask, kept for the FTT test
-	ld a,(rd_dtt)
-	and c
-	jp z,rd_bit_next		; this cell is not dirty
+	rrc d				; CY = ftt bit (foreground?)
+	sbc a,a				; A = 0xFF if fg else 0x00
+	rrc c				; CY = dtt bit (dirty?)
+	jp c,rd_dirty			; dirty cell -> out-of-line handler
 
-	;; foreground cell? (FTT bit set) -> background path
-	ld a,(rd_ftt)
-	and c
-	jp nz,rd_bg_cell
+rd_advance:				; loop state in MAIN
+	inc hl				; cell++
+	djnz rd_bit_loop		; in JR range: rd_bit_loop is just above
+	;; fall through to rd_group_next
+
+rd_group_next:
+	ld a,(rd_g)
+	inc a
+	ld (rd_g),a
+	cp 96
+	jp c,rd_group
+
+	;; clear the DTT (96 bytes) for the next frame
+	ld hl,_jsp_dtt
+	ld d,h
+	ld e,l
+	inc de
+	ld (hl),0
+	ld bc,95
+	ldir
+	pop ix				; restore the C caller's frame pointer
+	ret
+
+;; ---- dirty cell (out-of-line; loop state in MAIN) ------------------
+rd_dirty:
+	or a				; A==0xFF -> foreground cell?
+	jp nz,rd_bg_cell		; foreground -> background path
 
 	;; any active sprite at all?
 	ld a,(_jsp_frame_count)
@@ -106,19 +129,45 @@ rd_bit_loop:
 	jp z,rd_bg_cell
 
 	;; is this cell inside some sprite's footprint rectangle?
-	call rd_is_covered		; Z = not covered, NZ = covered
+	;; rd_is_covered uses A/BC/DE/HL as scratch — those are our live loop
+	;; registers, so exx to park the loop state in the alternate set around
+	;; the call (the alternate set is untouched while MAIN is active).  exx
+	;; does not affect flags, so the returned Z survives.
+	ld a,l				; col = cell & 31 -> rd_col
+	and 31
+	ld (rd_col),a			; (rd_row already set per group)
+	exx				; park loop state in alt set
+	call rd_is_covered		; Z = not covered
+	exx				; restore loop state to MAIN
 	jp z,rd_bg_cell
 
-	;; covered cell: composite + draw via the C helper
+	;; covered cell: spill loop state to memory, composite via the C helper,
+	;; reload (the C helper clobbers all registers).
+	ld (rd_cell),hl			; spill cell
+	ld a,c
+	ld (rd_dtt),a			; spill (rotated) dtt
+	ld a,d
+	ld (rd_ftt),a			; spill (rotated) ftt
+	ld a,b
+	ld (rd_bitc),a			; spill bit counter
 	ld a,(rd_row)
 	ld h,a
 	ld a,(rd_col)
 	ld l,a				; HL = (row << 8) | col
-	call _jsp_redraw_covered_cell	; __z88dk_fastcall
-	jp rd_bit_next
+	call _jsp_redraw_covered_cell	; __z88dk_fastcall (clobbers MAIN; reloaded below)
+	ld a,(rd_bitc)
+	ld b,a
+	ld a,(rd_dtt)
+	ld c,a
+	ld a,(rd_ftt)
+	ld d,a
+	ld hl,(rd_cell)
+	jp rd_advance
 
 ;; ---- background-only cell: blit BTT tile + BAT attribute ----
-rd_bg_cell:
+rd_bg_cell:				; loop state ACTIVE in MAIN, HL = cell
+	ld (rd_cell),hl			; cell -> bg-path scratch
+	exx				; park loop state in alt set; MAIN = scratch
 	ld hl,(rd_cell)			; HL = cell index (0..767)
 	add hl,hl			; HL = cell * 2
 	ld de,_jsp_btt
@@ -141,11 +190,12 @@ rd_bg_cell:
 	inc hl
 	ld h,(hl)
 	ld l,a				; HL = char-row base screen address
-	ld a,(rd_col)
+	ld a,(rd_cell)			; col = cell & 31 (low byte of cell)
+	and 31
 	ld c,a
 	ld b,0
 	add hl,bc			; HL = rowbase + col
-	call jsp_draw_screen_tile_saddr	; blit DE -> screen cell (8 bytes)
+	call jsp_draw_screen_tile_saddr	; blit DE -> screen cell (loop state parked in alt set)
 
 	ld hl,(rd_cell)
 	ld de,_jsp_bat
@@ -157,35 +207,8 @@ rd_bg_cell:
 	ld de,0x5800-_jsp_bat
 	add hl,de			; HL = 0x5800 + cell (attribute address)
 	ld (hl),a			; store attribute
-
-rd_bit_next:
-	ld hl,rd_col
-	inc (hl)			; rd_col++
-	ld hl,(rd_cell)
-	inc hl
-	ld (rd_cell),hl			; rd_cell++
-	ld a,(rd_mask_v)
-	add a,a				; mask <<= 1 ; Z set after bit 7 (0x80->0)
-	ld (rd_mask_v),a
-	jp nz,rd_bit_loop
-
-rd_group_next:
-	ld a,(rd_g)
-	inc a
-	ld (rd_g),a
-	cp 96
-	jp c,rd_group
-
-	;; clear the DTT (96 bytes) for the next frame
-	ld hl,_jsp_dtt
-	ld d,h
-	ld e,l
-	inc de
-	ld (hl),0
-	ld bc,95
-	ldir
-	pop ix				; restore the C caller's frame pointer
-	ret
+	exx				; restore loop state to MAIN
+	jp rd_advance
 
 ;; ---- rd_is_covered -------------------------------------------------
 ;; Returns NZ if cell (rd_row,rd_col) lies inside some frame sprite's
@@ -247,7 +270,7 @@ rd_row:		db 0
 rd_col:		db 0
 rd_dtt:		db 0
 rd_ftt:		db 0
-rd_mask_v:	db 0
+rd_bitc:	db 0
 rd_cell:	dw 0
 
 ;; Screen address of the top pixel row of column 0 of each of the 24
