@@ -38,6 +38,8 @@
 	public _jsp_redraw_covered_cell
 	public _jsp_cc_row_active_row
 	public cc_cell			; cell-index input, written by jsp_redraw
+	public cc_scratch		; compositing buffer; the sp1_draw_* kernels
+					; address it absolutely (see those files)
 
 ;; void jsp_redraw_covered_cell( uint16_t rowcol ) __z88dk_fastcall;
 ;; HL = (row << 8) | col

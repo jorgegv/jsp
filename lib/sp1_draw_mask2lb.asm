@@ -13,6 +13,9 @@
 	extern _SP1_DRAW_MASK2NR
 	extern _jsp_rottbl
 	extern _jsp_current_rottbl_msb
+	extern cc_scratch		; dst is always the JSP compositing buffer,
+					; so dst bytes are addressed absolutely:
+					; the two-byte reads fold into ld bc,(nn)
 
 ;; void sp1_draw_mask2lb( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 ;; trashes BC' !!
@@ -40,14 +43,9 @@ _SP1_DRAW_MASK2LB:
 
 _SP1_DRAW_MASK2LB_ALT:
 
-	push ix	; save!
-
-	push bc
-	pop ix
-
 	;  d = shift table
 	; hl = sprite def (mask,graph) pairs
-	; ix = dst buf  
+	; dst = cc_scratch (fixed buffer, addressed absolutely below)
 
 	ld e,$ff
 	ld a,(de)
@@ -60,8 +58,7 @@ _SP1Mask2LBRotate:
 
 	; 0
 
-	ld c,(ix+0)
-	ld b,(ix+1)
+	ld bc,(cc_scratch+0)		; C = dst[0], B = dst[1]
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -74,7 +71,7 @@ _SP1Mask2LBRotate:
 	inc hl
 	ld a,(de)
 	or c
-	ld (ix+0),a
+	ld (cc_scratch+0),a
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -87,12 +84,11 @@ _SP1Mask2LBRotate:
 	inc hl
 	ld a,(de)
 	or b
-	ld (ix+1),a
+	ld (cc_scratch+1),a
 
 	; 1
 
-	ld c,(ix+2)
-	ld b,(ix+3)
+	ld bc,(cc_scratch+2)		; C = dst[2], B = dst[3]
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -105,7 +101,7 @@ _SP1Mask2LBRotate:
 	inc hl
 	ld a,(de)
 	or c
-	ld (ix+2),a
+	ld (cc_scratch+2),a
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -118,12 +114,11 @@ _SP1Mask2LBRotate:
 	inc hl
 	ld a,(de)
 	or b
-	ld (ix+3),a
+	ld (cc_scratch+3),a
 
 	; 2
 
-	ld c,(ix+4)
-	ld b,(ix+5)
+	ld bc,(cc_scratch+4)		; C = dst[4], B = dst[5]
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -136,7 +131,7 @@ _SP1Mask2LBRotate:
 	inc hl
 	ld a,(de)
 	or c
-	ld (ix+4),a
+	ld (cc_scratch+4),a
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -149,12 +144,11 @@ _SP1Mask2LBRotate:
 	inc hl
 	ld a,(de)
 	or b
-	ld (ix+5),a
+	ld (cc_scratch+5),a
 
 	; 3
 
-	ld c,(ix+6)
-	ld b,(ix+7)
+	ld bc,(cc_scratch+6)		; C = dst[6], B = dst[7]
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -167,7 +161,7 @@ _SP1Mask2LBRotate:
 	inc hl
 	ld a,(de)
 	or c
-	ld (ix+6),a
+	ld (cc_scratch+6),a
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -179,7 +173,6 @@ _SP1Mask2LBRotate:
 	ld e,(hl)
 	ld a,(de)
 	or b
-	ld (ix+7),a
+	ld (cc_scratch+7),a
 
-	pop ix	; restore!
 	ret

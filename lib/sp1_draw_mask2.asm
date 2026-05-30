@@ -12,6 +12,9 @@
 	extern _SP1_DRAW_MASK2NR
 	extern _jsp_rottbl
 	extern _jsp_current_rottbl_msb
+	extern cc_scratch		; dst is always the JSP compositing buffer,
+					; so the 8 dst bytes are addressed absolutely
+					; (13T) instead of via (iy+d) (19T)
 
 ;; void sp1_draw_mask2( uint8_t *dst, uint8_t *graph, uint8_t *graph_left ) __smallc __z88dk_callee;
 ;; Trashes DE' !!!
@@ -40,21 +43,18 @@ _SP1_DRAW_MASK2:
 	cp _jsp_rottbl/256 - 2
 	jp z, _SP1_DRAW_MASK2NR
 
-	push iy	; save
 	push ix	; save
 
 	push de
 	pop ix
 
 	ex de,hl
-	push bc
-	pop iy
 	ld h,a
 
 	;  h = shift table
 	; de = sprite def (mask,graph) pairs
 	; ix = left sprite def
-	; iy = dst buf
+	; dst = cc_scratch (fixed buffer, addressed absolutely below)
 
 _SP1Mask2Rotate:
 
@@ -74,11 +74,11 @@ _SP1Mask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(iy+0) ; get background graphic
+	ld a,(cc_scratch+0) ; get background graphic
 	and b                   ; mask it
 	or c                    ; or graph rotated from left
 	or (hl)                 ; or spr graph rotated right
-	ld (iy+0),a ; store to current background
+	ld (cc_scratch+0),a ; store to current background
 
 	; 1
 
@@ -96,11 +96,11 @@ _SP1Mask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(iy+1)
+	ld a,(cc_scratch+1)
 	and b
 	or c
 	or (hl)
-	ld (iy+1),a
+	ld (cc_scratch+1),a
 
 	; 2
 
@@ -118,11 +118,11 @@ _SP1Mask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(iy+2)
+	ld a,(cc_scratch+2)
 	and b
 	or c
 	or (hl)
-	ld (iy+2),a
+	ld (cc_scratch+2),a
 
 	; 3
 
@@ -140,11 +140,11 @@ _SP1Mask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(iy+3)
+	ld a,(cc_scratch+3)
 	and b
 	or c
 	or (hl)
-	ld (iy+3),a
+	ld (cc_scratch+3),a
 
 	; 4
 
@@ -162,11 +162,11 @@ _SP1Mask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(iy+4)
+	ld a,(cc_scratch+4)
 	and b
 	or c
 	or (hl)
-	ld (iy+4),a
+	ld (cc_scratch+4),a
 
 	; 5
 
@@ -184,11 +184,11 @@ _SP1Mask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(iy+5)
+	ld a,(cc_scratch+5)
 	and b
 	or c
 	or (hl)
-	ld (iy+5),a
+	ld (cc_scratch+5),a
 
 	; 6
 
@@ -206,11 +206,11 @@ _SP1Mask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(iy+6)
+	ld a,(cc_scratch+6)
 	and b
 	or c
 	or (hl)
-	ld (iy+6),a
+	ld (cc_scratch+6),a
 
 	; 7
 
@@ -227,12 +227,11 @@ _SP1Mask2Rotate:
 	dec h
 	ld a,(de)
 	ld l,a
-	ld a,(iy+7)
+	ld a,(cc_scratch+7)
 	and b
 	or c
 	or (hl)
-	ld (iy+7),a
+	ld (cc_scratch+7),a
 
 	pop ix	; restore
-	pop iy	; restore
 	ret
