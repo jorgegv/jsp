@@ -33,18 +33,18 @@ existing ZX code, then filling in the CPC side of it per mode.
 
 ### 1.2 Swapped per target/mode (the platform layer — this plan's real work)
 
-| Platform-layer concern | ZX implementation (today) | CPC change |
-|---|---|---|
-| Cell geometry / grid dims | 32×24 cells, cell = 8 bytes | §2 |
-| Coordinate → (byte-col, shift) | `xpos>>3`, `xpos&7` | §3 |
-| Shift tables (`jsp_rottbl`) | 1bpp linear, 7 phases | §4 |
-| Composite kernels (`sp1_draw_*`) | ZX 1bpp mask2/load1 + nr/lb/rb | §5 |
-| Colour / attributes (BAT) | ZX attribute RAM @ 0x5800 | §6 |
-| Screen addressing | `asm_zx_cxy2saddr`, `rd_rowtab`, 0x4000/0x5800 | §7 |
-| Compile guards | none (single ZX target) | §8 |
-| Data block placement | `__at` 0xE840-0xFFFF / slot2 | §9 |
-| Asset byte format | gfxgen ZX mask2/load1 | §10 |
-| Toolchain / Makefile / emulator | `zcc +zx`, FUSE/JNEXT | §11 |
+| Platform-layer concern           | ZX implementation (today)                      | CPC change |
+|----------------------------------|------------------------------------------------|------------|
+| Cell geometry / grid dims        | 32×24 cells, cell = 8 bytes                    | §2         |
+| Coordinate → (byte-col, shift)   | `xpos>>3`, `xpos&7`                            | §3         |
+| Shift tables (`jsp_rottbl`)      | 1bpp linear, 7 phases                          | §4         |
+| Composite kernels (`sp1_draw_*`) | ZX 1bpp mask2/load1 + nr/lb/rb                 | §5         |
+| Colour / attributes (BAT)        | ZX attribute RAM @ 0x5800                      | §6         |
+| Screen addressing                | `asm_zx_cxy2saddr`, `rd_rowtab`, 0x4000/0x5800 | §7         |
+| Compile guards                   | none (single ZX target)                        | §8         |
+| Data block placement             | `__at` 0xE840-0xFFFF / slot2                   | §9         |
+| Asset byte format                | gfxgen ZX mask2/load1                          | §10        |
+| Toolchain / Makefile / emulator  | `zcc +zx`, FUSE/JNEXT                          | §11        |
 
 ---
 
@@ -173,12 +173,12 @@ stride into the table** — the ZX `rottbl_msb = (rottbl>>8) + 2*xrot - 2`
 256-byte pages (in-byte page, carry page), phases contiguous**. That contract is
 generalised, not assumed, per mode:
 
-| Mode | phases | xrot range | layout | `rottbl_msb` (in-byte page) | carry page |
-|---|---|---|---|---|---|
-| M2 (=ZX) | 7 | 1..7 | 7×(256 in + 256 carry) | `(rottbl>>8) + 2*xrot - 2` | `+1` (`inc h`) |
-| M1 | 3 | 1..3 | 3×(256 in + 256 carry) | `(rottbl>>8) + 2*xrot - 2` | `+1` (`inc h`) |
-| M0 | 1 | 1 | 1×(256 in + 256 carry) | `(rottbl>>8)` (single phase) | `+1` (`inc h`) |
-| FAST | 0 | n/a | no table | n/a (`nr` kernel only) | n/a |
+| Mode     | phases | xrot range | layout                 | `rottbl_msb` (in-byte page)  | carry page     |
+|----------|--------|------------|------------------------|------------------------------|----------------|
+| M2 (=ZX) | 7      | 1..7       | 7×(256 in + 256 carry) | `(rottbl>>8) + 2*xrot - 2`   | `+1` (`inc h`) |
+| M1       | 3      | 1..3       | 3×(256 in + 256 carry) | `(rottbl>>8) + 2*xrot - 2`   | `+1` (`inc h`) |
+| M0       | 1      | 1          | 1×(256 in + 256 carry) | `(rottbl>>8)` (single phase) | `+1` (`inc h`) |
+| FAST     | 0      | n/a        | no table               | n/a (`nr` kernel only)       | n/a            |
 
 So the **same `2*xrot-2` stride and `inc h` carry contract are kept** for M1/M2
 (both use 2-page-per-phase layout); M0 has a single phase so `xrot` is 0/1 and
@@ -334,15 +334,15 @@ Exactly one target+mode is selected at compile time. Introduce a single config
 header (e.g. `include/jsp_config.h`) that, from the guard, defines every
 mode-dependent constant the rest of the code reads:
 
-| Guard | ppb | shift phases | grid (cols×rows) | cell px (w×h) | shift kernels | colour |
-|---|---|---|---|---|---|---|
-| (ZX, default/no guard) | 8 | 7 | 32×24 | 8×8 | ZX 1bpp | BAT attr |
-| `CPC_MODE0` | 2 | 1 | 80×25 | 2×8 | M0 interleave | per-pixel (16) |
-| `CPC_MODE1` | 4 | 3 | 80×25 | 4×8 | M1 nibble | per-pixel (4) |
-| `CPC_MODE2` | 8 | 7 | 80×25 | 8×8 | M2 linear (=ZX) | mono/screen (2) |
-| `CPC_MODE1_MONO` | 4 | 3 | 80×25 | 4×8 | M1 nibble | per-pixel (1bpp assets) |
-| `CPC_MODE0_FAST` | 2 | 0 (aligned) | 80×25 | 2×8 | none (`nr`) | per-pixel (16) |
-| `CPC_MODE1_FAST` | 4 | 0 (aligned) | 80×25 | 4×8 | none (`nr`) | per-pixel (4) |
+| Guard                  | ppb | shift phases | grid (cols×rows) | cell px (w×h) | shift kernels   | colour                  |
+|------------------------|-----|--------------|------------------|---------------|-----------------|-------------------------|
+| (ZX, default/no guard) | 8   | 7            | 32×24            | 8×8           | ZX 1bpp         | BAT attr                |
+| `CPC_MODE0`            | 2   | 1            | 80×25            | 2×8           | M0 interleave   | per-pixel (16)          |
+| `CPC_MODE1`            | 4   | 3            | 80×25            | 4×8           | M1 nibble       | per-pixel (4)           |
+| `CPC_MODE2`            | 8   | 7            | 80×25            | 8×8           | M2 linear (=ZX) | mono/screen (2)         |
+| `CPC_MODE1_MONO`       | 4   | 3            | 80×25            | 4×8           | M1 nibble       | per-pixel (1bpp assets) |
+| `CPC_MODE0_FAST`       | 2   | 0 (aligned)  | 80×25            | 2×8           | none (`nr`)     | per-pixel (16)          |
+| `CPC_MODE1_FAST`       | 4   | 0 (aligned)  | 80×25            | 4×8           | none (`nr`)     | per-pixel (4)           |
 
 - A `JSP_TARGET_ZX` / `JSP_TARGET_CPC` umbrella guard gates the platform layer
   (screen addr, colour, descriptor width); the `CPC_MODE*` guard refines the
@@ -365,13 +365,13 @@ selectable slot2/slot3.
 **CPC:** screen occupies `0xC000-0xFFFF`. JSP tables must sit **below** the
 screen. With the 2000-cell grid (§2):
 
-| Table | ZX (768 cells) | CPC (2000 cells) |
-|---|---|---|
-| BTT (ptr/cell) | 1536 B | **4000 B** |
-| DTT (bit/cell) | 96 B | **250 B** |
-| FTT (bit/cell) | 96 B | **250 B** |
-| BAT (byte/cell) | 768 B | **0** (dropped, §6) |
-| rottbl | 3584 B | M0 512 / M1 1536 / M2 3584 B |
+| Table           | ZX (768 cells) | CPC (2000 cells)             |
+|-----------------|----------------|------------------------------|
+| BTT (ptr/cell)  | 1536 B         | **4000 B**                   |
+| DTT (bit/cell)  | 96 B           | **250 B**                    |
+| FTT (bit/cell)  | 96 B           | **250 B**                    |
+| BAT (byte/cell) | 768 B          | **0** (dropped, §6)          |
+| rottbl          | 3584 B         | M0 512 / M1 1536 / M2 3584 B |
 
 - The per-frame scratch structures are **registry-sized, not cell-sized**, so
   they do *not* grow with the 2000-cell grid: `jsp_frame_sprites[]`

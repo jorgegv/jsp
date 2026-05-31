@@ -123,6 +123,8 @@ is written in C first and selectively moved to assembly once correct.
 - Work autonomously but avoid large untested modifications
 - Do not add Co-authored-by in commit messages
 - Beware when calling functions between C and ASM. SDCC may use IX register as a base pointer, and some ASM functions may use it and corrupt it. Take this interactions into account, errors with this are quite difficult to track.
+- When you need to do independent tasks, launch a team of agents in parallel, up to a maximum of 3 agents. Agents MUST work on their own worktrees, not on the regular branch. Merges should be handled by the main agent.
+- After developing a task, launch an independent agent for review. Review agents should not wait to other tasks, thety should launch as soon as the task to be reviewed finishes.
 
 ## Development guidelines
 
