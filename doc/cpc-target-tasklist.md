@@ -2,7 +2,7 @@
 
 One line per task. Detail lives in `doc/CPC-TARGET-PLAN.md` (section refs in
 parentheses). Phases and tasks are both checkboxes; tick a phase when all its
-tasks are done.
+tasks are done. Set a task's checkbox to [~] the moment you start working on it.
 
 **Regression gate:** every phase ends with a green regression run — the ZX build
 + all ZX tests still pass, plus the CPC tests for every mode completed so far.
