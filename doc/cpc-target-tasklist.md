@@ -57,11 +57,13 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
 - [ ] **Phase 4 — CPC Mode 2 asset pipeline + shift unit test**
   - [ ] Define and implement the CPC Mode 2 planar-in-byte pixel+mask asset format (§10)
   - [ ] Add the Mode 2 asset emitter (`gfxgen` flag or new emitter) (§10)
+  - [ ] Reuse the ZX sprite source art (re-convert `assets/*.png` per mode), don't hand-author CPC sprites (§10,§11)
   - [ ] Unit-test the §8.1 shift/mask against the emitted Mode 2 bytes (§4,§10)
   - [ ] Adapt the sprite-gen Makefile targets for Mode 2 (§11)
   - [ ] Regression gate: ZX green + CPC Mode 2 (incl. shift unit test) green (§12)
 
 - [ ] **Phase 5 — Mode 2 full test pass**
+  - [ ] Keep CPC tests as the ZX tests recompiled (same layout/sprites); palette mirrors ZX colours (§11)
   - [ ] Build all `tests/*` under `CPC_MODE2` (§11)
   - [ ] Visually verify all tests under `CPC_MODE2` via the `caprice-testing` skill (cap32 headless) (§11)
   - [ ] Lock Mode 2 as the reference CPC pipeline (§12)

@@ -412,6 +412,14 @@ rowstride + i*cs` math assumes this **columns-major, 8-bytes/cell** layout.
   decision in §8.
 - The Makefile sprite-gen targets (`tests/test_sprite_mask2.asm` etc.) gain
   per-mode variants.
+- **Reuse the ZX sprite *source art*.** The goal is CPC tests that look as close
+  to the ZX ones as possible (§11), so the same source PNGs (`assets/ball.png`,
+  `assets/backg1.png`) are re-converted per CPC mode rather than drawn anew —
+  only the *emitted byte encoding* changes, not the picture. M2 (1 bpp) reuses
+  the ZX bit pattern almost directly (it is the same monochrome shape); M0/M1
+  re-quantise the *same* source to the mode's palette. So "reuse the sprites"
+  means reuse the art and the gfxgen invocation, retargeted — not hand-authoring
+  separate CPC sprites.
 
 ---
 
@@ -448,11 +456,18 @@ rowstride + i*cs` math assumes this **columns-major, 8-bytes/cell** layout.
   profiler**; CPC performance is eyeballed / wall-clock-timed until a CPC
   profiling path exists (risk 5). Do not assume profiling parity.
 - **Tests:** every `tests/*.c` must build per CPC mode and be visually checked via
-  the `caprice-testing` skill. Each CPC test harness must **set the screen mode
-  and program the palette before the first `jsp_redraw`** (the firmware boots in
-  Mode 1; colour is in the pixels via the gate-array palette, §6) — otherwise the
-  screenshot's colours are uninterpretable. Keep that setup in the test
-  harness/`main`, not in the library. The AMSDOS `-o` name is ≤8 chars/uppercase
+  the `caprice-testing` skill. **Keep the CPC tests as visually similar to the ZX
+  ones as possible:** reuse the same test programs (same sprite/tile placements,
+  same movements, same layout) and the **same sprite source art** re-converted per
+  mode (§10) — ideally each CPC test is the ZX test recompiled, not a rewrite, so
+  a ZX-vs-CPC screenshot pair is a direct correctness check (most exact in Mode 2,
+  the 1 bpp mode closest to ZX). Differences should come only from the mode's
+  pixel/colour resolution, not from divergent test content. Each CPC test harness
+  must **set the screen mode and program the palette before the first
+  `jsp_redraw`** (the firmware boots in Mode 1; colour is in the pixels via the
+  gate-array palette, §6) — otherwise the screenshot's colours are
+  uninterpretable; pick a palette that mirrors the ZX colours where the mode
+  allows. Keep that setup in the test harness/`main`, not in the library. The AMSDOS `-o` name is ≤8 chars/uppercase
   and is the `RUN"NAME.` launch target, so the ZX test names are re-mapped to
   short disk names at build time. The benches (`test_redraw_bench`, `bench_sp1`)
   lean on the JNEXT magic port and are ZX-only until a CPC profiling path lands.
