@@ -4,6 +4,10 @@ One line per task. Detail lives in `doc/CPC-TARGET-PLAN.md` (section refs in
 parentheses). Phases and tasks are both checkboxes; tick a phase when all its
 tasks are done.
 
+**Regression gate:** every phase ends with a green regression run — the ZX build
++ all ZX tests still pass, plus the CPC tests for every mode completed so far.
+This is the last checkbox of each phase; do not tick the phase until it passes.
+
 - [ ] **Phase R — `sp1_*` → `jsp_*` rename (prerequisite)**
   - [ ] Rename the 8 `lib/sp1_draw_*.asm` kernel files to `lib/jsp_draw_*.asm`
   - [ ] Rename the public symbols `_sp1_draw_*` / `_SP1_DRAW_*` to `_jsp_draw_*` / `_JSP_DRAW_*`
@@ -28,6 +32,7 @@ tasks are done.
   - [ ] Add a compile error when zero or >1 mode guard is defined (§8)
   - [ ] Replace hard-coded `768`/`32`/`24`/`96` literals across the engine with config symbols (§2)
   - [ ] Decide and apply the descriptor X/Y width strategy (per-target field width) (§3)
+  - [ ] Regression gate: ZX build + all ZX tests green (§12)
 
 - [ ] **Phase 2 — CPC Mode 2 screen layer**
   - [ ] Write CPC `jsp_draw_screen_tile` blitting 8 lines stepping `+0x800` (§7)
@@ -39,6 +44,7 @@ tasks are done.
   - [ ] Add CPC data-block `__at` placement, sizing and init below `0xC000` (§9)
   - [ ] Add CPC test-harness mode-set + palette-program before the first redraw (§11,§6)
   - [ ] Prove a background-tile-only CPC Mode 2 image end-to-end via the `caprice-testing` skill (§12)
+  - [ ] Regression gate: ZX green + CPC Mode 2 background render green (§12)
 
 - [ ] **Phase 3 — CPC Mode 2 shift + kernels**
   - [ ] Reuse `jsp_init_rottbl()` for Mode 2 (= ZX linear table) (§4)
@@ -46,17 +52,20 @@ tasks are done.
   - [ ] Port the 8 `jsp_draw_*` kernels to CPC Mode 2 (near-verbatim) (§5)
   - [ ] Wire the covered-cell compositor to the Mode 2 kernels (§5)
   - [ ] Verify a moving, sub-byte-shifted CPC Mode 2 sprite on emulator (§12)
+  - [ ] Regression gate: ZX green + CPC Mode 2 sprite render green (§12)
 
 - [ ] **Phase 4 — CPC Mode 2 asset pipeline + shift unit test**
   - [ ] Define and implement the CPC Mode 2 planar-in-byte pixel+mask asset format (§10)
   - [ ] Add the Mode 2 asset emitter (`gfxgen` flag or new emitter) (§10)
   - [ ] Unit-test the §8.1 shift/mask against the emitted Mode 2 bytes (§4,§10)
   - [ ] Adapt the sprite-gen Makefile targets for Mode 2 (§11)
+  - [ ] Regression gate: ZX green + CPC Mode 2 (incl. shift unit test) green (§12)
 
 - [ ] **Phase 5 — Mode 2 full test pass**
   - [ ] Build all `tests/*` under `CPC_MODE2` (§11)
   - [ ] Visually verify all tests under `CPC_MODE2` via the `caprice-testing` skill (cap32 headless) (§11)
   - [ ] Lock Mode 2 as the reference CPC pipeline (§12)
+  - [ ] Regression gate: ZX green + full CPC Mode 2 test pass green (§12)
 
 - [ ] **Phase 6 — CPC Mode 1**
   - [ ] Add the Mode 1 nibble-plane shift table + `jsp_init_rottbl` Mode 1 variant (§4)
@@ -66,6 +75,7 @@ tasks are done.
   - [ ] Unit-test the §8.2 shift/mask against the emitted Mode 1 bytes (§4,§10)
   - [ ] Resolve and implement the `CPC_MODE1_MONO` encoding decision (§8)
   - [ ] Test pass under `CPC_MODE1` and `CPC_MODE1_MONO` (§12)
+  - [ ] Regression gate: ZX green + CPC Mode 2 + Mode 1/MONO green (§12)
 
 - [ ] **Phase 7 — CPC Mode 0**
   - [ ] Add the Mode 0 odd/even interleave shift table (single phase) (§4)
@@ -74,11 +84,13 @@ tasks are done.
   - [ ] Define + emit the Mode 0 interleaved asset format (§10)
   - [ ] Unit-test the §8.3 shift/mask against the emitted Mode 0 bytes (§4,§10)
   - [ ] Test pass under `CPC_MODE0` (§12)
+  - [ ] Regression gate: ZX green + CPC Mode 2 + Mode 1/MONO + Mode 0 green (§12)
 
 - [ ] **Phase 8 — FAST variants**
   - [ ] Implement `CPC_MODE0_FAST` (force shift=0, `nr` kernel only, no shift table) (§3,§8)
   - [ ] Implement `CPC_MODE1_FAST` (force shift=0, `nr` kernel only, no shift table) (§3,§8)
   - [ ] Test pass under both FAST modes (§12)
+  - [ ] Regression gate: ZX green + all CPC modes incl. FAST green (§12)
 
 - [ ] **Phase 9 — Toolchain matrix & docs**
   - [ ] Parameterise the Makefile by `JSP_TARGET` and `JSP_CPC_MODE` with a build-matrix target (§11)
@@ -87,6 +99,7 @@ tasks are done.
   - [ ] Document the CPC profiling gap (visual via cap32; no T-state heatmap yet) (§11,risk5)
   - [ ] Update `doc/ENGINE.md` with CPC memory maps, screen layout and the colour divergence (§6,§9)
   - [ ] Update `README.md`; add `doc/CPC-MODES.md` if per-mode detail outgrows the plan (§12)
+  - [ ] Regression gate: full matrix green (ZX + all CPC modes) (§12)
 
 - [ ] **Cross-cutting / sign-off**
   - [ ] Confirm with user that baked-in pixel colour (no dynamic recolour) is acceptable for first CPC milestone (§6,risk4)

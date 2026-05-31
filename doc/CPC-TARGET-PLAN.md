@@ -465,6 +465,14 @@ Ordering follows analysis §12 (Mode 2 → Mode 1 → Mode 0), prefixed by a
 refactor phase that makes the ZX/CPC seam explicit **without changing ZX
 behaviour** (the regression guard), and a config phase.
 
+**Regression gate (every phase).** No phase is considered finished until the
+full regression set is green: the **ZX** build + all ZX tests must still pass
+(byte-for-byte unchanged — there is no automated ZX runner, so this is build +
+visual verification via the `jnext-emulation` skill), **and** the CPC tests for
+every mode completed so far must pass via the `caprice-testing` skill. A phase
+that reds the baseline is not done. The ZX baseline established at the end of
+Phase R / Phase 0 is the reference each later phase regresses against.
+
 **Phase 0 — Seam & ZX regression baseline.**
 Introduce `JSP_TARGET_ZX`/`JSP_TARGET_CPC` umbrella guards around every
 platform-layer item in §1.2 *in the existing ZX code*, behind the ZX default, so
@@ -568,5 +576,7 @@ this plan.
 - The ZX build and all ZX tests remain byte-for-byte unchanged (Phase 0
   baseline holds).
 - Per-mode shift/mask unit tests pass against the real asset byte format.
+- The regression set was green at the end of **every** phase (ZX unchanged +
+  all completed CPC modes), not only at the end.
 - Makefile drives the full `JSP_TARGET × JSP_CPC_MODE` matrix; `doc/ENGINE.md`
   documents the CPC memory maps, screen layout and the colour divergence.
