@@ -6,19 +6,19 @@
 
 	section code_compiler
 
-	public _SP1_DRAW_MASK2
-	public _sp1_draw_mask2
+	public _JSP_DRAW_MASK2
+	public _jsp_draw_mask2
 
-	extern _SP1_DRAW_MASK2NR
+	extern _JSP_DRAW_MASK2NR
 	extern _jsp_rottbl
 	extern _jsp_current_rottbl_msb
 	extern cc_scratch		; dst is always the JSP compositing buffer,
 					; so the 8 dst bytes are addressed absolutely
 					; (13T) instead of via (iy+d) (19T)
 
-;; void sp1_draw_mask2( uint8_t *dst, uint8_t *graph, uint8_t *graph_left ) __smallc __z88dk_callee;
+;; void jsp_draw_mask2( uint8_t *dst, uint8_t *graph, uint8_t *graph_left ) __smallc __z88dk_callee;
 ;; Trashes DE' !!!
-_sp1_draw_mask2:
+_jsp_draw_mask2:
 	exx
 	pop de		; save ret addr
 	exx
@@ -38,10 +38,10 @@ _sp1_draw_mask2:
 ; hl = graphic def ptr
 ; de = left graphic def ptr
 
-_SP1_DRAW_MASK2:
+_JSP_DRAW_MASK2:
 
 	cp _jsp_rottbl/256 - 2
-	jp z, _SP1_DRAW_MASK2NR
+	jp z, _JSP_DRAW_MASK2NR
 
 	push ix	; save
 
@@ -56,7 +56,7 @@ _SP1_DRAW_MASK2:
 	; ix = left sprite def
 	; dst = cc_scratch (fixed buffer, addressed absolutely below)
 
-_SP1Mask2Rotate:
+_JSPMask2Rotate:
 
 	; 0
 

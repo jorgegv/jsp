@@ -8,16 +8,16 @@ tasks are done. Set a task's checkbox to [~] the moment you start working on it.
 + all ZX tests still pass, plus the CPC tests for every mode completed so far.
 This is the last checkbox of each phase; do not tick the phase until it passes.
 
-- [ ] **Phase R — `sp1_*` → `jsp_*` rename (prerequisite)**
-  - [ ] Rename the 8 `lib/sp1_draw_*.asm` kernel files to `lib/jsp_draw_*.asm`
-  - [ ] Rename the public symbols `_sp1_draw_*` / `_SP1_DRAW_*` to `_jsp_draw_*` / `_JSP_DRAW_*`
-  - [ ] Rename internal kernel labels (`_SP1Mask2Rotate`, `…NR`, etc.) to `jsp_*`
-  - [ ] Update all `extern`/`public`/`call` references (notably `lib/jsp_covered.asm`)
-  - [ ] Rename the `sp1_draw_*` prototypes in `include/jsp.h` to `jsp_draw_*`
-  - [ ] Update the Makefile / wildcards and any other references to the renamed files
-  - [ ] Keep the "based on SP1 / thanks Alvin" credit lines in comments verbatim (rename code only, not credits)
-  - [ ] Leave the standalone SP1 benchmark (`tests/bench_sp1.c`) untouched — it uses the real SP1
-  - [ ] Rebuild ZX + full ZX test pass green after the rename
+- [x] **Phase R — `sp1_*` → `jsp_*` rename (prerequisite)**
+  - [x] Rename the 8 `lib/sp1_draw_*.asm` kernel files to `lib/jsp_draw_*.asm`
+  - [x] Rename the public symbols `_sp1_draw_*` / `_SP1_DRAW_*` to `_jsp_draw_*` / `_JSP_DRAW_*`
+  - [x] Rename internal kernel labels (`_SP1Mask2Rotate`, `…NR`, etc.) to `jsp_*`
+  - [x] Update all `extern`/`public`/`call` references (notably `lib/jsp_covered.asm`)
+  - [x] Rename the `sp1_draw_*` prototypes in `include/jsp.h` to `jsp_draw_*`
+  - [x] Update the Makefile / wildcards and any other references to the renamed files (wildcard `lib/*.asm` auto-picks renamed files; no edit needed)
+  - [x] Keep the "based on SP1 / thanks Alvin" credit lines in comments verbatim (rename code only, not credits)
+  - [x] Leave the standalone SP1 benchmark (`tests/bench_sp1.c`) untouched — it uses the real SP1
+  - [x] Rebuild ZX + full ZX test pass green after the rename
 
 - [ ] **Phase 0 — Seam & ZX regression baseline**
   - [ ] Add `JSP_TARGET_ZX`/`JSP_TARGET_CPC` umbrella guards (ZX default) around all platform-layer items (§1.2)

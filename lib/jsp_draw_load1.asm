@@ -6,19 +6,19 @@
 
 	section code_compiler
 
-	public _SP1_DRAW_LOAD1
-	public _sp1_draw_load1
+	public _JSP_DRAW_LOAD1
+	public _jsp_draw_load1
 
-	extern _SP1_DRAW_LOAD1NR
+	extern _JSP_DRAW_LOAD1NR
 	extern _jsp_current_rottbl_msb
 	extern _jsp_rottbl
 	extern cc_scratch		; dst is always the JSP compositing buffer,
 					; so dst bytes are written absolutely (13T)
 					; instead of via (iy+d) (19T)
 
-; void sp1_draw_load1( uint8_t *dst, uint8_t *graph, uint8_t *graph_left ) __smallc __z88dk_callee;
+; void jsp_draw_load1( uint8_t *dst, uint8_t *graph, uint8_t *graph_left ) __smallc __z88dk_callee;
 ; Trashes DE'!
-_sp1_draw_load1:
+_jsp_draw_load1:
 	exx
 	pop de		; save ret addr
 	exx
@@ -38,10 +38,10 @@ _sp1_draw_load1:
 ; hl = graphic def ptr
 ; ix = left graphic def ptr
 
-_SP1_DRAW_LOAD1:
+_JSP_DRAW_LOAD1:
 
 	cp _jsp_rottbl/256 - 2
-	jp z, _SP1_DRAW_LOAD1NR
+	jp z, _JSP_DRAW_LOAD1NR
 
 	push ix	; save
 
@@ -57,7 +57,7 @@ _SP1_DRAW_LOAD1:
 	; ix = left sprite def
 	; dst = cc_scratch (fixed buffer, written absolutely below)
 
-_SP1Load1Rotate:
+_JSPLoad1Rotate:
 
 	; 0
 

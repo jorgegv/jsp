@@ -6,12 +6,12 @@
 
 	section code_compiler
 
-	public _SP1_DRAW_MASK2NR
-	public _sp1_draw_mask2nr
+	public _JSP_DRAW_MASK2NR
+	public _jsp_draw_mask2nr
 
-;; void sp1_draw_mask2nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
+;; void jsp_draw_mask2nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 
-_sp1_draw_mask2nr:
+_jsp_draw_mask2nr:
 	pop de		; save ret addr
 
 	pop hl		; hl = graphic def ptr
@@ -23,7 +23,7 @@ _sp1_draw_mask2nr:
 ; bc = graphic disp
 ; hl = graphic def ptr
 
-_SP1_DRAW_MASK2NR:
+_JSP_DRAW_MASK2NR:
 
 	; hl = sprite def = (mask,graph) pairs
 	; bc = bg cell

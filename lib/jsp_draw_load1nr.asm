@@ -6,11 +6,11 @@
 
 	section code_compiler
 
-	public _SP1_DRAW_LOAD1NR
-	public _sp1_draw_load1nr
+	public _JSP_DRAW_LOAD1NR
+	public _jsp_draw_load1nr
 
-; void sp1_draw_load1nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
-_sp1_draw_load1nr: 
+; void jsp_draw_load1nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
+_jsp_draw_load1nr: 
 	pop de		; save ret addr
 
 	pop hl		; hl = graphic def ptr
@@ -22,7 +22,7 @@ _sp1_draw_load1nr:
 ; bc = graphic disp
 ; hl = graphic def ptr
 
-_SP1_DRAW_LOAD1NR:
+_JSP_DRAW_LOAD1NR:
 
 	; hl = sprite def (graph only)
 

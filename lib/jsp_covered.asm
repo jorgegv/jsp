@@ -7,7 +7,7 @@
 ;;   - seed an 8-byte scratch with the BTT background tile
 ;;   - composite every covering frame sprite in z-order (row-sweep set +
 ;;     column test, same logic as the C version), calling the existing
-;;     sp1_draw_* rotation kernels
+;;     jsp_draw_* rotation kernels
 ;;   - blit the result with one store, then write the cell attribute
 ;;
 ;; jsp_redraw_begin() (C) still precomputes jsp_frame_sprites[] per frame
@@ -27,18 +27,18 @@
 	extern _jsp_btt
 	extern _jsp_bat
 	extern _jsp_current_rottbl_msb
-	extern _sp1_draw_load1
-	extern _sp1_draw_load1lb
-	extern _sp1_draw_load1rb
-	extern _sp1_draw_mask2
-	extern _sp1_draw_mask2lb
-	extern _sp1_draw_mask2rb
+	extern _jsp_draw_load1
+	extern _jsp_draw_load1lb
+	extern _jsp_draw_load1rb
+	extern _jsp_draw_mask2
+	extern _jsp_draw_mask2lb
+	extern _jsp_draw_mask2rb
 	extern jsp_draw_screen_tile_regs
 
 	public _jsp_redraw_covered_cell
 	public _jsp_cc_row_active_row
 	public cc_cell			; cell-index input, written by jsp_redraw
-	public cc_scratch		; compositing buffer; the sp1_draw_* kernels
+	public cc_scratch		; compositing buffer; the jsp_draw_* kernels
 					; address it absolutely (see those files)
 
 ;; void jsp_redraw_covered_cell( uint16_t rowcol ) __z88dk_fastcall;
@@ -240,10 +240,10 @@ cc_no_i:
 	ld a,(ix+5)			; ismask2
 	or a
 	jr nz,cc_mid_mask
-	call _sp1_draw_load1
+	call _jsp_draw_load1
 	jr cc_after_draw
 cc_mid_mask:
-	call _sp1_draw_mask2
+	call _jsp_draw_mask2
 	jr cc_after_draw
 
 ;; ---- left border ----
@@ -255,10 +255,10 @@ cc_draw_lb:
 	ld a,(ix+5)
 	or a
 	jr nz,cc_lb_mask
-	call _sp1_draw_load1lb
+	call _jsp_draw_load1lb
 	jr cc_after_draw
 cc_lb_mask:
-	call _sp1_draw_mask2lb
+	call _jsp_draw_mask2lb
 	jr cc_after_draw
 
 ;; ---- right border ----
@@ -270,10 +270,10 @@ cc_draw_rb:
 	ld a,(ix+5)
 	or a
 	jr nz,cc_rb_mask
-	call _sp1_draw_load1rb
+	call _jsp_draw_load1rb
 	jr cc_after_draw
 cc_rb_mask:
-	call _sp1_draw_mask2rb
+	call _jsp_draw_mask2rb
 
 ;; ---- apply sprite colour (skipped when color == 0) ----
 cc_after_draw:
