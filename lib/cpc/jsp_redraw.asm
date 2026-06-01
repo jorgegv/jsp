@@ -23,6 +23,11 @@
 	extern cc_cell
 	extern jsp_draw_screen_tile_saddr
 
+	IFDEF CPC_MODE1_MONO			; MONO tiles are 1bpp -> expand at blit
+	extern cc_scratch
+	extern mono_tile_expand
+	ENDIF
+
 	public _jsp_redraw
 
 ; void jsp_redraw( void );
@@ -131,6 +136,17 @@ rd_bg_cell:				; HL = cell ; preserve B,C,D across the blit
 	ld e,(hl)
 	inc hl
 	ld d,(hl)			; DE = jsp_btt[cell] tile pointer
+
+	IFDEF CPC_MODE1_MONO
+	;; MONO: the BTT tile is 1bpp -> expand nibble(col&1) into cc_scratch and
+	;; blit that.  cell & 1 == col & 1 (cell = row*80 + col, row*80 even).
+	ex de,hl			; HL = 1bpp tile ptr
+	ld a,(rd_cell)			; low byte of cell index
+	and 1				; parity = col & 1
+	ld de,cc_scratch
+	call mono_tile_expand		; cc_scratch <- 8 Mode-1 bytes
+	ld de,cc_scratch
+	ENDIF
 
 	ld hl,(rd_cell)
 	ld bc,0xC000

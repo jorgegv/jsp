@@ -8,9 +8,12 @@
 // (test_sprite_mask2_pixels), with cols=2 (1bpp 8-px cells, vs cols=4 for the
 // full-Mode-1 two-nibble-plane asset).
 //
-// Background tiles still blit straight to screen (no expansion), so they are
-// Mode-1 bytes — here the same 4-colour vertical-bar tile as the full-Mode-1
-// test, to confirm the masked MONO ball composites cleanly over texture.
+// Background TILES are 1bpp too in MONO: the BTT holds the 1bpp tile and the
+// blit expands nibble(col&1) to Mode-1 (a 1bpp 8-px tile spans two Mode-1
+// cells, so a uniform fill tiles the 8-px pattern seamlessly).  This test draws
+// the SAME 1bpp stripe tile the ZX / CPC-Mode-2 sprite test uses, with the SAME
+// per-cell loop — both sprite and tile assets are plain Mode-2 1bpp, halving
+// their memory vs full Mode 1.
 //
 // Build:  make cpc-sprite-mode1-mono   then verify in cap32
 //         (make run-cpc-sprite-mode1-mono).
@@ -43,10 +46,10 @@ struct {
     { 295,  70,  1,  4, &sprite4 },
 };
 
-// Mode-1 4-colour bar tile (pens 0,1,2,3 left-to-right): byte = 0x53 (see
-// test_cpc_sprite_mode1.c).  Background blits direct, so tiles are Mode-1 bytes.
-static uint8_t tile_bars[8]  = { 0x53,0x53,0x53,0x53,0x53,0x53,0x53,0x53 };
-static uint8_t tile_blank[8] = { 0,0,0,0,0,0,0,0 };
+// Plain 1bpp (Mode-2 / ZX) stripe tile — the SAME asset the Mode-2 test uses.
+// MONO expands it nibble(col&1) at blit; a uniform fill tiles it seamlessly.
+static uint8_t tile_stripe[8] = { 0xAA,0x55,0xAA,0x55,0xAA,0x55,0xAA,0x55 };
+static uint8_t tile_blank[8]  = { 0,0,0,0,0,0,0,0 };
 
 static void cpc_setup_mode1( void ) {
     __asm
@@ -82,7 +85,7 @@ void main( void ) {
 
     for ( r = 0; r < 25; r++ )
         for ( c = 0; c < 80; c++ )
-            jsp_draw_background_tile( r, c, tile_bars );
+            jsp_draw_background_tile( r, c, tile_stripe );
 
     for ( f = 0; f < ANIM_FRAMES; f++ ) {
         for ( r = 0; r < NUM_SPRITES; r++ ) {

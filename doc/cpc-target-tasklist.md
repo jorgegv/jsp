@@ -95,7 +95,7 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Host-test the 1bpp→Mode-1 nibble expansion + combine vs a true monochrome shift (`tests/cpc/shift_test_mode1_mono.c`, `make cpc-shift-test-mode1-mono`) — PASS (786k+ checks)
   - [x] `jsp_frame.asm`: MONO footprint width `c1 = c0 + (xrot ? 2*cols : 2*cols-1)` via `JSP_MONO_DBL` in the shared `lib/cpc/jsp_cpc_geom.inc` (also fixed a latent Mode-1 dirty-marking bug: `mark_footprint` now uses the per-mode X-split, shared with the frame)
   - [x] MONO covered-cell compositor (`lib/cpc/jsp_covered_mono.asm`, `IFDEF CPC_MODE1_MONO`; `jsp_covered.asm` now `IFNDEF CPC_MODE1_MONO`): screen-col→(1bpp src col, nibble) mapping, expand this+left nibbles to scratch, always call the middle kernel
-  - [x] MONO reuses the Mode-2 1bpp assets unchanged (`test_sprite_mask2.asm`); tiles stay Mode-1 (only sprites are 1bpp-expanded)
+  - [x] MONO reuses the Mode-2 1bpp assets unchanged for BOTH sprites AND tiles (`test_sprite_mask2.asm`, 1bpp tiles): the blit expands `nibble(col&1)` of each 1bpp tile (`mono_tile_expand`, called from `jsp_redraw` bg path + the covered seed), so a uniform fill tiles the 8-px pattern seamlessly — full memory saving on both
   - [x] Test pass under `CPC_MODE1_MONO` (`tests/cpc/test_cpc_sprite_mode1_mono.c`, `make run-cpc-sprite-mode1-mono`); verified in cap32 (masked balls over 4-colour bg, all xrot 0–3 pixel-clean)
   - [x] Regression gate: ZX byte-for-byte (`959048ee…`) + 9 taps + CPC Mode 2 + Mode 1 + Mode 1 MONO green (§12)
 

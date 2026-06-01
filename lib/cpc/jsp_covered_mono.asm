@@ -44,6 +44,7 @@
 	public _jsp_cc_row_active_row
 	public cc_cell
 	public cc_scratch
+	public mono_tile_expand		; also used by the MONO bg path in jsp_redraw.asm
 
 ;; void jsp_redraw_covered_cell( uint16_t cell ) __z88dk_fastcall;
 _jsp_redraw_covered_cell:
@@ -148,7 +149,8 @@ cc_col_ok:
 	jp nz,cc_comp_next
 cc_clip_ok:
 
-	;; seed scratch with the BTT tile on the first covering sprite
+	;; seed scratch on the first covering sprite.  MONO tiles are 1bpp too, so
+	;; the background is the BTT tile EXPANDED (nibble col&1) into Mode-1 bytes.
 	ld a,(cc_covered)
 	or a
 	jr nz,cc_seeded
@@ -160,17 +162,12 @@ cc_clip_ok:
 	add hl,de
 	ld e,(hl)
 	inc hl
-	ld d,(hl)
-	ld hl,cc_scratch
-	ex de,hl
-	ldi
-	ldi
-	ldi
-	ldi
-	ldi
-	ldi
-	ldi
-	ldi
+	ld d,(hl)			; DE = jsp_btt[cell] 1bpp tile ptr
+	ex de,hl			; HL = tile
+	ld a,(cc_col)
+	and 1				; parity = col & 1
+	ld de,cc_scratch
+	call mono_tile_expand		; cc_scratch <- expanded Mode-1 background
 cc_seeded:
 
 ;; ==== MONO compositing slice ========================================
@@ -279,19 +276,27 @@ cc_comp_next:
 	jp nz,cc_comp_loop
 
 ;; ---- blit the cell at 0xC000 + cell (no attribute on CPC) ----
+;; cc_scratch always holds the final 8 Mode-1 bytes: either composited above, or
+;; (uncovered) the BTT 1bpp tile expanded here.
 cc_draw:
 	ld a,(cc_covered)
 	or a
-	ld de,cc_scratch
-	jr nz,cc_do_draw
+	jr nz,cc_do_draw		; composited -> cc_scratch ready
+	;; uncovered (all covering sprites clipped out): expand the BTT 1bpp tile
 	ld hl,(cc_cell)
 	add hl,hl
 	ld bc,_jsp_btt
 	add hl,bc
 	ld e,(hl)
 	inc hl
-	ld d,(hl)
+	ld d,(hl)			; DE = jsp_btt[cell] 1bpp tile ptr
+	ex de,hl			; HL = tile
+	ld a,(cc_col)
+	and 1
+	ld de,cc_scratch
+	call mono_tile_expand
 cc_do_draw:
+	ld de,cc_scratch		; blit cc_scratch (composited or expanded)
 	ld hl,(cc_cell)
 	ld bc,0xC000
 	add hl,bc
@@ -409,6 +414,39 @@ mft_m1:
 	ld (de),a
 	inc de
 	djnz mft_m1
+	ret
+
+;; ---- mono_tile_expand --------------------------------------------------
+;; Expand a 1bpp (Mode-2 format) 8-byte tile to 8 Mode-1 bytes (pen 0/1).
+;; HL = 1bpp tile ptr, A = parity (0 = high 4 px / even col, 1 = low 4 px),
+;; DE = dest (8 bytes).  Graph-only (tiles have no mask).  A 1bpp 8-px tile
+;; spans two Mode-1 cells; the caller picks the half with col&1, so a uniform
+;; fill tiles the 8-px pattern seamlessly.  Trashes A,B,DE,HL; preserves IX.
+mono_tile_expand:
+	or a
+	jr nz,mte_lo
+	ld b,8				; parity 0: eg = g & 0xF0
+mte_hi:
+	ld a,(hl)
+	and 0xF0
+	ld (de),a
+	inc hl
+	inc de
+	djnz mte_hi
+	ret
+mte_lo:
+	ld b,8				; parity 1: eg = (g & 0x0F) << 4
+mte_l:
+	ld a,(hl)
+	and 0x0F
+	rlca
+	rlca
+	rlca
+	rlca
+	ld (de),a
+	inc hl
+	inc de
+	djnz mte_l
 	ret
 
 ;; ---- cc_clip_check ----------------------------------------------------

@@ -270,13 +270,21 @@ a bespoke MONO table.  Concretely:
 - `jsp_frame.asm` widens the MONO footprint to `c1 = c0 + (xrot ? 2*cols : 2*cols-1)`
   (each 1bpp column spans two Mode-1 screen cells); `cols` stays the 1bpp count.
 - Nothing is stored expanded — the conversion is transient, per covered cell.
-- **Scope:** only **sprites** are 1bpp in MONO.  Background/foreground **tiles**
-  blit straight to the screen (the BTT seed + bg path do not expand), so a MONO
-  tile is a normal Mode-1 byte — the memory win is on the sprite sheet, where it
-  matters most.  (Expanding 1bpp tiles too would make one tile span two screen
-  cells, breaking the 1-tile-1-cell model; out of scope here.)
+- **Tiles are 1bpp too.**  Background/foreground tiles reuse the same plain 1bpp
+  (Mode-2) assets and halve their memory.  The BTT holds the 1bpp tile pointer;
+  the blit expands `nibble(col & 1)` of the 8-byte tile into Mode-1 bytes
+  (graph-only, `mono_tile_expand` in `jsp_covered_mono.asm`, called from the bg
+  path in `jsp_redraw.asm` and from the covered-cell seed/uncovered fallback).
+  A 1bpp 8-px tile spans two Mode-1 screen cells, so `parity = col & 1` (= even
+  col → left 4 px, odd col → right 4 px; `cell & 1 == col & 1` since `row*80` is
+  even).  A uniform fill — the same `for c: draw(r,c,tile)` loop as Mode 2 —
+  therefore tiles the 8-px pattern seamlessly, and an explicit 8-px tile is
+  placed at an even col so its halves land in cells `2k`/`2k+1`.  No per-cell
+  parity storage is needed and the 80-col grid / 1-pointer-per-cell BTT are
+  unchanged.
 - Validated by `make cpc-shift-test-mode1-mono` (the expansion + combine vs a
-  true monochrome shift) and visually in cap32 (`make run-cpc-sprite-mode1-mono`).
+  true monochrome shift) and visually in cap32 (`make run-cpc-sprite-mode1-mono`:
+  masked 1bpp balls over a seamless 1bpp tile background, all xrot 0–3 clean).
 
 (This is distinct from full Mode 1 above, whose assets are genuinely 4-colour
 two-nibble-plane and need no expansion.)
