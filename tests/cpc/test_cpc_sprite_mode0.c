@@ -1,16 +1,17 @@
 // JSP-CPC Phase 7 regression test — masked, sub-byte-shifted Mode 0 sprites
-// over a 16-colour background.
+// over a multi-colour wireframe grid on a black background.
 //
 // Mode 0 is 2 px/byte (4 bits/pixel, 16 colours), 160 px wide -> 80 byte-cols.
-// To show the full Mode-0 palette this paints a 4x4 grid of solid colour blocks
-// (all 16 pens), then animates MASK2 balls over it and settles to a still frame.
-// A single shift phase (xrot 0/1) exercises the odd/even interleave shift table
-// + the shared table-driven kernels.
+// The background is black (pen 0) with a 16x16-px wireframe grid whose lines
+// cycle through the colour pens (2..15); each 16x16 square is one colour.  The
+// white/black MASK2 balls bounce over it (pen 0 = black body, pen 1 = white),
+// so the masked rim shows the grid through.  A single shift phase (xrot 0/1)
+// exercises the odd/even interleave shift table + the shared table-driven kernels.
 //
-// The ball asset is the Mode-0 odd/even-interleave re-encoding of the same
-// (2-colour) source art (tools/cpcgfx.pl --mode 0): a 16-px-wide ball is 8
-// Mode-0 cells wide, so the sprite descriptors use cols=8 (2 px/cell).  The
-// 16 colours come from the background; the ball stays pen 0/1.
+// 16x16-px grid squares = 8 byte-cols x 2 cell-rows (cells are 2 px wide, 8 px
+// tall): a vertical line sits in cells where col%8==0, a horizontal line where
+// row%2==0.  The ball asset is the Mode-0 re-encoding of the 2-colour source art
+// (cols=8, 2 px/cell).
 //
 // Build:  make cpc-sprite-mode0   then verify in cap32 (make run-cpc-sprite-mode0).
 
@@ -40,26 +41,28 @@ struct {
     { 140,  20, -2, -2, &sprite3 },
 };
 
-// 16-pen palette (gate-array hardware ink values, 0x40 | hw).  The standard CPC
-// firmware ink->hardware mapping for pens 0..15, giving 16 distinct colours.
+// 16-pen palette (gate-array hardware inks, 0x40 | hw).  pen0 = black (background
+// + ball body), pen1 = white (ball highlight); pens 2..15 = the grid-line colours.
 static uint8_t palette_inks[16] = {
-    0x54, 0x44, 0x55, 0x5C, 0x58, 0x5D, 0x4C, 0x45,
-    0x4D, 0x56, 0x46, 0x57, 0x5E, 0x40, 0x4E, 0x4B
+    0x54, 0x4B, 0x44, 0x55, 0x5C, 0x58, 0x5D, 0x4C,
+    0x45, 0x4D, 0x56, 0x46, 0x57, 0x5E, 0x40, 0x4E
 };
 
-// One solid-pen Mode-0 tile per pen (8 identical bytes); built at run time.
-static uint8_t tiles16[16][8];
-static uint8_t tile_blank[8] = { 0,0,0,0,0,0,0,0 };
+// Wireframe tiles per pen, built at run time: a vertical line (left pixel),
+// a horizontal line (top scanline), and the corner (both).  Plus a black cell.
+static uint8_t vline_tile[16][8];
+static uint8_t hline_tile[16][8];
+static uint8_t corner_tile[16][8];
+static uint8_t tile_black[8] = { 0,0,0,0,0,0,0,0 };
 
-// Solid Mode-0 byte for pen P (both pixels = P).  Plane q of cell-pixel cp sits
-// at bit (7-cp) - q*2: px0 -> bits 7,5,3,1 ; px1 -> bits 6,4,2,0 (planes 0..3).
-static uint8_t m0_solid( uint8_t pen ) {
+// Mode-0 byte with pixel 0 = pen p0, pixel 1 = pen p1.  Plane q of cell-pixel cp
+// sits at bit (7-cp) - 2q: px0 -> bits 7,5,3,1 ; px1 -> bits 6,4,2,0.
+static uint8_t m0_cell( uint8_t p0, uint8_t p1 ) {
     uint8_t b = 0, q;
-    for ( q = 0; q < 4; q++ )
-        if ( pen & ( 1 << q ) ) {
-            b |= ( 1 << ( 7 - 2 * q ) );    // pixel 0, plane q
-            b |= ( 1 << ( 6 - 2 * q ) );    // pixel 1, plane q
-        }
+    for ( q = 0; q < 4; q++ ) {
+        if ( p0 & ( 1 << q ) ) b |= ( 1 << ( 7 - 2 * q ) );
+        if ( p1 & ( 1 << q ) ) b |= ( 1 << ( 6 - 2 * q ) );
+    }
     return b;
 }
 
@@ -86,27 +89,37 @@ pal_loop:
 }
 
 void main( void ) {
-    uint8_t  r, c, pen;
+    uint8_t  r, c, p, i;
     uint16_t f;
 
     cpc_setup_mode0();
 
-    for ( pen = 0; pen < 16; pen++ ) {
-        uint8_t b = m0_solid( pen ), i;
-        for ( i = 0; i < 8; i++ ) tiles16[ pen ][ i ] = b;
-    }
-
-    jsp_init( tile_blank, 0 );
-
-    // 4x4 grid of solid colour blocks across the 80x25 grid: 20 cells x ~6 rows
-    // per block, pen = block_row*4 + block_col -> all 16 pens shown.
-    for ( r = 0; r < 25; r++ ) {
-        uint8_t br = ( r / 6 ); if ( br > 3 ) br = 3;
-        for ( c = 0; c < 80; c++ ) {
-            uint8_t bc = ( c / 20 ); if ( bc > 3 ) bc = 3;
-            jsp_draw_background_tile( r, c, tiles16[ br * 4 + bc ] );
+    // build the per-pen wireframe tiles
+    for ( p = 0; p < 16; p++ ) {
+        uint8_t v = m0_cell( p, 0 );    // left pixel = pen p (vertical line)
+        uint8_t h = m0_cell( p, p );    // both pixels = pen p (horizontal line)
+        for ( i = 0; i < 8; i++ ) {
+            vline_tile[ p ][ i ]  = v;
+            hline_tile[ p ][ i ]  = ( i == 0 ) ? h : 0;
+            corner_tile[ p ][ i ] = ( i == 0 ) ? h : v;
         }
     }
+
+    jsp_init( tile_black, 0 );
+
+    // 16x16-px wireframe grid: vertical line every 8 cols, horizontal every 2
+    // rows; each square (gx=col/8, gy=row/2) gets one cycling colour pen 2..15.
+    for ( r = 0; r < 25; r++ )
+        for ( c = 0; c < 80; c++ ) {
+            uint8_t pen = 2 + ( ( ( c >> 3 ) + ( r >> 1 ) ) % 14 );
+            uint8_t vl  = ( ( c & 7 ) == 0 );
+            uint8_t hl  = ( ( r & 1 ) == 0 );
+            uint8_t *t  = tile_black;
+            if ( vl && hl ) t = corner_tile[ pen ];
+            else if ( vl )  t = vline_tile[ pen ];
+            else if ( hl )  t = hline_tile[ pen ];
+            jsp_draw_background_tile( r, c, t );
+        }
 
     for ( f = 0; f < ANIM_FRAMES; f++ ) {
         for ( r = 0; r < NUM_SPRITES; r++ ) {
