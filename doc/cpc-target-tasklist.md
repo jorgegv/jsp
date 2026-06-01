@@ -35,13 +35,13 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Decide descriptor X/Y width (per-target `jsp_coord_t`, ZX=uint8_t byte-for-byte; 16-bit CPC X applied with the asm/API in Phase 3) (§3)
   - [x] Regression gate: ZX build byte-for-byte identical + 9 test taps green (§12)
 
-- [ ] **Phase 1.1 — Platform source-tree reorganization** (pure file move, §1.3)
+- [ ] **Phase 1.1 — Platform source-tree reorganization** (pure file move, no new guards, §1.3)
   - [ ] Create `lib/zx/` and `lib/cpc/` directories
   - [ ] Move the wholly-ZX platform files into `lib/zx/` per the §1.3 table (screen, redraw, covered, frame, sprite_defer, 8 kernels)
   - [ ] Split `jsp_util.asm` → `lib/jsp_mem.asm` (shared) + `lib/zx/jsp_rowcolindex.asm` (ZX)
-  - [ ] Keep every moved file's target guard (double-guard rule, §1.3)
-  - [ ] Guard the ZX ROM-font (`0x3D00`) spots in `jsp_tiles.c` under `#ifdef JSP_TARGET_ZX`
-  - [ ] Makefile: compile `lib/ + lib/$(JSP_TARGET)/` with `JSP_TARGET ?= zx`; extend `clean` to the new dirs
+  - [ ] Moved files keep their existing Phase-0 guard/SEAM marking; add no new guards (§1.3)
+  - [ ] Makefile: add `lib/$(JSP_TARGET)/*` (`JSP_TARGET ?= zx`) to BOTH `C_SRCS`/`ASM_SRCS` AND the per-test `LIB_SRCS` (+`bench-mask2`)
+  - [ ] Makefile: extend `clean` to `lib/zx/` + `lib/cpc/` (`.o/.lis/.sym/.map`)
   - [ ] Regression gate: ZX all green — build links clean + all 9 test taps pass visually (re-baseline hash; byte-for-byte not required, link order shifts) (§12)
 
 - [ ] **Phase 2 — CPC Mode 2 screen layer**
@@ -52,6 +52,7 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [ ] Widen/raise the `& 0x1F` row/col masks in `jsp_frame.asm` for 80×25 (§2,§3)
   - [ ] Confirm JSP's one-store-per-cell already gives the analysis §13 no-flicker/accept-tearing model; add no double buffer (§5.1)
   - [ ] Add CPC data-block `__at` placement, sizing and init below `0xC000` (§9)
+  - [ ] Make shared `lib/` files CPC-compilable: guard `jsp_bat[]` writes (`jsp_tiles.c`/`jsp_init_bat`) under `#if JSP_HAS_ATTR` and `0x3D00` ROM-font in `jsp_tiles.c` under `JSP_TARGET_ZX` (§6,§9)
   - [ ] Add CPC test-harness mode-set + palette-program before the first redraw (§11,§6)
   - [ ] Prove a background-tile-only CPC Mode 2 image end-to-end via the `caprice-testing` skill (§12)
   - [ ] Regression gate: ZX green + CPC Mode 2 background render green (§12)

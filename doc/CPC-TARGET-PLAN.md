@@ -66,11 +66,18 @@ build compiles `lib/ + lib/cpc/` (with `-DJSP_TARGET_CPC -Ca-DJSP_TARGET_CPC` an
 the mode). The platform dir is the **first** line of defence (wrong-platform
 files are never fed to the compiler).
 
-**Double-guard rule:** files in `lib/zx/` and `lib/cpc/` *also* keep their target
-guard (`IFNDEF JSP_TARGET_CPC` / `IFDEF JSP_TARGET_CPC` in asm; `#ifdef
-JSP_TARGET_ZX` / `_CPC` in C) — the **second** line of defence, so a file that is
-mis-selected compiles to nothing instead of mis-linking. (This makes Phase 0's
-whole-file `IFNDEF` wrappers redundant-but-retained, by design.)
+**Double-guard rule:** the **first** line of defence is the Makefile (it never
+feeds a wrong-platform file to the compiler). The **second** line is the in-file
+target guard, present where it cleanly applies: the 8 `jsp_draw_*.asm` and
+`jsp_screen.asm` already carry whole-file `IFNDEF JSP_TARGET_CPC` (from Phase 0),
+and new `lib/cpc/` files use `IFDEF JSP_TARGET_CPC`. The four redraw-path files
+moved to `lib/zx/` (`jsp_redraw.asm`, `jsp_covered.asm`, `jsp_frame.asm`,
+`jsp_sprite_defer.asm`) carry only the Phase-0 **SEAM comments**, not a whole-file
+guard — by design, because their CPC counterparts are *separate* `lib/cpc/` files
+written in Phase 2, not in-file `#ifdef` branches. So those four rely on the
+Makefile selection alone; that is sufficient (on a ZX build `JSP_TARGET_CPC` is
+undefined; on a CPC build they are never compiled). New platform files SHOULD add
+the matching `IFDEF`/`IFNDEF` guard for belt-and-suspenders.
 
 **Placement criterion.** A file lives in a platform dir **iff it is wholly one
 platform's implementation of a primitive** (screen addressing, the redraw walk,
@@ -82,9 +89,11 @@ address, a no-op colour body). Classification of the current files:
 | File | Dir | Rationale |
 |------|-----|-----------|
 | jsp_init.c, jsp_data.c, jsp_pool.c, jsp_sprite_c.c, jsp_composite.c, jsp_print.c, jsp_tile.c | `lib/` | shared engine/API; geometry via `jsp_config.h` |
-| jsp_tiles.c | `lib/` | tile table + clear_rect; ZX ROM-font (`0x3D00`) spots guarded `#ifdef JSP_TARGET_ZX` |
+| jsp_sprite_init.asm | `lib/` | descriptor zero-init; platform-agnostic (8-bit coord offsets widen in Phase 3) |
+| jsp_tiles.c | `lib/` | tile table + clear_rect. **Has ZX-specifics to guard in Phase 2** (not 1.1): the `0x3D00` ROM-font addresses *and* the unconditional `jsp_bat[idx]=attr` writes (BAT is dropped on CPC, §6/§9). Harmless on ZX now. |
+| jsp_init.c (`jsp_init_bat`) | `lib/` | same BAT landmine: `jsp_init_bat()` writes `jsp_bat[]` — guard under `JSP_HAS_ATTR` in Phase 2 |
 | jsp_color.c | `lib/` | API shared; ZX attribute body already guarded (no-op on CPC) |
-| jsp_dtt.asm, jsp_ftt.asm | `lib/` | DTT/FTT bit ops; delegate the grid index to the platform `rowcolindex` |
+| jsp_dtt.asm, jsp_ftt.asm | `lib/` | DTT/FTT bit ops; delegate the grid index to the platform `rowcolindex` (`jsp_rowcolindex` itself is a dead extern — only `…_dtt` is called) |
 | jsp_mem.asm *(new — split from jsp_util.asm)* | `lib/` | `memzero`/`memcpy` (platform-independent) |
 | jsp_screen.asm | `lib/zx/` | ZX screen addressing |
 | jsp_redraw.asm | `lib/zx/` | ZX DTT-walk + bg blit + `rd_rowtab` + `0x5800` |
@@ -584,24 +593,33 @@ way. Mutually-exclusive-mode compile error. Decide descriptor X/Y width strategy
 across the engine with the config symbols (ZX values unchanged).
 
 **Phase 1.1 — Platform source-tree reorganization.**
-Pure file-organization step (no logic change), so Phase 2 can drop CPC files
-straight into `lib/cpc/` instead of guarding shared files. Create `lib/zx/` and
-`lib/cpc/`; move the wholly-ZX platform files into `lib/zx/` and split
-`jsp_util.asm` into `lib/jsp_mem.asm` (shared) + `lib/zx/jsp_rowcolindex.asm`
-(ZX) per the §1.3 table; keep every moved file's target guard (the double-guard
-rule). Teach the Makefile to compile `lib/ + lib/$(JSP_TARGET)/` with
-`JSP_TARGET ?= zx`, and extend `clean` to the new dirs. **Acceptance:** the ZX
-build links clean and **all 9 ZX test taps pass (visually verified)** — this is a
-pure move, so functional equivalence is the bar; byte-for-byte is *not* required
-here because the link order shifts (re-establish the baseline hash afterwards).
+Pure file-organization step (no logic change, no new guards), so Phase 2 can drop
+CPC files straight into `lib/cpc/` instead of guarding shared files. Create
+`lib/zx/` and `lib/cpc/`; move the wholly-ZX platform files into `lib/zx/` and
+split `jsp_util.asm` into `lib/jsp_mem.asm` (shared) + `lib/zx/jsp_rowcolindex.asm`
+(ZX) per the §1.3 table; the moved files keep whatever Phase-0 guard/SEAM marking
+they already have (no new guards added here). Teach the Makefile to compile
+`lib/ + lib/$(JSP_TARGET)/` with `JSP_TARGET ?= zx` — **at BOTH wildcard sites**:
+the main `C_SRCS`/`ASM_SRCS` *and* the separate per-test `LIB_SRCS` (and the
+`bench-mask2` rule that reuses `LIB_SRCS`); otherwise `make tests` drops all of
+`lib/zx/` and link-fails. Extend `clean` to `lib/zx/` + `lib/cpc/`
+(`.o/.lis/.sym/.map`). No `-Ca-D` asm passthrough is added yet (the ZX build
+defines no target macro; absence satisfies `IFNDEF JSP_TARGET_CPC`). **Acceptance:**
+the ZX build links clean and **all 9 ZX test taps pass (visually verified)** —
+this is a pure move, so functional equivalence is the bar; byte-for-byte is *not*
+required (link order shifts; re-establish the baseline hash afterwards).
 *Regression gate (ZX all green) as for every phase (§12 intro).*
 
 **Phase 2 — CPC Mode 2 screen layer.**
-CPC screen addressing (§7): new `jsp_draw_screen_tile` (8 lines × `+0x800`),
-25-entry `rd_rowtab` = `0xC000 + row*80`, drop attribute stores under
-`JSP_TARGET_CPC`. CPC data-block `__at` placement & init (§9), BAT dropped (§6).
-Get a *background-tile-only* CPC Mode 2 image on screen end-to-end (no sprites
-yet) — the smallest provable CPC milestone.
+CPC screen addressing (§7): new `lib/cpc/` `jsp_draw_screen_tile` (8 lines ×
+`+0x800`), 25-entry `rd_rowtab` = `0xC000 + row*80`, no attribute stores. CPC
+data-block `__at` placement & init (§9), BAT dropped (§6). **Make the shared
+`lib/` files CPC-compilable:** guard the ZX-only spots that the shared files still
+contain — the `jsp_bat[]` writes in `jsp_tiles.c`/`jsp_init.c` (`jsp_init_bat`,
+`jsp_tile_put`, `jsp_clear_rect`) under `#if JSP_HAS_ATTR`, and the `0x3D00`
+ROM-font addresses in `jsp_tiles.c` under `#ifdef JSP_TARGET_ZX` (the CPC build
+provides its own glyph source). Get a *background-tile-only* CPC Mode 2 image on
+screen end-to-end (no sprites yet) — the smallest provable CPC milestone.
 
 **Phase 3 — CPC Mode 2 shift + kernels.**
 Reuse `jsp_init_rottbl()` (M2 = ZX). Port the 8 `sp1_draw_*` kernels to CPC
