@@ -27,19 +27,26 @@
 #include <string.h>
 #include <ctype.h>
 
+// The rottbl entry formula is shared verbatim with the production generator
+// jsp_init_rottbl() (lib/jsp_init.c) via this header — so build_rottbl() below
+// builds the table from the SAME expression the engine uses, and tests [2]/[3]
+// (the independent 16-bit-shift checks) therefore validate the production
+// formula, not a private copy that could drift.
+#include "jsp_rottbl_formula.h"
+
 #define PHASES 7                // Mode 2: shift phases 1..7
 
 // rottbl_in[i-1][v] / rottbl_carry[i-1][v] for shift i, source byte v.
 static uint8_t rottbl_in[PHASES][256];
 static uint8_t rottbl_carry[PHASES][256];
 
-// Build the table with the EXACT expression from lib/jsp_init.c:54-55
-// (must stay in sync with jsp_init_rottbl()).
+// Build the table from the shared production formula (jsp_rottbl_formula.h),
+// exactly as jsp_init_rottbl() does — no private copy.
 static void build_rottbl(void) {
     for (int i = 1; i <= PHASES; i++) {
         for (int val = 0; val <= 255; val++) {
-            rottbl_in[i-1][val]    = (uint8_t)(((256 * val) >> i) / 256);
-            rottbl_carry[i-1][val] = (uint8_t)(((256 * val) >> i) % 256);
+            rottbl_in[i-1][val]    = (uint8_t)JSP_ROTTBL_IN(val, i);
+            rottbl_carry[i-1][val] = (uint8_t)JSP_ROTTBL_CARRY(val, i);
         }
     }
 }
@@ -50,7 +57,9 @@ static int fail_count = 0;
     if (fail_count < 20) { printf("  FAIL: "); printf(__VA_ARGS__); printf("\n"); } \
     fail_count++; } } while (0)
 
-// 1) Table entries match the §8.1 closed form: in = v>>i, carry = (v<<(8-i))&0xFF.
+// 1) The shared production formula matches the §8.1 closed form
+//    in = v>>i, carry = (v<<(8-i))&0xFF.  This locks the closed form as the
+//    Mode-2 spec; the real shift correctness is proved by tests [2]/[3].
 static void test_table_closed_form(void) {
     int checks = 0;
     for (int i = 1; i <= PHASES; i++) {
@@ -86,10 +95,14 @@ static void test_combine_exhaustive(void) {
     printf("[2] exhaustive combine vs 16-bit shift (256x256x%d): %d checks\n", PHASES, checks);
 }
 
-// 3) Same check driven by the ACTUAL emitted asset bytes (the converter's exact
-//    output).  Adjacent bytes act as (left,this); the first byte's left is 0.
+// 3) Exercise the table over the ACTUAL emitted asset byte VALUES (the
+//    converter's exact output).  Note: this pairs each byte with its
+//    file-adjacent predecessor, which is NOT the kernel's true left-column
+//    neighbour (mask/graph are interleaved, columns-major) — so this is the
+//    exhaustive check [2] re-run on the real byte values as a sanity tie-back,
+//    not a structural validation of the column layout.  [2] already covers
+//    every possible (left,this) pair, including all real column adjacencies.
 static void test_emitted_bytes(const uint8_t *bytes, int n) {
-    if (n < 2) { printf("[3] emitted-byte stream: skipped (n=%d)\n", n); return; }
     int checks = 0;
     for (int i = 1; i <= PHASES; i++) {
         for (int k = 0; k < n; k++) {
@@ -139,11 +152,14 @@ int main(int argc, char **argv) {
 
     static uint8_t bytes[8192];
     int n = load_asm_bytes(asmpath, bytes, sizeof bytes);
-    if (n < 0) {
-        printf("[3] emitted asset bytes: could not open %s (skipped)\n", asmpath);
-    } else {
-        test_emitted_bytes(bytes, n);
+    if (n < 2) {
+        // Hard failure, not a silent skip: the Makefile always passes the asset,
+        // so an unreadable / near-empty file means the gate is not running.
+        printf("[3] emitted asset bytes: FAIL — read %d bytes from %s (need >=2)\n", n, asmpath);
+        printf("RESULT: FAIL (asset not loaded)\n");
+        return 1;
     }
+    test_emitted_bytes(bytes, n);
 
     if (fail_count == 0) {
         printf("RESULT: PASS\n");

@@ -259,7 +259,7 @@ cpc-sprite-demo-mode2: $(SPRITE_MASK2_ASM)
 HOSTCC		?= cc
 # Mode 2 shift/mask unit test (host cc, no emulator): validates the jsp_rottbl masks + combine vs a true 16-bit shift
 cpc-shift-test-mode2: $(SPRITE_MASK2_ASM)
-	$(HOSTCC) -O2 -Wall -o $(CPCTEST_DIR)/shift_test_mode2 $(CPCTEST_DIR)/shift_test_mode2.c
+	$(HOSTCC) -O2 -Wall -I$(INCLUDE_DIR) -o $(CPCTEST_DIR)/shift_test_mode2 $(CPCTEST_DIR)/shift_test_mode2.c
 	$(CPCTEST_DIR)/shift_test_mode2 $(SPRITE_MASK2_ASM)
 
 ## extras — sprite assets (generated from assets/*.png via gfxgen.pl).

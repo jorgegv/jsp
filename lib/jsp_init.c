@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "jsp.h"
+#include "jsp_rottbl_formula.h"
 
 ///////////////////////////
 // Externals / Forwards
@@ -51,8 +52,8 @@ void jsp_init_rottbl( void ) {
     uint16_t val;
     for ( i = 1; i <= JSP_SHIFT_PHASES; i++ ) {
         for ( val = 0; val <= 255; val++ ) {
-            jsp_rottbl[ 512 * ( i - 1 ) + val ] = ( ( 256 * val ) >> i ) / 256;
-            jsp_rottbl[ 512 * ( i - 1 ) + val +256 ] = ( ( 256 * val ) >> i ) % 256;
+            jsp_rottbl[ 512 * ( i - 1 ) + val ]      = JSP_ROTTBL_IN( val, i );
+            jsp_rottbl[ 512 * ( i - 1 ) + val +256 ] = JSP_ROTTBL_CARRY( val, i );
         }
     }
 }
