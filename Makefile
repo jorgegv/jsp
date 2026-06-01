@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -249,6 +249,24 @@ cpc-sprite: $(SPRITE_MASK2_ASM)
 # Build and screenshot the CPC sprite test headless in cap32
 run-cpc-sprite: cpc-sprite
 	./tools/cap32-shot.sh $(CPC_SPR_NAME).dsk $(CPC_SPR_NAME)
+
+## CPC (Phase 6) — Mode 1 (4-colour, ppb=4) sprite test.  Same engine as Mode 2;
+## links the Mode-1 two-nibble-plane ball asset (cols=4) and builds with
+## CPC_MODE=1 (passes CPC_MODE1 to C + asm -> ppb=4 split, 3-phase rottbl).
+CPC_SPR_M1_NAME	= CPCSPR1
+
+# Build the CPC Mode 1 sprite test (.dsk) — settles to a still frame
+cpc-sprite-mode1: CPC_MODE := 1
+cpc-sprite-mode1: $(SPRITE_MASK2_M1_ASM)
+	echo Building CPC Mode 1 sprite test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_sprite_mode1.c $(SPRITE_MASK2_M1_ASM) $(CPC_LIB_SRCS) \
+		-o $(CPC_SPR_M1_NAME) -m
+	echo "Created $(CPC_SPR_M1_NAME).dsk"
+
+# Build and screenshot the CPC Mode 1 sprite test headless in cap32
+run-cpc-sprite-mode1: cpc-sprite-mode1
+	./tools/cap32-shot.sh $(CPC_SPR_M1_NAME).dsk $(CPC_SPR_M1_NAME)
 
 # Build the CPC Mode 2 sprite DEMO (.dsk) — balls bounce continuously (watch live: cap32 -a 'run"CPCSPRD.' CPCSPRD.dsk)
 cpc-sprite-demo-mode2: $(SPRITE_MASK2_ASM)
