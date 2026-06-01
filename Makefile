@@ -262,6 +262,11 @@ cpc-shift-test-mode2: $(SPRITE_MASK2_ASM)
 	$(HOSTCC) -O2 -Wall -I$(INCLUDE_DIR) -o $(CPCTEST_DIR)/shift_test_mode2 $(CPCTEST_DIR)/shift_test_mode2.c
 	$(CPCTEST_DIR)/shift_test_mode2 $(SPRITE_MASK2_ASM)
 
+# Mode 1 shift/mask unit test (host cc): validates the Mode-1 nibble-plane masks vs an independent pixel-array shift
+cpc-shift-test-mode1: $(SPRITE_MASK2_M1_ASM)
+	$(HOSTCC) -O2 -Wall -DCPC_MODE1 -I$(INCLUDE_DIR) -o $(CPCTEST_DIR)/shift_test_mode1 $(CPCTEST_DIR)/shift_test_mode1.c
+	$(CPCTEST_DIR)/shift_test_mode1 $(SPRITE_MASK2_M1_ASM)
+
 ## CPC (Phase 5) — Mode 2 ports of the ZX functional tests (same layout, CPC
 ## mode setup, geometric tiles).  printf-console tests (dtt, btt_contents) and
 ## the font/text test (tiles_and_print) are ZX-only for now — see the tasklist.
