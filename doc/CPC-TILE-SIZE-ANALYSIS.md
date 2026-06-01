@@ -1,7 +1,9 @@
 # JSP-CPC — Cell/Tile-Size Model Analysis (byte-cell vs pixel-cell)
 
-**Status:** Open design decision, **deferred** — to be settled by prototyping
-Mode 0 both ways and measuring (see "Decision process" below).
+**Status: DECIDED — Model A (byte-cell).** Settled at the start of Phase 7
+(CPC Mode 0). The whole CPC port uses the byte-cell model: cell = 8 lines × 1
+byte, 80×25 = 2000-cell grid in every mode; cell pixel-width = 2/4/8 px for
+M0/M1/M2. See "Decision (Phase 7)" below for the rationale.
 **Date:** 2026-06-01
 **Context:** While planning the CPC port (`doc/CPC-TARGET-PLAN.md` §2), the
 question arose: should a JSP-CPC "cell" be a fixed **8 bytes** (variable pixel
@@ -142,13 +144,31 @@ than multi-cell glyphs.
 
 ---
 
-## Decision process / how to close this out
+## Decision (Phase 7) — Model A (byte-cell)
 
-- Owner: JSP-CPC project.
-- Trigger: start of **Phase 7 (CPC Mode 0)** in `doc/cpc-target-tasklist.md`
-  (mode0 is the extreme case; decide there, then apply the same choice to Mode 1
-  retroactively if it differs from the Mode-2 default).
-- Inputs: the Mode-0 A/B compositor prototypes + the measurements above.
-- Output: update this doc's status to "Decided: Model X", and reconcile
-  `doc/CPC-TARGET-PLAN.md` §2/§9 (grid/cell/table sizing) and the affected
-  kernels/tile/text code to the chosen model.
+Decided at the start of Phase 7. **The decision context changed from the "blind"
+lean above:** by the time Mode 0 was reached, **Mode 2 and Mode 1 were already
+implemented and verified in Model A** (80-col grid, 1-byte cells, the
+`graph`/`graph_left` per-byte-column compositor + the shared table-driven
+kernels). That reframes the trade:
+
+- **Zero rework + consistency.** Model A makes Mode 0 a near-clone of Mode 1
+  (ppb=2, a single shift phase) and reuses the entire verified
+  frame/compositor/kernel chain unchanged. Model B would mean *redoing the
+  verified Mode 1* (intra-cell column mapping) plus the Mode-0 20-col DTT wrinkle.
+- **The Model-B win is unmeasurable here.** Its claimed M0/M1 advantage is
+  per-cell-overhead / RAM / "likely faster" — but there is **no headless CPC
+  T-state profiler** (`CPC-TARGET-PLAN.md` §11, risk 5), so "measure, not argue"
+  cannot actually be executed. With no measurement to justify reopening verified
+  code, the safe, consistent choice wins.
+- **Model A's cost is cold-path only.** A tile/char is 2 px wide in Mode 0 (spans
+  4 cells) and `cols` is in 2-px byte units; the hot compositor stays simplest.
+  Table RAM is the 2000-cell maximum (fits the budget, §9).
+
+If a CPC profiler later lands and shows a decisive Model-B win for a real
+workload, this can be revisited — but it would be a deliberate, measured rewrite,
+not the default.
+
+**Reconciliation:** `doc/CPC-TARGET-PLAN.md` §2/§9 already describe Model A as the
+working model; no change needed. Mode 1 stays as built. The byte-cell figures
+(BTT 4000, DTT/FTT 250, 80×25 grid) hold for all modes.

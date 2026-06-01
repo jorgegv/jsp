@@ -311,6 +311,11 @@ cpc-shift-test-mode1-mono: $(SPRITE_MASK2_ASM)
 	$(HOSTCC) -O2 -Wall -DCPC_MODE1_MONO -I$(INCLUDE_DIR) -o $(CPCTEST_DIR)/shift_test_mode1_mono $(CPCTEST_DIR)/shift_test_mode1_mono.c
 	$(CPCTEST_DIR)/shift_test_mode1_mono $(SPRITE_MASK2_ASM)
 
+# Mode 0 shift/mask unit test (host cc): validates the Mode-0 odd/even interleave masks vs an independent pixel-array shift
+cpc-shift-test-mode0: $(SPRITE_MASK2_M0_ASM)
+	$(HOSTCC) -O2 -Wall -DCPC_MODE0 -I$(INCLUDE_DIR) -o $(CPCTEST_DIR)/shift_test_mode0 $(CPCTEST_DIR)/shift_test_mode0.c
+	$(CPCTEST_DIR)/shift_test_mode0 $(SPRITE_MASK2_M0_ASM)
+
 ## CPC (Phase 5) — Mode 2 ports of the ZX functional tests (same layout, CPC
 ## mode setup, geometric tiles).  printf-console tests (dtt, btt_contents) and
 ## the font/text test (tiles_and_print) are ZX-only for now — see the tasklist.

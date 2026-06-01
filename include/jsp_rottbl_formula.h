@@ -17,7 +17,23 @@
 // shift in the mode's pixel encoding), so the IN/CARRY macros are selected by
 // the active CPC mode guard; ZX / Mode 2 is the default 1bpp-linear form.
 
-#if defined( CPC_MODE1 ) || defined( CPC_MODE1_MONO )
+#if defined( CPC_MODE0 )
+
+// ---- Mode 0: 2 px/byte, 4 interleaved planes, single 1-px shift phase -------
+// A Mode-0 byte holds 2 pixels (4 bits each).  Pixel 0 (left) occupies the odd
+// bit positions {7,5,3,1} (mask 0xAA); pixel 1 (right) the even positions
+// {6,4,2,0} (mask 0x55).  A 1-pixel right shift moves pixel 0 -> pixel 1
+// (odd bits -> even bits, i.e. >>1) and spills pixel 1 into the next byte's
+// pixel 0 (even bits -> odd bits, i.e. <<1).  Only one phase exists (xrot 1;
+// xrot 0 is the aligned/no-shift case), so the i argument is unused.
+//   in    = (val & 0xAA) >> 1     ; pixel 0 -> pixel 1 within this byte
+//   carry = (val & 0x55) << 1     ; pixel 1 -> next byte's pixel 0
+// Verified bit-exact against an independent pixel-array shift by
+// make cpc-shift-test-mode0.
+#define JSP_ROTTBL_IN(val,i)    ( ( (val) & 0xAA ) >> 1 )
+#define JSP_ROTTBL_CARRY(val,i) ( ( (val) & 0x55 ) << 1 )
+
+#elif defined( CPC_MODE1 ) || defined( CPC_MODE1_MONO )
 
 // ---- Mode 1: 4 px/byte, two interleaved nibble-planes ----------------------
 // A Mode-1 byte holds 4 pixels (2 bits each).  Pixel p (0 = leftmost) has its
