@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -248,8 +248,7 @@ cpc-sprite: $(SPRITE_MASK2_ASM)
 run-cpc-sprite: cpc-sprite
 	./tools/cap32-shot.sh $(CPC_SPR_NAME).dsk $(CPC_SPR_NAME)
 
-# Build the CPC Mode 2 sprite DEMO (.dsk) — balls bounce continuously; watch
-# live with:  cap32 -a 'run"$(CPC_SPRD_NAME).' $(CPC_SPRD_NAME).dsk
+# Build the CPC Mode 2 sprite DEMO (.dsk) — balls bounce continuously (watch live: cap32 -a 'run"CPCSPRD.' CPCSPRD.dsk)
 cpc-sprite-demo-mode2: $(SPRITE_MASK2_ASM)
 	echo Building CPC Mode 2 sprite demo...
 	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
@@ -257,7 +256,21 @@ cpc-sprite-demo-mode2: $(SPRITE_MASK2_ASM)
 		-o $(CPC_SPRD_NAME) -m
 	echo "Created $(CPC_SPRD_NAME).dsk  (run:  cap32 -a 'run\"$(CPC_SPRD_NAME).' $(CPC_SPRD_NAME).dsk)"
 
-## extras
+HOSTCC		?= cc
+# Mode 2 shift/mask unit test (host cc, no emulator): validates the jsp_rottbl masks + combine vs a true 16-bit shift
+cpc-shift-test-mode2: $(SPRITE_MASK2_ASM)
+	$(HOSTCC) -O2 -Wall -o $(CPCTEST_DIR)/shift_test_mode2 $(CPCTEST_DIR)/shift_test_mode2.c
+	$(CPCTEST_DIR)/shift_test_mode2 $(SPRITE_MASK2_ASM)
+
+## extras — sprite assets (generated from assets/*.png via gfxgen.pl).
+## These are the ZX 1bpp mask2 (mask,graph pairs) / load1 (graph only) byte
+## format, columns-major, 8 lines/cell, with extra top/bottom blank rows for
+## safe sub-cell Y.  CPC Mode 2 is 1bpp-linear (8 px/byte) — IDENTICAL format —
+## so the CPC Mode-2 build reuses these very files unchanged (the cpc-sprite*
+## targets link test_sprite_mask2.asm directly); cpc-shift-test-mode2 validates
+## the Mode-2 shift masks against these emitted bytes.  Per-mode emitter
+## variants for Mode 0/1 (re-quantised planar encodings of the same source art)
+## arrive with those phases (plan §10).
 
 $(TESTS_DIR)/test_sprite_mask2.asm:
 	../zxtools/bin/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \

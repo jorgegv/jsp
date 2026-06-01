@@ -66,13 +66,13 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Regression gate: ZX green + CPC Mode 2 sprite render green (§12) — ZX `959048ee…`, 9 taps, CPC bg+sprite green
   - [x] Widen CPC descriptor X to 16-bit (full 640px) + reconcile asm offsets (frame/defer) and public signatures (§3) — `jsp_xcoord_t` (16-bit X, Y stays 8-bit); verified sprites at x=100/300/500 + animated full-width bounce in cap32
 
-- [ ] **Phase 4 — CPC Mode 2 asset pipeline + shift unit test**
-  - [ ] Define and implement the CPC Mode 2 planar-in-byte pixel+mask asset format (§10)
-  - [ ] Add the Mode 2 asset emitter (`gfxgen` flag or new emitter) (§10)
-  - [ ] Reuse the ZX sprite source art (re-convert `assets/*.png` per mode), don't hand-author CPC sprites (§10,§11)
-  - [ ] Unit-test the §8.1 shift/mask against the emitted Mode 2 bytes (§4,§10)
-  - [ ] Adapt the sprite-gen Makefile targets for Mode 2 (§11)
-  - [ ] Regression gate: ZX green + CPC Mode 2 (incl. shift unit test) green (§12)
+- [x] **Phase 4 — CPC Mode 2 asset pipeline + shift unit test**
+  - [x] Define and implement the CPC Mode 2 planar-in-byte pixel+mask asset format (§10) — Mode 2 is 1bpp-linear == the ZX `mask2` (mask,graph pairs) / `load1` (graph) format; documented in the Makefile asset rules + `tests/cpc/shift_test_mode2.c`
+  - [x] Add the Mode 2 asset emitter (`gfxgen` flag or new emitter) (§10) — M2 == ZX 1bpp, so the existing `gfxgen.pl` mask2/load1 invocation IS the M2 emitter; the CPC build reuses the emitted files unchanged (no new emitter needed for M2; M0/M1 get per-mode emitters in their phases)
+  - [x] Reuse the ZX sprite source art (re-convert `assets/*.png` per mode), don't hand-author CPC sprites (§10,§11) — `assets/ball.png` reused directly (M2 = same monochrome bit pattern)
+  - [x] Unit-test the §8.1 shift/mask against the emitted Mode 2 bytes (§4,§10) — `tests/cpc/shift_test_mode2.c` (`make cpc-shift-test-mode2`): validates the rottbl masks (in=src>>i, carry=src<<(8-i)) and the in|carry-from-left combine against a true 16-bit shift, exhaustively (256×256×7) + over the emitted asset bytes → 463k checks PASS
+  - [x] Adapt the sprite-gen Makefile targets for Mode 2 (§11) — M2 reuses `tests/test_sprite_mask2.asm`/`load1`; documented in the Makefile (`## extras`); per-mode variants for M0/M1 deferred to their phases
+  - [x] Regression gate: ZX green (`959048ee`, 9 taps) + CPC Mode 2 (bg + sprite + demo build) + shift unit test green (§12)
 
 - [ ] **Phase 5 — Mode 2 full test pass**
   - [ ] Keep CPC tests as the ZX tests recompiled (same layout/sprites); palette mirrors ZX colours (§11)
