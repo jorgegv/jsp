@@ -14,6 +14,8 @@ main
 CPCBG
 CPCSPR
 CPCSPRD
+CPCFG
+CPCTILE
 shot.png
 screenshot_*.png
 tests/cpc/shift_test_mode2

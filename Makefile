@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -261,6 +261,35 @@ HOSTCC		?= cc
 cpc-shift-test-mode2: $(SPRITE_MASK2_ASM)
 	$(HOSTCC) -O2 -Wall -I$(INCLUDE_DIR) -o $(CPCTEST_DIR)/shift_test_mode2 $(CPCTEST_DIR)/shift_test_mode2.c
 	$(CPCTEST_DIR)/shift_test_mode2 $(SPRITE_MASK2_ASM)
+
+## CPC (Phase 5) — Mode 2 ports of the ZX functional tests (same layout, CPC
+## mode setup, geometric tiles).  printf-console tests (dtt, btt_contents) and
+## the font/text test (tiles_and_print) are ZX-only for now — see the tasklist.
+CPC_FG_NAME	= CPCFG
+CPC_TILE_NAME	= CPCTILE
+
+# Build the CPC Mode 2 foreground-tiles + sprite-pool test (sprites pass behind)
+cpc-foreground: $(SPRITE_MASK2_ASM)
+	echo Building CPC Mode 2 foreground test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_foreground.c $(SPRITE_MASK2_ASM) $(CPC_LIB_SRCS) \
+		-o $(CPC_FG_NAME) -m
+	echo "Created $(CPC_FG_NAME).dsk"
+
+# Build and screenshot the CPC foreground test headless in cap32
+run-cpc-foreground: cpc-foreground
+	./tools/cap32-shot.sh $(CPC_FG_NAME).dsk $(CPC_FG_NAME)
+
+# Build the CPC Mode 2 background-tile draw/delete/redraw test
+cpc-btt-redraw:
+	echo Building CPC Mode 2 BTT redraw test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_btt_redraw.c $(CPC_LIB_SRCS) -o $(CPC_TILE_NAME) -m
+	echo "Created $(CPC_TILE_NAME).dsk"
+
+# Build and screenshot the CPC BTT redraw test headless in cap32
+run-cpc-btt-redraw: cpc-btt-redraw
+	./tools/cap32-shot.sh $(CPC_TILE_NAME).dsk $(CPC_TILE_NAME)
 
 ## extras — sprite assets (generated from assets/*.png via gfxgen.pl).
 ## These are the ZX 1bpp mask2 (mask,graph pairs) / load1 (graph only) byte
