@@ -195,6 +195,28 @@ clean-tests:
 	-rm -f $(TESTS_DIR)/test_redraw_bench_mask2.tap 2>/dev/null
 	-rm -f $(TESTS_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
 
+## CPC (Phase 2) — build the Mode 2 background test as a .dsk (zcc +cpc).
+## Compiles lib/ (shared) + lib/cpc/ (CPC platform layer), per JSP_TARGET dir
+## selection (§1.3). JSP_TARGET_CPC + CPC_MODE2 passed to both C (-D) and asm
+## (-Ca-D). A fuller JSP_TARGET/JSP_CPC_MODE build matrix is Phase 9.
+CPC_BG_NAME	= CPCBG
+CPC_MODE	?= 2
+CPC_CFLAGS	= -DJSP_TARGET_CPC -Ca-DJSP_TARGET_CPC \
+		  -DCPC_MODE$(CPC_MODE) -Ca-DCPC_MODE$(CPC_MODE) \
+		  -SO2 --max-allocs-per-node200000 -I$(INCLUDE_DIR)
+CPC_LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) $(wildcard lib/cpc/*.asm)
+
+# Build the CPC Mode 2 background test (.dsk)
+cpc-bg:
+	echo Building CPC Mode $(CPC_MODE) background test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(TESTS_DIR)/test_cpc_bg.c $(CPC_LIB_SRCS) -o $(CPC_BG_NAME) -m
+	echo "Created $(CPC_BG_NAME).dsk"
+
+# Build and screenshot the CPC background test headless in cap32
+run-cpc-bg: cpc-bg
+	./tools/cap32-shot.sh $(CPC_BG_NAME).dsk $(CPC_BG_NAME)
+
 ## extras
 
 $(TESTS_DIR)/test_sprite_mask2.asm:

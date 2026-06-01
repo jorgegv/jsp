@@ -7,3 +7,10 @@
 *.sym
 *.c.asm
 main
+
+# CPC build + emulator screenshot artifacts
+*.dsk
+*.cdt
+CPCBG
+shot.png
+screenshot_*.png
