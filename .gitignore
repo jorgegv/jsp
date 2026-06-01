@@ -22,3 +22,4 @@ tests/cpc/shift_test_mode2
 CPCSPR1
 tests/cpc/shift_test_mode1
 tests/cpc/shift_test_mode1_mono
+CPCSPRM

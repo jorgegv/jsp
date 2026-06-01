@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -267,6 +267,25 @@ cpc-sprite-mode1: $(SPRITE_MASK2_M1_ASM)
 # Build and screenshot the CPC Mode 1 sprite test headless in cap32
 run-cpc-sprite-mode1: cpc-sprite-mode1
 	./tools/cap32-shot.sh $(CPC_SPR_M1_NAME).dsk $(CPC_SPR_M1_NAME)
+
+## CPC (Phase 6.1) — Mode 1 MONO: 1bpp (Mode-2 format) sprites on a Mode-1
+## screen, expanded to Mode-1 in the covered-cell compositor (jsp_covered_mono).
+## Links the UNCHANGED 1bpp ball asset (cols=2); builds with CPC_MODE=1_MONO ->
+## -DCPC_MODE1_MONO to C + asm.
+CPC_SPR_M1M_NAME = CPCSPRM
+
+# Build the CPC Mode 1 MONO sprite test (.dsk) — settles to a still frame
+cpc-sprite-mode1-mono: CPC_MODE := 1_MONO
+cpc-sprite-mode1-mono: $(SPRITE_MASK2_ASM)
+	echo Building CPC Mode 1 MONO sprite test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_sprite_mode1_mono.c $(SPRITE_MASK2_ASM) $(CPC_LIB_SRCS) \
+		-o $(CPC_SPR_M1M_NAME) -m
+	echo "Created $(CPC_SPR_M1M_NAME).dsk"
+
+# Build and screenshot the CPC Mode 1 MONO sprite test headless in cap32
+run-cpc-sprite-mode1-mono: cpc-sprite-mode1-mono
+	./tools/cap32-shot.sh $(CPC_SPR_M1M_NAME).dsk $(CPC_SPR_M1M_NAME)
 
 # Build the CPC Mode 2 sprite DEMO (.dsk) — balls bounce continuously (watch live: cap32 -a 'run"CPCSPRD.' CPCSPRD.dsk)
 cpc-sprite-demo-mode2: $(SPRITE_MASK2_ASM)

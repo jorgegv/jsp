@@ -24,6 +24,7 @@
 ;; struct jsp_rect: +0 row  +1 col  +2 width  +3 height
 
 	IFDEF JSP_TARGET_CPC
+	IFNDEF CPC_MODE1_MONO		; MONO uses lib/cpc/jsp_covered_mono.asm instead
 
 	section code_compiler
 
@@ -366,4 +367,5 @@ _jsp_cc_row_active_row:	db 0xFF
 ;; Frame-sprite pointers whose [r0,r1] span includes the current row.
 cc_row_active:		ds 32
 
+	ENDIF			; IFNDEF CPC_MODE1_MONO
 	ENDIF			; JSP_TARGET_CPC
