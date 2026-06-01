@@ -520,18 +520,23 @@ sub output_sprite {
             }
             print "\n";
         }
+        # --extra-right-col adds one fully-blank trailing column.  JSP does not
+        # use it (horizontal sub-cell spill is handled by the cols+1 footprint +
+        # the lb/rb kernels, not a blank asset column), so this path is currently
+        # dead; its height is kept consistent with the 7-line column stride
+        # (rows*8 + 7 when --extra-bottom-row) in case it is ever used.
         if ( $opt_extra_right_col ) {
             print $sprite_output_format{'comment3'}{ $ct };
             if ( $spt eq 'sprite_mask' ) {
                 print join("\n", map {
                     sprintf $sprite_output_format{'output1_mask'}{ $ct },
                         $_->[0], $_->[1], byte2graph( $_->[0] ), byte2graph( $_->[1] );
-                } ( ( [ 255,0 ] ) x ( ( zxgfx_get_height_cells( $gfx ) + ( $opt_extra_bottom_row ? 1 : 0 )  ) * 8 ) ) );
+                } ( ( [ 255,0 ] ) x ( zxgfx_get_height_cells( $gfx ) * 8 + ( $opt_extra_bottom_row ? 7 : 0 ) ) ) );
             }
             if ( $spt eq 'sprite_load' ) {
                 print join("\n", map {
                     sprintf $sprite_output_format{'output1_load'}{ $ct }, $_, byte2graph( $_ );
-                } ( ( 0 ) x ( ( zxgfx_get_height_cells( $gfx ) + ( $opt_extra_bottom_row ? 1 : 0 )  ) * 8 ) ) );
+                } ( ( 0 ) x ( zxgfx_get_height_cells( $gfx ) * 8 + ( $opt_extra_bottom_row ? 7 : 0 ) ) ) );
             }
             print "\n";
         }

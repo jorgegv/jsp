@@ -217,7 +217,7 @@ struct jsp_sprite_frame {
     uint8_t  color;             // ofs +8
     uint8_t  color_mask;        // ofs +9
     uint8_t *base;              // ofs +10    pixel base (pixels - yrot*cs/8)
-    uint16_t rowstride;         // ofs +12    (rows+1)*cs
+    uint16_t rowstride;         // ofs +12    (rows+1)*cs - (cs>>3)  (7-line col gap)
     struct jsp_rect *clip;      // ofs +14
 };
 
