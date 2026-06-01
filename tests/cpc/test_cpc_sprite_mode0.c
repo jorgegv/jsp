@@ -94,14 +94,15 @@ void main( void ) {
 
     cpc_setup_mode0();
 
-    // build the per-pen wireframe tiles
+    // build the per-pen wireframe tiles.  Thicker lines: the vertical line fills
+    // the whole 2-px cell (2x the 1-px line), the horizontal line is 3 scanlines
+    // tall (3x), and an intersection is a solid cell.
     for ( p = 0; p < 16; p++ ) {
-        uint8_t v = m0_cell( p, 0 );    // left pixel = pen p (vertical line)
-        uint8_t h = m0_cell( p, p );    // both pixels = pen p (horizontal line)
+        uint8_t full = m0_cell( p, p );     // full 2-px-wide cell column = pen p
         for ( i = 0; i < 8; i++ ) {
-            vline_tile[ p ][ i ]  = v;
-            hline_tile[ p ][ i ]  = ( i == 0 ) ? h : 0;
-            corner_tile[ p ][ i ] = ( i == 0 ) ? h : v;
+            vline_tile[ p ][ i ]  = full;
+            hline_tile[ p ][ i ]  = ( i < 3 ) ? full : 0;
+            corner_tile[ p ][ i ] = full;
         }
     }
 
