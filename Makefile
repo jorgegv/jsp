@@ -128,6 +128,8 @@ SPRITE_MASK2_ASM = $(TESTS_DIR)/test_sprite_mask2.asm
 SPRITE_LOAD1_ASM = $(TESTS_DIR)/test_sprite_load1.asm
 SPRITE_MASK2_M1_ASM = $(TESTS_DIR)/test_sprite_mask2_m1.asm
 SPRITE_LOAD1_M1_ASM = $(TESTS_DIR)/test_sprite_load1_m1.asm
+SPRITE_MASK2_M0_ASM = $(TESTS_DIR)/test_sprite_mask2_m0.asm
+SPRITE_LOAD1_M0_ASM = $(TESTS_DIR)/test_sprite_load1_m0.asm
 
 TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
 		  test_sprite_move test_pool_and_colour test_tiles_and_print \
@@ -384,4 +386,19 @@ $(TESTS_DIR)/test_sprite_load1_m1.asm:
 	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 --mode 1 \
 		-s _test_sprite_load1_m1_pixels \
+		-g sprite_load --extra-bottom-row --extra-top-rows > $@
+
+## CPC Mode-0 sprite assets (odd/even interleave, 2 px/byte, plan §10).  Same
+## source art; each 8-px ZX column becomes 4 Mode-0 columns, so a 16x16 ball is
+## 8 Mode-0 cols wide (the Mode-0 test descriptors use cols=8).
+$(TESTS_DIR)/test_sprite_mask2_m0.asm:
+	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 --mode 0 \
+		-s _test_sprite_mask2_m0_pixels \
+		-g sprite_mask --extra-bottom-row --extra-top-rows > $@
+
+$(TESTS_DIR)/test_sprite_load1_m0.asm:
+	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 --mode 0 \
+		-s _test_sprite_load1_m0_pixels \
 		-g sprite_load --extra-bottom-row --extra-top-rows > $@

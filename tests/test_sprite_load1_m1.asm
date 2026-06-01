@@ -2,7 +2,7 @@
 
 ;; CPC Mode 1 sprite '_test_sprite_load1_m1_pixels' (sprite_load)
 ;; source assets/ball.png region (0,0) 16x16 px -> 4 Mode-1 cols x 2 rows (+extra bottom row)
-;; _test_sprite_load1_m1_pixels: 96 body bytes (cs=8)
+;; _test_sprite_load1_m1_pixels: 96 body bytes (cs=8, 4 px/cell)
 	;; 7 transparent pre-rows before label (safe sub-cell Y)
 	db	$00
 	db	$00
@@ -13,7 +13,7 @@
 	db	$00
 PUBLIC _test_sprite_load1_m1_pixels
 _test_sprite_load1_m1_pixels:
-	;; Mode-1 col 0 (orig col 0, left half)
+	;; Mode-1 col 0 (src col 0, slice 0)
 	db	$00		;; pix ....
 	db	$00		;; pix ....
 	db	$00		;; pix ....
@@ -38,7 +38,7 @@ _test_sprite_load1_m1_pixels:
 	db	$00
 	db	$00
 	db	$00
-	;; Mode-1 col 1 (orig col 0, right half)
+	;; Mode-1 col 1 (src col 0, slice 1)
 	db	$00		;; pix ....
 	db	$30		;; pix ..##
 	db	$c0		;; pix ##..
@@ -63,7 +63,7 @@ _test_sprite_load1_m1_pixels:
 	db	$00
 	db	$00
 	db	$00
-	;; Mode-1 col 2 (orig col 1, left half)
+	;; Mode-1 col 2 (src col 1, slice 0)
 	db	$00		;; pix ....
 	db	$c0		;; pix ##..
 	db	$30		;; pix ..##
@@ -88,7 +88,7 @@ _test_sprite_load1_m1_pixels:
 	db	$00
 	db	$00
 	db	$00
-	;; Mode-1 col 3 (orig col 1, right half)
+	;; Mode-1 col 3 (src col 1, slice 1)
 	db	$00		;; pix ....
 	db	$00		;; pix ....
 	db	$00		;; pix ....

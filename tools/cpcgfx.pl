@@ -72,26 +72,50 @@ $opt_mask       = uc($opt_mask);
 $opt_foreground = uc($opt_foreground);
 $opt_background = uc($opt_background);
 
-$opt_mode == 1 or die "cpcgfx.pl: only --mode 1 is implemented so far\n";
+( $opt_mode == 1 || $opt_mode == 0 )
+    or die "cpcgfx.pl: --mode must be 0 or 1\n";
 $opt_gfx_type = 'sprite_mask' if $opt_gfx_type eq 'sprite';
 $opt_gfx_type =~ /^sprite_(mask|load)$/
     or die "--gfx-type must be sprite_mask or sprite_load\n";
 my $is_mask = ($opt_gfx_type eq 'sprite_mask');
 
-# ---- Mode-1 per-byte conversion (2-colour pen0/pen1) -----------------------
-sub g_left  { return  $_[0] & 0xF0; }
-sub g_right { return ($_[0] & 0x0F) << 4; }
-sub m_left  { my $h = $_[0] & 0xF0; return $h | ($h >> 4); }
-sub m_right { my $l = $_[0] & 0x0F; return ($l << 4) | $l; }
+# ---- per-mode geometry -----------------------------------------------------
+# Each 8-px ZX source column splits into $subcols Mode-N cells of $ppc pixels:
+#   Mode 1 = 4 px/byte -> 2 cells;  Mode 0 = 2 px/byte -> 4 cells.
+# The CPC byte interleaves $nplanes planes; cell-pixel cp's plane q bit sits at
+# (7-cp) - q*$ppc.  For 2-colour (pen 0/1) art only plane 0 (pen 1) is set;
+# a transparent mask pixel sets ALL planes (so the AND keeps the background).
+my $ppc     = ($opt_mode == 1) ? 4 : 2;
+my $subcols = 8 / $ppc;                  # cells per 8-px source column (2 or 4)
+my $nplanes = 8 / $ppc;                  # planes per byte (2 for M1, 4 for M0)
 
-sub byte2graph_m1 {
-    # render 4 Mode-1 pixels for the comment (pen value 0..3 per pixel)
+# Expand the $sub-th group of $ppc source pixels (MSB = leftmost) of source byte
+# $g into one Mode-N pixel byte (plane 0 = pen 1).
+sub graph_sub {
+    my ($g, $sub) = @_;
+    my $base = $sub * $ppc;
+    my $out  = 0;
+    foreach my $cp (0 .. $ppc - 1) {
+        $out |= (1 << (7 - $cp)) if ($g >> (7 - ($base + $cp))) & 1;
+    }
+    return $out;
+}
+# Same group of the mask byte: a set (transparent) source pixel sets all planes.
+sub mask_sub {
+    my ($m, $sub) = @_;
+    my $base = $sub * $ppc;
+    my $out  = 0;
+    foreach my $cp (0 .. $ppc - 1) {
+        next unless ($m >> (7 - ($base + $cp))) & 1;
+        foreach my $q (0 .. $nplanes - 1) { $out |= (1 << ((7 - $cp) - $q * $ppc)); }
+    }
+    return $out;
+}
+# Render $ppc cell pixels for the comment (plane-0 set = '#').
+sub pixstr {
     my $b = shift;
     my $s = '';
-    foreach my $p (0..3) {
-        my $pen = ((($b >> (7 - $p)) & 1)) | ((($b >> (3 - $p)) & 1) << 1);
-        $s .= ('.','#',':','@')[$pen];
-    }
+    foreach my $cp (0 .. $ppc - 1) { $s .= (($b >> (7 - $cp)) & 1) ? '#' : '.'; }
     return $s;
 }
 
@@ -104,27 +128,26 @@ zxgfx_extract_sprite_cells($gfx, $opt_foreground, $opt_background, $opt_mask);
 
 my $wcells = zxgfx_get_width_cells($gfx);
 my $hcells = zxgfx_get_height_cells($gfx);
-my $m1cols = 2 * $wcells;       # each 8-px cell -> two 4-px Mode-1 columns
-my $cs     = $is_mask ? 16 : 8; # bytes per Mode-1 cell-row
+my $ncols  = $subcols * $wcells;  # each 8-px source column -> $subcols Mode-N cells
+my $cs     = $is_mask ? 16 : 8;   # bytes per Mode-N cell-row
 my $bottom = $opt_extra_bottom_row ? 1 : 0;
-my $body_bytes = $m1cols * ($hcells + $bottom) * $cs;
+my $body_bytes = $ncols * ($hcells + $bottom) * $cs;
 
-# ---- emit a single cell-row of `half` (0=left,1=right) of original column ---
+# ---- emit one Mode-N cell ($sub = sub-column 0..$subcols-1 of source col) ---
 sub emit_cell {
-    my ($col, $row, $half) = @_;
+    my ($col, $row, $sub) = @_;
     my $bytes = $gfx->{'cells'}[$row][$col]{'bytes'};
     my $masks = $gfx->{'cells'}[$row][$col]{'masks'};
     foreach my $line (0..7) {
         my $g = $bytes->[$line];
         if ($is_mask) {
-            my $msk = $masks->[$line];
-            my ($mg, $mm) = $half == 0 ? (g_left($g),  m_left($msk))
-                                       : (g_right($g), m_right($msk));
+            my $mg = graph_sub($g, $sub);
+            my $mm = mask_sub($masks->[$line], $sub);
             printf "\tdb\t\$%02x,\$%02x\t\t;; mask %s pix %s\n",
-                $mm, $mg, byte2graph_m1($mm), byte2graph_m1($mg);
+                $mm, $mg, pixstr($mm), pixstr($mg);
         } else {
-            my $mg = $half == 0 ? g_left($g) : g_right($g);
-            printf "\tdb\t\$%02x\t\t;; pix %s\n", $mg, byte2graph_m1($mg);
+            my $mg = graph_sub($g, $sub);
+            printf "\tdb\t\$%02x\t\t;; pix %s\n", $mg, pixstr($mg);
         }
     }
 }
@@ -139,11 +162,11 @@ sub emit_blank_lines {
 
 # ---- output ----------------------------------------------------------------
 print "\tsection data_compiler\n\n";
-printf ";; CPC Mode 1 sprite '%s' (%s)\n", $opt_symbol_name, $opt_gfx_type;
-printf ";; source %s region (%d,%d) %dx%d px -> %d Mode-1 cols x %d rows%s\n",
+printf ";; CPC Mode %d sprite '%s' (%s)\n", $opt_mode, $opt_symbol_name, $opt_gfx_type;
+printf ";; source %s region (%d,%d) %dx%d px -> %d Mode-%d cols x %d rows%s\n",
     $opt_input, $opt_xpos, $opt_ypos, $opt_width, $opt_height,
-    $m1cols, $hcells, ($bottom ? " (+extra bottom row)" : "");
-printf ";; %s: %d body bytes (cs=%d)\n", $opt_symbol_name, $body_bytes, $cs;
+    $ncols, $opt_mode, $hcells, ($bottom ? " (+extra bottom row)" : "");
+printf ";; %s: %d body bytes (cs=%d, %d px/cell)\n", $opt_symbol_name, $body_bytes, $cs, $ppc;
 
 if ($opt_extra_top_rows) {
     print "\t;; 7 transparent pre-rows before label (safe sub-cell Y)\n";
@@ -151,13 +174,12 @@ if ($opt_extra_top_rows) {
 }
 printf "PUBLIC %s\n%s:\n", $opt_symbol_name, $opt_symbol_name;
 
-foreach my $mc (0 .. $m1cols - 1) {
-    my $col  = $mc >> 1;        # original 8-px column
-    my $half = $mc & 1;         # 0 = left 4 px, 1 = right 4 px
-    printf "\t;; Mode-1 col %d (orig col %d, %s half)\n",
-        $mc, $col, ($half ? 'right' : 'left');
+foreach my $mc (0 .. $ncols - 1) {
+    my $col = int($mc / $subcols);  # original 8-px source column
+    my $sub = $mc % $subcols;       # which $ppc-px slice of it (left -> right)
+    printf "\t;; Mode-%d col %d (src col %d, slice %d)\n", $opt_mode, $mc, $col, $sub;
     foreach my $row (0 .. $hcells - 1) {
-        emit_cell($col, $row, $half);
+        emit_cell($col, $row, $sub);
     }
     emit_blank_lines(8 * $bottom);  # extra blank bottom cell-row
 }
