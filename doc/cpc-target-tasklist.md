@@ -35,6 +35,15 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Decide descriptor X/Y width (per-target `jsp_coord_t`, ZX=uint8_t byte-for-byte; 16-bit CPC X applied with the asm/API in Phase 3) (§3)
   - [x] Regression gate: ZX build byte-for-byte identical + 9 test taps green (§12)
 
+- [ ] **Phase 1.1 — Platform source-tree reorganization** (pure file move, §1.3)
+  - [ ] Create `lib/zx/` and `lib/cpc/` directories
+  - [ ] Move the wholly-ZX platform files into `lib/zx/` per the §1.3 table (screen, redraw, covered, frame, sprite_defer, 8 kernels)
+  - [ ] Split `jsp_util.asm` → `lib/jsp_mem.asm` (shared) + `lib/zx/jsp_rowcolindex.asm` (ZX)
+  - [ ] Keep every moved file's target guard (double-guard rule, §1.3)
+  - [ ] Guard the ZX ROM-font (`0x3D00`) spots in `jsp_tiles.c` under `#ifdef JSP_TARGET_ZX`
+  - [ ] Makefile: compile `lib/ + lib/$(JSP_TARGET)/` with `JSP_TARGET ?= zx`; extend `clean` to the new dirs
+  - [ ] Regression gate: ZX all green — build links clean + all 9 test taps pass visually (re-baseline hash; byte-for-byte not required, link order shifts) (§12)
+
 - [ ] **Phase 2 — CPC Mode 2 screen layer**
   - [ ] Write CPC `jsp_draw_screen_tile` blitting 8 lines stepping `+0x800` (§7)
   - [ ] Build the CPC 25-entry `rd_rowtab` = `0xC000 + row*80` and cell-address math (§7)

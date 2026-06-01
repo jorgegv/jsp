@@ -48,6 +48,56 @@ existing ZX code, then filling in the CPC side of it per mode.
 | Asset byte format                | gfxgen ZX mask2/load1                          | §10        |
 | Toolchain / Makefile / emulator  | `zcc +zx`, FUSE/JNEXT                          | §11        |
 
+### 1.3 Source-tree layout — platform directories
+
+The seam (§1.2) is also reflected in the **directory layout**, so platform code
+is physically separated and only the right platform's files are compiled
+(introduced in Phase 1.1, §12). Three locations:
+
+```
+lib/            platform-independent engine (compiled for EVERY target)
+lib/zx/         ZX-only platform layer  (compiled only when JSP_TARGET=zx)
+lib/cpc/        CPC-only platform layer (compiled only when JSP_TARGET=cpc)
+```
+
+**Selection mechanism (Makefile):** sources = `lib/*` **plus** `lib/$(JSP_TARGET)/*`
+(`JSP_TARGET` defaults to `zx`). So a ZX build compiles `lib/ + lib/zx/`; a CPC
+build compiles `lib/ + lib/cpc/` (with `-DJSP_TARGET_CPC -Ca-DJSP_TARGET_CPC` and
+the mode). The platform dir is the **first** line of defence (wrong-platform
+files are never fed to the compiler).
+
+**Double-guard rule:** files in `lib/zx/` and `lib/cpc/` *also* keep their target
+guard (`IFNDEF JSP_TARGET_CPC` / `IFDEF JSP_TARGET_CPC` in asm; `#ifdef
+JSP_TARGET_ZX` / `_CPC` in C) — the **second** line of defence, so a file that is
+mis-selected compiles to nothing instead of mis-linking. (This makes Phase 0's
+whole-file `IFNDEF` wrappers redundant-but-retained, by design.)
+
+**Placement criterion.** A file lives in a platform dir **iff it is wholly one
+platform's implementation of a primitive** (screen addressing, the redraw walk,
+the per-frame precompute, the shift/composite kernels, the grid-index helper, the
+deferred-op grid math). Everything else stays in `lib/`, made platform-agnostic
+through `jsp_config.h` macros plus small, cleanly-guarded spots (e.g. a ROM-font
+address, a no-op colour body). Classification of the current files:
+
+| File | Dir | Rationale |
+|------|-----|-----------|
+| jsp_init.c, jsp_data.c, jsp_pool.c, jsp_sprite_c.c, jsp_composite.c, jsp_print.c, jsp_tile.c | `lib/` | shared engine/API; geometry via `jsp_config.h` |
+| jsp_tiles.c | `lib/` | tile table + clear_rect; ZX ROM-font (`0x3D00`) spots guarded `#ifdef JSP_TARGET_ZX` |
+| jsp_color.c | `lib/` | API shared; ZX attribute body already guarded (no-op on CPC) |
+| jsp_dtt.asm, jsp_ftt.asm | `lib/` | DTT/FTT bit ops; delegate the grid index to the platform `rowcolindex` |
+| jsp_mem.asm *(new — split from jsp_util.asm)* | `lib/` | `memzero`/`memcpy` (platform-independent) |
+| jsp_screen.asm | `lib/zx/` | ZX screen addressing |
+| jsp_redraw.asm | `lib/zx/` | ZX DTT-walk + bg blit + `rd_rowtab` + `0x5800` |
+| jsp_covered.asm | `lib/zx/` | covered-cell compositor (ZX attr + screen blit) |
+| jsp_frame.asm | `lib/zx/` | per-frame precompute (grid/shift constants, `&0x1F`) |
+| jsp_sprite_defer.asm | `lib/zx/` | deferred move/draw + `mark_rect` (cell = `r*32`) |
+| jsp_rowcolindex.asm *(new — split from jsp_util.asm)* | `lib/zx/` | `row*32` grid index (`jsp_rowcolindex`, `…_dtt`) |
+| jsp_draw_*.asm ×8 | `lib/zx/` | ZX 1bpp shift/composite kernels |
+
+`lib/cpc/` starts empty; Phase 2+ adds the CPC counterparts (screen, redraw,
+rowcolindex, frame, defer, kernels) there. `jsp_util.asm` is split so its
+shared half (`mem`) and ZX half (`rowcolindex`) land in the right places.
+
 ---
 
 ## 2. Cell model and grid geometry — the foundational decision
@@ -532,6 +582,19 @@ macros (not hard-coded) keeps the byte-cell vs pixel-cell choice
 way. Mutually-exclusive-mode compile error. Decide descriptor X/Y width strategy
 (§3) and apply under guard. Replace hard-coded `768`/`32`/`24`/`96`/`8` literals
 across the engine with the config symbols (ZX values unchanged).
+
+**Phase 1.1 — Platform source-tree reorganization.**
+Pure file-organization step (no logic change), so Phase 2 can drop CPC files
+straight into `lib/cpc/` instead of guarding shared files. Create `lib/zx/` and
+`lib/cpc/`; move the wholly-ZX platform files into `lib/zx/` and split
+`jsp_util.asm` into `lib/jsp_mem.asm` (shared) + `lib/zx/jsp_rowcolindex.asm`
+(ZX) per the §1.3 table; keep every moved file's target guard (the double-guard
+rule). Teach the Makefile to compile `lib/ + lib/$(JSP_TARGET)/` with
+`JSP_TARGET ?= zx`, and extend `clean` to the new dirs. **Acceptance:** the ZX
+build links clean and **all 9 ZX test taps pass (visually verified)** — this is a
+pure move, so functional equivalence is the bar; byte-for-byte is *not* required
+here because the link order shifts (re-establish the baseline hash afterwards).
+*Regression gate (ZX all green) as for every phase (§12 intro).*
 
 **Phase 2 — CPC Mode 2 screen layer.**
 CPC screen addressing (§7): new `jsp_draw_screen_tile` (8 lines × `+0x800`),
