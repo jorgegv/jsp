@@ -12,13 +12,12 @@
 ;; are still copied into the frame entry but the CPC covered-cell compositor
 ;; ignores them (no attribute RAM, §6); copying is harmless.
 ;;
-;; Coordinates are 8-bit for this milestone (xrot/c0 from an 8-bit xpos cover
-;; the left 32 cells); the &0x1F col/row masks are identity at that width.
-;; 16-bit X widening (c0 up to 79) is a follow-up (plan §3).
+;; X is 16-bit (jsp_xcoord_t) on CPC: c0 = xpos>>3 is a 16-bit shift (0..79, no
+;; 0x1F cap); xrot = xpos&7. Y stays 8-bit. (plan §3.)
 ;;
-;; struct jsp_sprite_s (13 bytes):
-;;   +0 rows  +1 cols  +2 xpos  +3 ypos  +4 flags  +5 pixels(w)
-;;   +7 type_ptr(w)  +9 color  +10 color_mask  +11 clip(w)
+;; struct jsp_sprite_s (CPC layout, 14 bytes):
+;;   +0 rows  +1 cols  +2..+3 xpos(16b)  +4 ypos  +5 flags  +6 pixels(w)
+;;   +8 type_ptr(w)  +10 color  +11 color_mask  +12 clip(w)
 ;; struct jsp_sprite_frame (16 bytes):
 ;;   +0 r0  +1 c0  +2 r1  +3 c1  +4 cs  +5 ismask2  +6 rottbl_msb
 ;;   +7 cols  +8 color  +9 color_mask  +10 base(w)  +12 rowstride(w)
@@ -113,37 +112,43 @@ rb_loop:
 	pop ix				; IX = sp
 
 	;; if ( !initialized || !active ) continue;
-	ld a,(ix+4)
+	ld a,(ix+5)			; CPC flags @ +5
 	and 0x03			; bits 0,1 = initialized, active
 	cp 0x03
 	jp nz,rb_skip
 
-	;; --- precompute the cross-field values ---
-	ld a,(ix+3)			; r0 = ypos >> 3
+	;; --- precompute the cross-field values (CPC descriptor layout:
+	;;     xpos +2..+3 16-bit, ypos +4, flags +5, pixels +6, type +8,
+	;;     color +10, cmask +11, clip +12) ---
+	ld a,(ix+4)			; r0 = ypos >> 3   (ypos 8-bit, 0..24)
 	rrca
 	rrca
 	rrca
 	and 0x1F
 	ld (rb_r0),a
-	ld a,(ix+2)			; c0 = xpos >> 3
-	rrca
-	rrca
-	rrca
-	and 0x1F
+	ld e,(ix+2)			; c0 = xpos >> 3   (xpos 16-bit, 0..79)
+	ld d,(ix+3)			; (use DE, not HL: HL is the frame write ptr)
+	srl d
+	rr e
+	srl d
+	rr e
+	srl d
+	rr e
+	ld a,e				; no 0x1F cap: 80-col grid needs c0 up to 79
 	ld (rb_c0),a
-	ld a,(ix+2)			; xrot = xpos & 7
+	ld a,(ix+2)			; xrot = xpos & 7  (low byte)
 	and 7
 	ld (rb_xrot),a
-	ld a,(ix+3)			; yrot = ypos & 7
+	ld a,(ix+4)			; yrot = ypos & 7
 	and 7
 	ld (rb_yrot),a
 	ld a,(ix+1)			; cols
 	ld (rb_cols),a
 	ld bc,_JSP_TYPE_MASK2		; ismask2 = (type_ptr == JSP_TYPE_MASK2)
-	ld a,(ix+7)
+	ld a,(ix+8)
 	cp c
 	jr nz,rb_notmask
-	ld a,(ix+8)
+	ld a,(ix+9)
 	cp b
 	jr nz,rb_notmask
 	ld a,1
@@ -195,10 +200,10 @@ rb_cs:
 	ld a,(rb_cols)			; +7 cols
 	ld (hl),a
 	inc hl
-	ld a,(ix+9)			; +8 color
+	ld a,(ix+10)			; +8 color      (CPC color @ +10)
 	ld (hl),a
 	inc hl
-	ld a,(ix+10)			; +9 color_mask
+	ld a,(ix+11)			; +9 color_mask (CPC cmask @ +11)
 	ld (hl),a
 	inc hl
 	ld a,(rb_yrot)			; +10/11 base = pixels - yrot*(cs>>3)
@@ -208,11 +213,11 @@ rb_cs:
 	jr z,rb_base
 	sla c				; mask2: disp = yrot * 2
 rb_base:
-	ld a,(ix+5)			; pixels lo - disp
+	ld a,(ix+6)			; pixels lo - disp  (CPC pixels @ +6)
 	sub c
 	ld (hl),a
 	inc hl
-	ld a,(ix+6)			; pixels hi - borrow
+	ld a,(ix+7)			; pixels hi - borrow
 	sbc a,0
 	ld (hl),a
 	inc hl
@@ -236,10 +241,10 @@ rb_rowstride:
 	inc hl
 	ld (hl),b
 	inc hl
-	ld a,(ix+11)			; +14/15 clip
+	ld a,(ix+12)			; +14/15 clip   (CPC clip @ +12..+13)
 	ld (hl),a
 	inc hl
-	ld a,(ix+12)
+	ld a,(ix+13)
 	ld (hl),a
 	inc hl				; HL now -> next frame entry
 

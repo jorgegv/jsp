@@ -64,7 +64,7 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Wire the covered-cell compositor to the Mode 2 kernels (§5) — real `lib/cpc/jsp_covered.asm` (+ real `jsp_frame.asm`, `jsp_sprite_defer.asm`)
   - [x] Verify a moving, sub-byte-shifted CPC Mode 2 sprite on emulator (§12) — `make run-cpc-sprite`, all xrot phases clean (fixed a stack/rottbl 0xBF00 overlap → SP=0x9800)
   - [x] Regression gate: ZX green + CPC Mode 2 sprite render green (§12) — ZX `959048ee…`, 9 taps, CPC bg+sprite green
-  - [ ] **Remaining:** widen CPC descriptor X to 16-bit (full 640px) + reconcile asm offsets (frame/defer) and public signatures (§3) — rendering uses 8-bit X today (left 32 cells / cap32-visible band)
+  - [x] Widen CPC descriptor X to 16-bit (full 640px) + reconcile asm offsets (frame/defer) and public signatures (§3) — `jsp_xcoord_t` (16-bit X, Y stays 8-bit); verified sprites at x=100/300/500 + animated full-width bounce in cap32
 
 - [ ] **Phase 4 — CPC Mode 2 asset pipeline + shift unit test**
   - [ ] Define and implement the CPC Mode 2 planar-in-byte pixel+mask asset format (§10)

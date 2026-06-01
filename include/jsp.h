@@ -68,65 +68,66 @@ struct jsp_sprite_s {
     uint8_t rows;	// ofs: +0
     uint8_t cols;	// ofs: +1
 
-    // sprite current position.  jsp_coord_t is per-target (jsp_config.h):
-    // uint8_t on ZX (and CPC for now); widened to 16-bit X for CPC in Phase 3.
-    jsp_coord_t xpos;	// ofs: +2
-    jsp_coord_t ypos;	// ofs: +3
+    // sprite current position.  jsp_xcoord_t is per-target (jsp_config.h):
+    // uint8_t on ZX, 16-bit on CPC (full 640px Mode-2 screen).  ypos stays 8-bit.
+    // Field offsets below: ZX / CPC (CPC X is 2 bytes, shifting everything after).
+    jsp_xcoord_t xpos;	// ofs: +2      (+2..+3 on CPC)
+    uint8_t      ypos;	// ofs: ZX +3 / CPC +4
 
     // sprite flags
     struct {
         int initialized:1;  // bit 0 - slot is in use
         int active:1;       // bit 1 - sprite is composited each redraw
         int registered:1;   // bit 2 - sprite is present in the redraw registry
-    } flags;		// ofs: +4
+    } flags;		// ofs: ZX +4 / CPC +5
 
     // pointer to pixel data - can be changed at any moment (animation, etc.)
-    uint8_t *pixels;	// ofs: +5
+    uint8_t *pixels;	// ofs: ZX +5 / CPC +6
 
     // sprite type (16 bits) - pointer to table of drawing functions,
     // handled automatically by the jsp_*_mask2 / jsp_*_load1 wrappers
-    uint8_t *type_ptr;	// ofs: +7
+    uint8_t *type_ptr;	// ofs: ZX +7 / CPC +8
 
     // sprite colour attribute applied each frame (0 = no colour management)
-    uint8_t color;		// ofs: +9
+    uint8_t color;		// ofs: ZX +9 / CPC +10
     // colour mask: 0xF8 = preserve PAPER/BRIGHT, replace INK only; 0x00 = full replace
-    uint8_t color_mask;	// ofs: +10
+    uint8_t color_mask;	// ofs: ZX +10 / CPC +11
 
     // clip rectangle (cell coords); NULL = no clipping.  Sprite cells outside
     // this rect are not composited (per-cell clipping, matches SP1).
-    struct jsp_rect *clip;	// ofs: +11
+    struct jsp_rect *clip;	// ofs: ZX +11 / CPC +12
 };
 
 void jsp_init_sprite( struct jsp_sprite_s *sp ) __z88dk_fastcall;
 
 // Deferred sprite operations: they update sprite state and mark cells dirty;
 // the actual compositing happens in the next jsp_redraw().
-void jsp_move_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos )
+void jsp_move_sprite( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos )
     __smallc __z88dk_callee;
-void jsp_draw_sprite( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos )
+void jsp_draw_sprite( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos )
     __smallc __z88dk_callee;
 
 // C-level wrappers: set sprite type, then defer draw/move
-void jsp_draw_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
-void jsp_move_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
-void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
-void jsp_move_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos );
+void jsp_draw_sprite_mask2( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos );
+void jsp_move_sprite_mask2( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos );
+void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos );
+void jsp_move_sprite_load1( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos );
 
 // Safe off-screen parking: mark cells dirty and flag sprite as inactive
 void jsp_sprite_park( struct jsp_sprite_s *sp ) __z88dk_fastcall;
 
 // Frame-based movement (sets pixels, then defers move)
 void jsp_move_sprite_mask2_frame( struct jsp_sprite_s *sp, uint8_t *frame,
-                                  uint8_t xpos, uint8_t ypos );
+                                  jsp_xcoord_t xpos, uint8_t ypos );
 void jsp_move_sprite_load1_frame( struct jsp_sprite_s *sp, uint8_t *frame,
-                                  uint8_t xpos, uint8_t ypos );
+                                  jsp_xcoord_t xpos, uint8_t ypos );
 void jsp_move_sprite_frame( struct jsp_sprite_s *sp, uint8_t *frame,
-                            uint8_t xpos, uint8_t ypos );
+                            jsp_xcoord_t xpos, uint8_t ypos );
 
 // Bounding-box check: 1 if sprite at (xpos,ypos) is fully inside rect, else 0
 uint8_t jsp_sprite_in_rect( struct jsp_sprite_s *sp,
                             struct jsp_rect *rect,
-                            uint8_t xpos, uint8_t ypos );
+                            jsp_xcoord_t xpos, uint8_t ypos );
 
 // Set the per-cell clip rectangle for a sprite (NULL = no clipping)
 void jsp_sprite_set_clip( struct jsp_sprite_s *sp, struct jsp_rect *clip );

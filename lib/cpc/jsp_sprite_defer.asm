@@ -13,12 +13,12 @@
 ;; Clamps widen to the 25x80 grid (r1<=24, c1<=79).  Everything else (deferred
 ;; draw/move/park, mark_footprint, clip handling) is identical to ZX.
 ;;
-;; Coordinates are 8-bit (jsp_coord_t) for this milestone; that covers the left
-;; ~256 px (32 cells) of the Mode-2 screen, matching the ZX test_sprite_move
-;; range.  16-bit X widening is a follow-up (plan §3).
+;; X is 16-bit (jsp_xcoord_t) on CPC so a sprite can span the full 640px Mode-2
+;; screen (80 cells); Y stays 8-bit.  c0 = xpos>>3 is a 16-bit shift (0..79, no
+;; cap); xrot = xpos&7 (low byte).  (plan §3.)
 ;;
-;; struct jsp_sprite_s (13 bytes), offsets used here:
-;;   +0 rows  +1 cols  +2 xpos  +3 ypos  +4 flags  +11 clip(w)
+;; struct jsp_sprite_s (CPC layout, 14 bytes), offsets used here:
+;;   +0 rows  +1 cols  +2..+3 xpos(16b)  +4 ypos  +5 flags  +12..+13 clip(w)
 ;;   flags bits: 0 initialized, 1 active, 2 registered
 ;; struct jsp_rect: +0 row  +1 col  +2 width  +3 height
 ;;
@@ -193,7 +193,7 @@ mrc_noadv:
 ;; asm entry: IX = sprite, DE = clip rect pointer (0 = no clip).
 ;; call/ret; preserves IX; trashes A,BC,DE,HL,IY.
 mark_footprint:
-	ld a,(ix+3)			; r0 = ypos >> 3
+	ld a,(ix+4)			; r0 = ypos >> 3   (CPC ypos @ +4, 8-bit)
 	rrca
 	rrca
 	rrca
@@ -201,11 +201,15 @@ mark_footprint:
 	ld (mr_r0),a
 	add a,(ix+0)			; r1 = r0 + rows
 	ld (mr_r1),a
-	ld a,(ix+2)			; c0 = xpos >> 3
-	rrca
-	rrca
-	rrca
-	and 0x1F
+	ld l,(ix+2)			; c0 = xpos >> 3   (CPC xpos @ +2..+3, 16-bit)
+	ld h,(ix+3)
+	srl h
+	rr l
+	srl h
+	rr l
+	srl h
+	rr l
+	ld a,l				; no 0x1F cap (80-col grid, c0 up to 79)
 	ld (mr_c0),a
 	add a,(ix+1)			; c1 = c0 + cols
 	ld (mr_c1),a
@@ -299,8 +303,7 @@ _jsp_move_sprite:
 	ld a,l
 	ld (defer_ypos),a
 	pop hl
-	ld a,l
-	ld (defer_xpos),a
+	ld (defer_xpos),hl		; 16-bit xpos
 	pop hl
 	ld (defer_sp),hl
 	push ix				; preserve caller's SDCC frame pointer
@@ -315,8 +318,7 @@ _jsp_draw_sprite:
 	ld a,l
 	ld (defer_ypos),a
 	pop hl
-	ld a,l
-	ld (defer_xpos),a
+	ld (defer_xpos),hl		; 16-bit xpos
 	pop hl
 	ld (defer_sp),hl
 	push ix				; preserve caller's SDCC frame pointer
@@ -325,25 +327,26 @@ _jsp_draw_sprite:
 
 defer_body:
 	ld ix,(defer_sp)
-	bit 0,(ix+4)			; initialized?
+	bit 0,(ix+5)			; initialized?  (CPC flags @ +5)
 	jr z,defer_done
 	ld hl,(defer_sp)		; jsp_register_sprite(sp)
 	call _jsp_register_sprite	; C (__z88dk_fastcall); preserves IX
 	ld a,(defer_ismove)
 	or a
 	jr z,defer_reposition		; draw: no old footprint
-	bit 1,(ix+4)			; move: mark OLD footprint if active
+	bit 1,(ix+5)			; move: mark OLD footprint if active
 	jr z,defer_reposition
 	ld de,0				; clip = NULL (old position unclipped)
 	call mark_footprint
 defer_reposition:
-	ld a,(defer_xpos)		; sp->xpos = xpos
-	ld (ix+2),a
-	ld a,(defer_ypos)		; sp->ypos = ypos
-	ld (ix+3),a
-	set 1,(ix+4)			; sp->flags.active = 1
-	ld e,(ix+11)			; DE = sp->clip
-	ld d,(ix+12)
+	ld hl,(defer_xpos)		; sp->xpos = xpos (16-bit @ +2..+3)
+	ld (ix+2),l
+	ld (ix+3),h
+	ld a,(defer_ypos)		; sp->ypos = ypos (8-bit @ +4)
+	ld (ix+4),a
+	set 1,(ix+5)			; sp->flags.active = 1
+	ld e,(ix+12)			; DE = sp->clip (CPC clip @ +12..+13)
+	ld d,(ix+13)
 	call mark_footprint		; mark NEW footprint (clipped)
 defer_done:
 	pop ix				; restore caller's frame pointer
@@ -366,19 +369,19 @@ _jsp_sprite_park:
 	push ix				; preserve caller's frame pointer
 	push hl
 	pop ix				; IX = sprite
-	bit 1,(ix+4)			; active?
+	bit 1,(ix+5)			; active?  (CPC flags @ +5)
 	jr z,park_done
 	ld de,0				; clip = NULL
 	call mark_footprint
 park_done:
-	res 1,(ix+4)			; sp->flags.active = 0
+	res 1,(ix+5)			; sp->flags.active = 0
 	pop ix
 	ret
 
 	section data_compiler
 defer_ret:	dw 0
 defer_sp:	dw 0
-defer_xpos:	db 0
+defer_xpos:	dw 0		; 16-bit X (CPC)
 defer_ypos:	db 0
 defer_ismove:	db 0
 mr_r0:		db 0

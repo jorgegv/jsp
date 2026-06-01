@@ -97,16 +97,24 @@
 // -------------------------------------------------------------------------
 // Sprite coordinate width (descriptor X/Y).  Decision (plan §3): per-target
 // field width.  ZX keeps 8-bit (cell-pixel range fits a byte).  CPC needs
-// 16-bit X to address a Mode-2 screen (640 px) and to carry real pixel X
-// across the byte_col/shift split.
+// 16-bit X to address a Mode-2 screen (640 px = 80 cells) and to carry real
+// pixel X across the byte_col/shift split.  Y stays 8-bit on both (200 lines
+// / 25 cell-rows fit a byte).
 //
-// In Phase 1 this typedef is applied to the descriptor's xpos/ypos for the
-// ZX build only (jsp_coord_t == uint8_t => layout byte-for-byte unchanged).
-// Applying the 16-bit CPC width ripples into the asm field offsets and the
-// public draw/move signatures, so that reconciliation lands with the CPC
-// frame precompute in Phase 3 (see plan §3); until then CPC also uses 8-bit
-// here so the struct stays valid to compile.
+// jsp_coord_t is the (always 8-bit) Y / generic coordinate; jsp_xcoord_t is
+// the per-target X.  On ZX both are uint8_t, so the descriptor layout and the
+// public draw/move signatures are byte-for-byte unchanged.  On CPC jsp_xcoord_t
+// is 16-bit, which shifts the CPC descriptor offsets (xpos +2..+3, ypos +4,
+// flags +5, ...) — the CPC asm (lib/cpc/jsp_frame.asm, jsp_sprite_defer.asm)
+// and the guarded lib/jsp_sprite_init.asm use those offsets; the 8-bit ZX asm
+// in lib/zx is untouched.  (Phase 3, plan §3.)
 // -------------------------------------------------------------------------
 typedef uint8_t jsp_coord_t;
+
+#ifdef JSP_TARGET_CPC
+typedef uint16_t jsp_xcoord_t;
+#else
+typedef uint8_t  jsp_xcoord_t;
+#endif
 
 #endif // _JSP_CONFIG_H

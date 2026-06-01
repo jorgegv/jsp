@@ -65,22 +65,22 @@ uint8_t jsp_cell_in_rect( uint8_t row, uint8_t col, struct jsp_rect *rect ) {
 // C-level wrappers — set sprite type, then defer
 ///////////////////////////////////////////////////////////
 
-void jsp_move_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) {
+void jsp_move_sprite_mask2( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos ) {
     sp->type_ptr = JSP_TYPE_MASK2;
     jsp_move_sprite( sp, xpos, ypos );
 }
 
-void jsp_draw_sprite_mask2( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) {
+void jsp_draw_sprite_mask2( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos ) {
     sp->type_ptr = JSP_TYPE_MASK2;
     jsp_draw_sprite( sp, xpos, ypos );
 }
 
-void jsp_move_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) {
+void jsp_move_sprite_load1( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos ) {
     sp->type_ptr = JSP_TYPE_LOAD1;
     jsp_move_sprite( sp, xpos, ypos );
 }
 
-void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos ) {
+void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos ) {
     sp->type_ptr = JSP_TYPE_LOAD1;
     jsp_draw_sprite( sp, xpos, ypos );
 }
@@ -90,14 +90,14 @@ void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, uint8_t xpos, uint8_t ypos 
 ///////////////////////////////////////////////////////////
 
 void jsp_move_sprite_mask2_frame( struct jsp_sprite_s *sp, uint8_t *frame,
-                                  uint8_t xpos, uint8_t ypos ) {
+                                  jsp_xcoord_t xpos, uint8_t ypos ) {
     sp->pixels   = frame;
     sp->type_ptr = JSP_TYPE_MASK2;
     jsp_move_sprite( sp, xpos, ypos );
 }
 
 void jsp_move_sprite_load1_frame( struct jsp_sprite_s *sp, uint8_t *frame,
-                                  uint8_t xpos, uint8_t ypos ) {
+                                  jsp_xcoord_t xpos, uint8_t ypos ) {
     sp->pixels   = frame;
     sp->type_ptr = JSP_TYPE_LOAD1;
     jsp_move_sprite( sp, xpos, ypos );
@@ -105,7 +105,7 @@ void jsp_move_sprite_load1_frame( struct jsp_sprite_s *sp, uint8_t *frame,
 
 // Generic frame-based move: uses whatever type_ptr is already set in the sprite.
 void jsp_move_sprite_frame( struct jsp_sprite_s *sp, uint8_t *frame,
-                            uint8_t xpos, uint8_t ypos ) {
+                            jsp_xcoord_t xpos, uint8_t ypos ) {
     sp->pixels = frame;
     jsp_move_sprite( sp, xpos, ypos );
 }
@@ -122,7 +122,7 @@ void jsp_sprite_set_clip( struct jsp_sprite_s *sp, struct jsp_rect *clip ) {
 // rect (cell coordinates); 0 if partially or fully outside.
 uint8_t jsp_sprite_in_rect( struct jsp_sprite_s *sp,
                             struct jsp_rect *rect,
-                            uint8_t xpos, uint8_t ypos ) {
+                            jsp_xcoord_t xpos, uint8_t ypos ) {
     uint8_t sc = xpos / 8;
     uint8_t sr = ypos / 8;
     if ( sc < rect->col )                            return 0;

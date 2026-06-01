@@ -29,15 +29,16 @@ DEFINE_SPRITE( sprite3, 2, 2, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
 DEFINE_SPRITE( sprite4, 2, 2, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
 
 struct {
-    uint8_t x, y;
-    int8_t  dx, dy;
+    uint16_t x;             // 16-bit X: full 640px Mode-2 screen
+    uint8_t  y;
+    int8_t   dx, dy;
     struct jsp_sprite_s *sp;
 } mover[ NUM_SPRITES ] = {
-    {  80,  10,  3,  2, &sprite0 },
-    { 140,  40, -2,  3, &sprite1 },
-    { 100,  90,  4, -1, &sprite2 },
-    { 190,  20, -3, -2, &sprite3 },
-    { 120,  70,  1,  4, &sprite4 },
+    {  40,  10,  3,  2, &sprite0 },
+    { 200,  40, -2,  3, &sprite1 },
+    { 340,  90,  4, -1, &sprite2 },
+    { 470,  20, -3, -2, &sprite3 },
+    { 590,  70,  1,  4, &sprite4 },
 };
 
 static uint8_t tile_stripe[8] = { 0xAA,0x55,0xAA,0x55,0xAA,0x55,0xAA,0x55 };
@@ -75,13 +76,13 @@ void main( void ) {
         for ( c = 0; c < 80; c++ )
             jsp_draw_background_tile( r, c, tile_stripe );
 
-    // animate for a fixed number of frames, bouncing within the cap32-visible
-    // 8-bit window, then settle into a clean final frame for the screenshot.
+    // animate for a fixed number of frames, bouncing across the FULL 640px
+    // Mode-2 screen (16-bit X), then settle into a clean final frame.
     for ( f = 0; f < ANIM_FRAMES; f++ ) {
         for ( r = 0; r < NUM_SPRITES; r++ ) {
             jsp_move_sprite( mover[r].sp, mover[r].x, mover[r].y );
 
-            if ( mover[r].x + mover[r].dx > 230 || mover[r].x + mover[r].dx < 70 )
+            if ( mover[r].x + mover[r].dx > 620 || mover[r].x + mover[r].dx < 4 )
                 mover[r].dx = -mover[r].dx;
             mover[r].x += mover[r].dx;
 
