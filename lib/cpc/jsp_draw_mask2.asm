@@ -4,21 +4,28 @@
 ; sinclair spectrum version
 ; 12.2024 adapted by zxjogv (zx@jogv.es) for JSP
 
+	IFDEF JSP_TARGET_CPC		; CPC shift kernel (shared by all CPC shifting modes) - port of lib/zx/jsp_draw_mask2.asm. Table-driven via jsp_rottbl, so the pixel encoding lives in the table, not here: identical for M2 (1bpp linear) and M1 (nibble-plane). plan section 5
+	IF CPC_MODE0_FAST || CPC_MODE1_FAST || CPC_MODE2_FAST
+	; FAST (byte-aligned) build: this rotating kernel is unused — the
+	; covered-cell compositor calls the no-rotate kernel directly, so no
+	; shift kernel (or its redirect prologue) is linked into a FAST binary.
+	ELSE
+
 	section code_compiler
 
-	public _SP1_DRAW_MASK2
-	public _sp1_draw_mask2
+	public _JSP_DRAW_MASK2
+	public _jsp_draw_mask2
 
-	extern _SP1_DRAW_MASK2NR
+	extern _JSP_DRAW_MASK2NR
 	extern _jsp_rottbl
 	extern _jsp_current_rottbl_msb
 	extern cc_scratch		; dst is always the JSP compositing buffer,
 					; so the 8 dst bytes are addressed absolutely
 					; (13T) instead of via (iy+d) (19T)
 
-;; void sp1_draw_mask2( uint8_t *dst, uint8_t *graph, uint8_t *graph_left ) __smallc __z88dk_callee;
+;; void jsp_draw_mask2( uint8_t *dst, uint8_t *graph, uint8_t *graph_left ) __smallc __z88dk_callee;
 ;; Trashes DE' !!!
-_sp1_draw_mask2:
+_jsp_draw_mask2:
 	exx
 	pop de		; save ret addr
 	exx
@@ -38,10 +45,10 @@ _sp1_draw_mask2:
 ; hl = graphic def ptr
 ; de = left graphic def ptr
 
-_SP1_DRAW_MASK2:
+_JSP_DRAW_MASK2:
 
 	cp _jsp_rottbl/256 - 2
-	jp z, _SP1_DRAW_MASK2NR
+	jp z, _JSP_DRAW_MASK2NR
 
 	push ix	; save
 
@@ -56,7 +63,7 @@ _SP1_DRAW_MASK2:
 	; ix = left sprite def
 	; dst = cc_scratch (fixed buffer, addressed absolutely below)
 
-_SP1Mask2Rotate:
+_JSPMask2Rotate:
 
 	; 0
 
@@ -235,3 +242,6 @@ _SP1Mask2Rotate:
 
 	pop ix	; restore
 	ret
+
+	ENDIF			; CPC_MODE*_FAST (rotating kernel skipped)
+	ENDIF			; JSP_TARGET_CPC

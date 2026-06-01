@@ -7,3 +7,24 @@
 *.sym
 *.c.asm
 main
+
+# CPC build + emulator screenshot artifacts
+*.dsk
+*.cdt
+CPCBG
+CPCSPR
+CPCSPRD
+CPCFG
+CPCTILE
+shot.png
+screenshot_*.png
+tests/cpc/shift_test_mode2
+CPCSPR1
+tests/cpc/shift_test_mode1
+tests/cpc/shift_test_mode1_mono
+CPCSPRM
+tests/cpc/shift_test_mode0
+CPCSPR0
+CPCSPR2F
+CPCSPR0F
+CPCSPR1F

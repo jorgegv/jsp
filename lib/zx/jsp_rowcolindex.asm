@@ -1,43 +1,15 @@
-;; some utility functions
+;; jsp_rowcolindex / jsp_rowcolindex_dtt — ZX cell-index helpers
+;; split out of the former lib/jsp_util.asm (Phase 1.1).
+;;
+;; ZX-only platform layer (seam, doc/CPC-TARGET-PLAN.md §1.3 / §2): the grid is
+;; 32 columns wide, so the cell index is row*32 + col.  The CPC build provides
+;; its own lib/cpc/jsp_rowcolindex.asm (row*80, Model A) — selected by the
+;; Makefile per JSP_TARGET.
 
 	section code_compiler
 
-	public _jsp_memzero
-	public _jsp_memcpy
 	public jsp_rowcolindex
 	public jsp_rowcolindex_dtt
-
-;; void jsp_memzero( void *dst, uint16_t numbytes ) __smallc __z88dk_callee;
-;; trashes a,bc,de,hl
-_jsp_memzero:
-	pop af		;; save ret addr
-
-	pop bc		;; BC = numbytes
-	pop hl		;; HL = dst
-
-	push af		;; restore ret addr
-
-	ld de,hl
-	inc de
-	xor a		;; value = 0
-	ld (hl),a	;; set first value
-	dec bc
-	ldir
-	ret
-
-;; void jsp_memcoy( void *dst, void *src, uint16_t numbytes ) __smallc __z88dk_callee;
-;; trashes a,bc,de,hl
-_jsp_memcpy:
-	pop af		;; save ret addr
-
-	pop bc		;; BC = numbytes
-	pop hl		;; HL = src
-	pop de		;; DE = dst
-
-	push af		;; restore ret addr
-
-	ldir
-	ret
 
 ;; jsp_rowcolindex: calculates index of (r,c) pair into the DTT/BTT tables
 ;; input: D = row, E = col

@@ -1,0 +1,757 @@
+# JSP-CPC Target — Design & Implementation Plan
+
+**Status:** Implemented — all phases (R/0/1/1.1/2..9) done; all eight CPC configs
+(Mode 2/1/0, Mode 1 MONO, Mode 2/0/1 FAST) build and render verified in cap32,
+ZX baseline byte-for-byte unchanged.  This document is kept as the design record.
+**Date:** 2026-05-31 (design); 2026-06-01 (implementation complete)
+**Goal:** Add Amstrad CPC support to JSP with pixel-perfect sprite positioning
+in Mode 0 (4 bpp), Mode 1 (2 bpp) and Mode 2 (1 bpp), keeping JSP's high-level
+architecture identical to the ZX version. Only the thin low-level layer (shift
+tables/kernels, pixel encoding, screen addressing, mask/composite) is swapped.
+
+**Required reading first:** `doc/refs/CPC-SPRITE-ENGINE-ANALYSIS.md` (the
+strategic context and the per-mode shift mechanics, §4, §8, §11.1) and
+`doc/ENGINE.md` (the ZX engine this plan ports). The cell/tile-size model
+(byte-cell vs pixel-cell, §2) is an open, deferred decision analysed separately
+in `doc/CPC-TILE-SIZE-ANALYSIS.md`.
+
+---
+
+## 1. Scope and guiding principle
+
+The decisive architectural point (analysis §11.1): **the CPC port keeps JSP's
+entire high-level engine unchanged and swaps only the platform layer.** This
+plan is organised around that seam — first making the seam explicit in the
+existing ZX code, then filling in the CPC side of it per mode.
+
+### 1.1 Reused verbatim (the high-level engine — do NOT redesign)
+
+- Deferred recomposite model + dirty-cell tracking (DTT walk).
+- The four tables BTT / DTT / FTT / (BAT — see §6) and the cell-grid model.
+- Sprite registry, `jsp_redraw_begin()` per-frame precompute
+  (`jsp_frame_sprites[]`), and the covered-cell compositor *flow*
+  (seed scratch from BTT → composite covering sprites in z-order → single store).
+- The public API in `include/jsp.h` (sprite descriptor, draw/move/park, pool,
+  tiles, print, clip).
+- The footprint = `(rows+1) × (cols+1)` sub-cell-shift convention.
+
+### 1.2 Swapped per target/mode (the platform layer — this plan's real work)
+
+| Platform-layer concern           | ZX implementation (today)                      | CPC change |
+|----------------------------------|------------------------------------------------|------------|
+| Cell geometry / grid dims        | 32×24 cells, cell = 8 bytes                    | §2         |
+| Coordinate → (byte-col, shift)   | `xpos>>3`, `xpos&7`                            | §3         |
+| Shift tables (`jsp_rottbl`)      | 1bpp linear, 7 phases                          | §4         |
+| Composite kernels (`sp1_draw_*`) | ZX 1bpp mask2/load1 + nr/lb/rb                 | §5         |
+| Colour / attributes (BAT)        | ZX attribute RAM @ 0x5800                      | §6         |
+| Screen addressing                | `asm_zx_cxy2saddr`, `rd_rowtab`, 0x4000/0x5800 | §7         |
+| Compile guards                   | none (single ZX target)                        | §8         |
+| Data block placement             | `__at` 0xE840-0xFFFF / slot2                   | §9         |
+| Asset byte format                | gfxgen ZX mask2/load1                          | §10        |
+| Toolchain / Makefile / emulator  | `zcc +zx`, FUSE/JNEXT                          | §11        |
+
+### 1.3 Source-tree layout — platform directories
+
+The seam (§1.2) is also reflected in the **directory layout**, so platform code
+is physically separated and only the right platform's files are compiled
+(introduced in Phase 1.1, §12). Three locations:
+
+```
+lib/            platform-independent engine (compiled for EVERY target)
+lib/zx/         ZX-only platform layer  (compiled only when JSP_TARGET=zx)
+lib/cpc/        CPC-only platform layer (compiled only when JSP_TARGET=cpc)
+```
+
+**Selection mechanism (Makefile):** sources = `lib/*` **plus** `lib/$(JSP_TARGET)/*`
+(`JSP_TARGET` defaults to `zx`). So a ZX build compiles `lib/ + lib/zx/`; a CPC
+build compiles `lib/ + lib/cpc/` (with `-DJSP_TARGET_CPC -Ca-DJSP_TARGET_CPC` and
+the mode). The platform dir is the **first** line of defence (wrong-platform
+files are never fed to the compiler).
+
+**Double-guard rule:** the **first** line of defence is the Makefile (it never
+feeds a wrong-platform file to the compiler). The **second** line is the in-file
+target guard, present where it cleanly applies: the 8 `jsp_draw_*.asm` and
+`jsp_screen.asm` already carry whole-file `IFNDEF JSP_TARGET_CPC` (from Phase 0),
+and new `lib/cpc/` files use `IFDEF JSP_TARGET_CPC`. The four redraw-path files
+moved to `lib/zx/` (`jsp_redraw.asm`, `jsp_covered.asm`, `jsp_frame.asm`,
+`jsp_sprite_defer.asm`) carry only the Phase-0 **SEAM comments**, not a whole-file
+guard — by design, because their CPC counterparts are *separate* `lib/cpc/` files
+written in Phase 2, not in-file `#ifdef` branches. So those four rely on the
+Makefile selection alone; that is sufficient (on a ZX build `JSP_TARGET_CPC` is
+undefined; on a CPC build they are never compiled). New platform files SHOULD add
+the matching `IFDEF`/`IFNDEF` guard for belt-and-suspenders.
+
+**Placement criterion.** A file lives in a platform dir **iff it is wholly one
+platform's implementation of a primitive** (screen addressing, the redraw walk,
+the per-frame precompute, the shift/composite kernels, the grid-index helper, the
+deferred-op grid math). Everything else stays in `lib/`, made platform-agnostic
+through `jsp_config.h` macros plus small, cleanly-guarded spots (e.g. a ROM-font
+address, a no-op colour body). Classification of the current files:
+
+| File | Dir | Rationale |
+|------|-----|-----------|
+| jsp_init.c, jsp_data.c, jsp_pool.c, jsp_sprite_c.c, jsp_composite.c, jsp_print.c, jsp_tile.c | `lib/` | shared engine/API; geometry via `jsp_config.h` |
+| jsp_sprite_init.asm | `lib/` | descriptor zero-init; platform-agnostic (8-bit coord offsets widen in Phase 3) |
+| jsp_tiles.c | `lib/` | tile table + clear_rect. **Has ZX-specifics to guard in Phase 2** (not 1.1): the `0x3D00` ROM-font addresses *and* the unconditional `jsp_bat[idx]=attr` writes (BAT is dropped on CPC, §6/§9). Harmless on ZX now. |
+| jsp_init.c (`jsp_init_bat`) | `lib/` | same BAT landmine: `jsp_init_bat()` writes `jsp_bat[]` — guard under `JSP_HAS_ATTR` in Phase 2 |
+| jsp_color.c | `lib/` | API shared; ZX attribute body already guarded (no-op on CPC) |
+| jsp_dtt.asm, jsp_ftt.asm | `lib/` | DTT/FTT bit ops; delegate the grid index to the platform `rowcolindex` (`jsp_rowcolindex` itself is a dead extern — only `…_dtt` is called) |
+| jsp_mem.asm *(new — split from jsp_util.asm)* | `lib/` | `memzero`/`memcpy` (platform-independent) |
+| jsp_screen.asm | `lib/zx/` | ZX screen addressing |
+| jsp_redraw.asm | `lib/zx/` | ZX DTT-walk + bg blit + `rd_rowtab` + `0x5800` |
+| jsp_covered.asm | `lib/zx/` | covered-cell compositor (ZX attr + screen blit) |
+| jsp_frame.asm | `lib/zx/` | per-frame precompute (grid/shift constants, `&0x1F`) |
+| jsp_sprite_defer.asm | `lib/zx/` | deferred move/draw + `mark_rect` (cell = `r*32`) |
+| jsp_rowcolindex.asm *(new — split from jsp_util.asm)* | `lib/zx/` | `row*32` grid index (`jsp_rowcolindex`, `…_dtt`) |
+| jsp_draw_*.asm ×8 | `lib/zx/` | ZX 1bpp shift/composite kernels |
+
+`lib/cpc/` starts empty; Phase 2+ adds the CPC counterparts (screen, redraw,
+rowcolindex, frame, defer, kernels) there. `jsp_util.asm` is split so its
+shared half (`mem`) and ZX half (`rowcolindex`) land in the right places.
+
+---
+
+## 2. Cell model and grid geometry — the foundational decision
+
+This is the single decision everything else depends on, so it is resolved first.
+
+**ZX today:** a cell is 8×8 px. Two different byte counts must not be conflated:
+- the **screen/scratch cell is 8 bytes** (1 byte/row) — the 8-byte scratch
+  `cc_scratch` (`lib/jsp_covered.asm:381`, `ds 8`), the `ldi×8` seed copy, the
+  8-iteration blit in `lib/jsp_screen.asm`, BTT entries treated as 8-byte tiles;
+- the **source asset cell is 8 *or* 16 bytes**: `load1` = 8 (graph only),
+  `mask2` = 16 ((mask,graph) byte pairs). `cs` = 8/16 and the rowstride math
+  (`lib/jsp_frame.asm:212-227`) multiply by that source `cs`, *not* by 8.
+
+The grid is fixed 32×24 = 768 cells.
+
+**CPC framebuffer:** 80 bytes/line × 200 lines = 16 KB at `0xC000-0xFFFF`, in
+*all three modes*. The mode only changes how many pixels a byte holds
+(2/4/8 for M0/M1/M2). So the byte grid is always 80 columns wide.
+
+**Provisional decision — "cell = 8 lines × 1 byte" (8 bytes) for the Mode-2
+bring-up; the Mode-0/1 cell model is an OPEN, deferred decision.**
+
+There are two viable cell models, and they are **identical in Mode 2** (8 px =
+8 bytes = a 1-byte cell either way), so the choice only affects Mode 0/1 and need
+not be made until then. They are analysed in full in
+**`doc/CPC-TILE-SIZE-ANALYSIS.md`**:
+
+- **Model A — "byte-cell"** (this section's working assumption): cell = 8 bytes
+  always; grid 80×25 in every mode; cell pixel-width = 2/4/8 px (M0/M1/M2).
+  Keeps the sprite compositor/scratch/grid math simplest and most ZX-like, at the
+  cost of multi-cell glyphs/tiles in M0/M1 (a char/tile spans 2–4 cells) and
+  `cols` measured in 2-px byte units.
+- **Model B — "pixel-cell"**: cell = 8×8 px always; cell byte-width = 32/16/8 B;
+  grid = 20×25 / 40×25 / 80×25. Keeps the tilemap/text/sprite-footprint semantics
+  identical to ZX (1 cell = 1 tile = 1 char), needs less table RAM and less
+  per-cell overhead in M0/M1 (likely *faster* there — total pixel work is equal,
+  coarser cells just cut per-cell overhead), at the cost of a more complex
+  covered-cell compositor (intra-cell byte-column mapping) and a Mode-0
+  20-column DTT-alignment wrinkle (20 is not a multiple of 8).
+
+**Decision is deferred** and will be made for Mode 0/1 by prototyping the Mode-0
+compositor **both ways** and measuring (T-states, code size, RAM, tile/text
+complexity) — see `CPC-TILE-SIZE-ANALYSIS.md` "Decision process". To keep both
+open, the engine is **parameterized** (Phase 1): `JSP_CELL_BYTES`,
+`JSP_GRID_COLS`, `JSP_GRID_ROWS` (and the derived cell count) are config macros,
+not hard-coded. The rest of this section describes **Model A**, the Mode-2
+working assumption; figures that differ under Model B are flagged.
+
+Under Model A:
+- The **screen/scratch** 8-byte invariants are preserved → the covered-cell
+  compositor, the scratch, the seed copy, the BTT-as-8-byte-tile model carry over
+  unchanged. (Under Model B the kernel/scratch can still stay 8 bytes by looping
+  the byte-column kernel over each cell's 1/2/4 byte-columns — see the analysis.)
+- The **source `mask2` cell stays 16 bytes** (mask+graph), `load1` 8 bytes, in
+  every CPC mode — but for M0/M1 those bytes are now *planar-in-byte* pixels and
+  the mask byte is planar too (§5, §10). `cs` / rowstride math is unchanged; only
+  the *meaning* of the bytes changes per mode.
+- Grid is **80 columns × 25 rows = 2000 cells** in every mode (Model B: 500/1000/
+  2000 for M0/M1/M2).
+- A cell spans a *mode-dependent pixel width*: M0 = 2 px, M1 = 4 px, M2 = 8 px
+  wide (always 8 px tall). Sprite `cols` is a count of **bytes**, not pixels
+  (Model B: `cols` is 8-px tiles, exactly as ZX).
+
+**Consequences to carry through the plan (Model A figures; Model B differs per
+`CPC-TILE-SIZE-ANALYSIS.md`):**
+
+- **Cell-indexed** tables scale from 768 → 2000 cells (§9 memory budget):
+  BTT 4000 B, DTT 250 B, FTT 250 B, BAT dropped (§6). The **registry-sized**
+  scratch structures do *not* scale — `jsp_frame_sprites[JSP_SPRITE_REGISTRY_SIZE]`
+  and `cc_row_active` (`ds 32` = 16 pointers, `lib/jsp_covered.asm:388`) stay
+  sized by the sprite registry, not the cell count; do not resize them.
+- The `g`/group loop in `lib/jsp_redraw.asm` walks `2000/8 = 250` groups, not 96.
+- The DTT/FTT bit-index math (8 cells/byte) is unchanged; only the totals change.
+- **The non-power-of-two column walk is the trickiest single change.** ZX uses
+  `row = g >> 2` (4 groups/row = 32 cols ÷ 8) and `col = cell & 31`. On CPC there
+  are **10 groups/row** (80 ÷ 8); `g / 10` and `g % 10` are *not* free shifts and
+  `cell & 31` is meaningless for cols 0..79. **Decision:** do not divide per cell
+  — carry an explicit `(row, col0)` pair advanced once per group:
+  `col0 += 8; if (col0 == 80) { col0 = 0; row++; }`. The per-bit column is
+  `col0 + bit`. This replaces the ZX power-of-two extraction entirely.
+- `rd_rowtab` grows to 25 rows (§7).
+- The precompute (`lib/jsp_frame.asm:115-126`) masks `r0`/`c0` with `& 0x1F`
+  (caps at 31) — **wrong for CPC** (cols 0..79, rows 0..24). Drop/raise those
+  masks. The derived single-byte fields `r1 = r0+rows`, `c1 = c0+cols` and the
+  8-bit `rd_is_covered` / `cc_sweep` row/col compares already hold 0..79 in a
+  byte, so they need no width change — only the `& 0x1F` truncation must go.
+
+---
+
+## 3. Coordinate model — real pixels in, byte-col + shift out
+
+**ZX today:** `xpos`/`ypos` are 8-bit cell-pixel coordinates; `c0 = xpos>>3`,
+`xrot = xpos & 7`, `r0 = ypos>>3`, `yrot = ypos & 7` (`lib/jsp_frame.asm`).
+8 px/byte and 8 px/cell coincide, so one shift does both.
+
+**CPC:** the task requires "coordinates can be real (1-pixel) in all modes; JSP
+discards unused bits if needed." Two facts force a descriptor change:
+
+1. **Horizontal range exceeds 8 bits.** Mode 2 is 640 px wide, Mode 1 is 320,
+   Mode 0 is 160. `xpos` as a single `uint8_t` cannot address a Mode-2 screen.
+2. **px/byte ≠ px/cell.** Splitting X is now `byte_col = x / ppb`,
+   `shift = x % ppb` with `ppb` = pixels-per-byte = 2/4/8 (M0/M1/M2); the cell
+   column is the byte column (cell = 1 byte wide).
+
+**Decision:** widen the descriptor's X (and keep Y 8-bit; 200 lines fits, but
+see note) to 16-bit for CPC builds, and compute the split per mode:
+
+```
+byte_col (cell col) = x_pixels >> log2(ppb)     ; ppb = 2/4/8  -> shift by 1/2/3
+shift   (phase)     = x_pixels &  (ppb-1)        ; 0..ppb-1
+```
+
+- M0: ppb=2 → 1 shift phase (offset 0/1).  M1: ppb=4 → 3 phases (1..3).
+  M2: ppb=8 → 7 phases (1..7), identical to ZX.
+- **FAST modes** (`CPC_MODE0_FAST`, `CPC_MODE1_FAST`, `CPC_MODE2_FAST`): discard
+  the sub-byte bits entirely (`shift` forced to 0) → byte-aligned, no shift
+  kernel, fast path.  `CPC_MODE0_FAST` = 2-px positioning, `CPC_MODE1_FAST` =
+  4-px positioning, `CPC_MODE2_FAST` = 8-px positioning (`CPC_MODE2_FAST` claws
+  back the most RAM — the M2 rottbl is the largest, 3584 B).
+- Y is the scan-line directly (1-px vertical free in every mode, analysis §4);
+  `r0 = y >> 3`, `yrot = y & 7` is unchanged (8 lines/cell) — but the `& 0x1F`
+  cap on `r0`/`c0` in `lib/jsp_frame.asm` must be widened (see §2 consequences).
+
+**Descriptor impact (`struct jsp_sprite_s`):** `xpos` (and possibly `ypos`) must
+become 16-bit on CPC. This ripples into `jsp_frame.asm` (the split *and* the
+`& 0x1F` col/row masks, §2), the deferred draw/move (`lib/jsp_sprite_c.c`,
+`lib/jsp_sprite_defer.asm`) and every test that pokes `xpos`/`ypos`. The derived
+`r1`/`c1` and the covered-cell row/col compares stay 8-bit (0..79 fits a byte).
+Two options to weigh during Phase 1:
+- (a) `#if` the field width per target (smaller, but two descriptor layouts);
+- (b) always 16-bit X/Y (uniform layout, +2 bytes/sprite on ZX).
+Recommend (a) guarded by `JSP_TARGET_*` to avoid a ZX regression in size/speed.
+
+---
+
+## 4. Shift tables — `jsp_rottbl`, per mode
+
+`jsp_rottbl` (`lib/jsp_data.c`, built by `jsp_init_rottbl()` in
+`lib/jsp_init.c`) is a set of 256-aligned tables: for shift `i` and source byte
+`val`, two halves give the **in-byte** part and the **carry/spill** part of `val`
+shifted right by `i` bits in a 16-bit window. `jsp_current_rottbl_msb` selects
+the active table by high byte; the kernels do `inc h` to reach the carry half.
+
+The plan keeps this **two-half (in-byte / carry) table structure** for every
+mode so the kernels stay structurally identical. Note that, per mode, **two
+things change together**: the table *contents/phase count* **and the addressing
+stride into the table** — the ZX `rottbl_msb = (rottbl>>8) + 2*xrot - 2`
+(`lib/jsp_frame.asm:182-186`) and the kernel's `inc h`-for-carry-half
+(`lib/sp1_draw_mask2.asm:66-67`) both assume **each phase occupies 2 aligned
+256-byte pages (in-byte page, carry page), phases contiguous**. That contract is
+generalised, not assumed, per mode:
+
+| Mode     | phases | xrot range | layout                 | `rottbl_msb` (in-byte page)  | carry page     |
+|----------|--------|------------|------------------------|------------------------------|----------------|
+| M2 (=ZX) | 7      | 1..7       | 7×(256 in + 256 carry) | `(rottbl>>8) + 2*xrot - 2`   | `+1` (`inc h`) |
+| M1       | 3      | 1..3       | 3×(256 in + 256 carry) | `(rottbl>>8) + 2*xrot - 2`   | `+1` (`inc h`) |
+| M0       | 1      | 1          | 1×(256 in + 256 carry) | `(rottbl>>8)` (single phase) | `+1` (`inc h`) |
+| FAST     | 0      | n/a        | no table               | n/a (`nr` kernel only)       | n/a            |
+
+So the **same `2*xrot-2` stride and `inc h` carry contract are kept** for M1/M2
+(both use 2-page-per-phase layout); M0 has a single phase so `xrot` is 0/1 and
+the table base is used directly (xrot=0 → aligned cell, no shift). The kernels
+need no structural change — only the table is shorter. The `xrot`→phase mapping
+is the §3 split (`shift = x % ppb`).
+
+- **Mode 2 (1 bpp linear):** ZX table ports **verbatim** (analysis §8.1).
+  7 phases, `in = src>>i`, `carry = src<<(8-i)`. `jsp_init_rottbl()` is reused
+  as-is. This is why Mode 2 is the first target.
+- **Mode 1 (two nibble-planes):** 3 phases. The 1-px step is
+  `in = (src & 0xEE) >> 1`, `carry = (src & 0x11) << 3` (analysis §8.2/App.A);
+  2- and 3-px phases compose it. Generate a 256-entry in/carry table per phase
+  (`jsp_init_rottbl()` gets a Mode-1 variant under guard).
+- **Mode 0 (odd/even interleave):** 1 phase. `in = (src & 0xAA) >> 1`,
+  `carry = (src & 0x55) << 1` (analysis §8.3/App.A).
+- **FAST / aligned:** no table (shift forced 0); kernels use the `nr`
+  (no-rotate) path only.
+
+**Table sizing per mode** (256 B × 2 halves × phases): M2 = 7×512 = 3584 B (as
+ZX), M1 = 3×512 = 1536 B, M0 = 1×512 = 512 B. Mode selection picks the size; the
+data-block layout (§9) must budget the largest *enabled* table.
+
+**Caveat (analysis §8 banner):** these masks are derived but **must be
+unit-tested against the asset converter's exact byte format** (§10) before
+relying on them. This is a first-class task, not an afterthought.
+
+---
+
+## 5. Composite kernels — `sp1_draw_*`, per mode
+
+Today there are 8 kernels: `mask2` / `load1`, each with middle + `nr` / `lb` /
+`rb` border variants (`lib/sp1_draw_*.asm`). They:
+- read source bytes, index `jsp_rottbl` via `jsp_current_rottbl_msb` to shift,
+- combine the in-byte part with the carry from the adjacent column
+  (`graph` / `graph_left`),
+- composite into `cc_scratch` (addressed **absolutely**, 13T vs 19T — they
+  hard-reference the `cc_scratch` symbol), with `mask2` doing
+  `screen = (bg & mask) | pix` and `load1` overwriting.
+
+**CPC plan:** provide a per-mode kernel set behind the same symbol names so the
+covered-cell compositor (`lib/jsp_covered.asm`) calls them unchanged.
+
+- **Mode 2:** the ZX kernels are 1bpp-linear and port **near-verbatim** — the
+  rotate-through-carry is identical. Smallest delta; first target.
+- **Mode 1 / Mode 0:** new kernels using the §4 mask-ops. The in-byte/carry
+  split and the `graph`/`graph_left` plumbing are the *same shape*; only the
+  shift/mask arithmetic differs. The `mask2` composite stays
+  `screen = (screen & shifted_mask) | shifted_pixels` (analysis §8.4) — the mask
+  is shifted with the **identical** per-mode op as the pixels.
+- **`nr` / `lb` / `rb`:** still needed (no-rotate aligned cell, left edge with no
+  left neighbour, right edge spill). FAST modes use only `nr`.
+- **Absolute `cc_scratch` addressing** is retained (the scratch is still 8 bytes
+  at a fixed symbol).
+
+Kernel count: 8 per shifting mode (M0, M1, M2) + the shared `nr` for FAST. These
+are the bulk of the new assembly.
+
+### 5.1 Flicker / tearing / ISR model (analysis §13 — DECIDED, inherited)
+
+The analysis §13 makes a load-bearing, *already-decided* call that this plan
+inherits rather than re-opens: **direct-to-screen, no double buffer; some
+tearing accepted; no flicker.** JSP already satisfies this for free — its
+single-pass redraw writes **each cell exactly once** to its final
+`background+sprites` content (`doc/ENGINE.md`; one store per cell in
+`jsp_redraw.asm` / the `cc_draw` blit in `jsp_covered.asm`), so there is no
+erase→redraw gap and therefore no flicker, with or without a back buffer. The
+CPC port keeps this property unchanged — **do not add a CPC double buffer.**
+
+One CPC-specific obligation: if a timer/audio ISR (e.g. an Arkos player) runs
+during a blit, it **must be register-clean** (save/restore IX/IY/AF/BC/DE/HL +
+any shadow regs it uses), because the blitter and the ISR share video RAM timing
+but no mutable engine state. This mirrors the analysis's `cpc_fast_isr` note; it
+is an integration constraint for the consuming program, recorded here so the
+JSP-CPC build does not assume an interrupt-free main loop.
+
+---
+
+## 6. Colour / attributes — the biggest semantic divergence
+
+**ZX:** colour lives in separate attribute RAM (`0x5800`, one byte per 8×8
+cell). JSP mirrors it in the **BAT** and repaints it per dirty cell; sprites
+carry `color`/`color_mask` merged into the attribute in
+`lib/jsp_covered.asm` (`cc_after_draw`) and `lib/jsp_color.c`.
+
+**CPC:** **there is no attribute RAM.** Colour is encoded in the pixel bits
+themselves (palette index per pixel, planar-in-byte). Therefore:
+
+- The **BAT table, the BAT paint in the redraw paths, `jsp_apply_sprite_color`,
+  and the `color`/`color_mask` per-cell merge are ZX-specific** and have no CPC
+  equivalent in their current form.
+- **Phase-1 CPC decision:** drop BAT/attribute entirely. Colour comes baked into
+  the sprite/tile pixel data (the asset converter emits coloured pixels per
+  mode). `jsp_sprite_set_color()` / `jsp_apply_sprite_color()` become no-ops (or
+  compile out) on CPC; the redraw paths skip the attribute store
+  (`0x5800` writes in `jsp_redraw.asm`/`jsp_covered.asm` are guarded out).
+- **Per-mode nuance:** M0 (16) and M1 (4) carry a palette index *per pixel*, so
+  "colour baked into pixels" is real. **M2 is 1 bpp = monochrome-per-screen**
+  (ink/paper from palette registers, no per-pixel colour choice) — exactly like
+  ZX-without-attributes. For M2 the "bake colour into pixels" step is a no-op:
+  there is simply nothing per-pixel to bake, and dropping BAT just removes the
+  attribute write.
+- **Deferred (later phase, optional):** a cpctelera-style runtime *colorize*
+  (per-pixel INK remap) if dynamic recolouring is ever needed. Out of initial
+  scope; note it so the API shape leaves room.
+
+This removes ~768→0 bytes of BAT (CPC) and simplifies the per-cell path, but it
+is the one place where "architecture unchanged" has an honest asterisk: the
+*colour* sub-system genuinely differs, because the hardware does. Call it out
+plainly in `doc/ENGINE.md` when the CPC notes are added.
+
+---
+
+## 7. Screen addressing
+
+**ZX today:**
+- `lib/jsp_screen.asm` calls z88dk `asm_zx_cxy2saddr` / `asm_zx_cxy2aaddr`
+  (link-resolved from the `+zx` target) and blits 8 rows with the
+  `ldi; dec de; inc d` idiom: within one character row the 8 pixel lines are
+  exactly `+0x100` apart, so after the `ldi` (which did `inc de`) it does
+  `dec de; inc d` to land on the next line's same column. This idiom *only* works
+  because the within-cell line step is exactly +256.
+- `lib/jsp_redraw.asm` has `rd_rowtab` (24 entries, the ZX thirds layout) and
+  hard-codes `0x4000` (pixels) and `0x5800` (attrs).
+
+**CPC standard CRTC layout:** scan-line `y` address =
+`0xC000 + (y & 7) * 0x800 + (y >> 3) * 80`. So for one 8-line character cell at
+`(row, col)`:
+- cell base (line 0) = `0xC000 + row*80 + col` (note `row*80`, not a thirds
+  table — but a 25-entry `rd_rowtab` of precomputed `0xC000 + row*80` is the
+  natural equivalent and keeps the redraw loop's "row-constant base" trick).
+- the 8 pixel lines step by **`+0x800`** (not `+0x100` / `inc d`).
+
+**CPC plan:**
+- New `jsp_draw_screen_tile` (CPC) blitting 8 bytes at `base, base+0x800, …,
+  base+0x3800`. This is **not** a constant swap of `inc d`→`add 0x800`: the ZX
+  `ldi; dec de; inc d` idiom relied on the +256 step. The CPC inner loop is a
+  genuinely different idiom — e.g. keep the line base in a 16-bit reg, `ld`/store
+  the byte, `add hl, 0x800` for the next line (no `ldi` line-step trick).
+- New `rd_rowtab` = 25 entries `0xC000 + row*80`; cell address = `rowbase + col`.
+- Drop the `0x5800` attribute stores (§6).
+- Column extraction is the explicit `(row, col0)` running-counter scheme decided
+  in §2 (no `cell & 31`, no `g >> 2`): the group loop advances `col0 += 8` and
+  wraps `row` at `col0 == 80`. The redraw group/column walk in `jsp_redraw.asm`
+  must be re-derived around this — the single most error-prone piece of new asm
+  (risk 2).
+
+---
+
+## 8. Compile guards / mode configuration
+
+Exactly one target+mode is selected at compile time. Introduce a single config
+header (e.g. `include/jsp_config.h`) that, from the guard, defines every
+mode-dependent constant the rest of the code reads:
+
+| Guard                  | ppb | shift phases | grid (cols×rows) | cell px (w×h) | shift kernels   | colour                  |
+|------------------------|-----|--------------|------------------|---------------|-----------------|-------------------------|
+| (ZX, default/no guard) | 8   | 7            | 32×24            | 8×8           | ZX 1bpp         | BAT attr                |
+| `CPC_MODE0`            | 2   | 1            | 80×25            | 2×8           | M0 interleave   | per-pixel (16)          |
+| `CPC_MODE1`            | 4   | 3            | 80×25            | 4×8           | M1 nibble       | per-pixel (4)           |
+| `CPC_MODE2`            | 8   | 7            | 80×25            | 8×8           | M2 linear (=ZX) | mono/screen (2)         |
+| `CPC_MODE1_MONO`       | 4   | 3            | 80×25            | 4×8           | M1 nibble       | per-pixel (1bpp assets) |
+| `CPC_MODE0_FAST`       | 2   | 0 (aligned)  | 80×25            | 2×8           | none (`nr`)     | per-pixel (16)          |
+| `CPC_MODE1_FAST`       | 4   | 0 (aligned)  | 80×25            | 4×8           | none (`nr`)     | per-pixel (4)           |
+| `CPC_MODE2_FAST`       | 8   | 0 (aligned)  | 80×25            | 8×8           | none (`nr`)     | mono/screen (2)         |
+
+- A `JSP_TARGET_ZX` / `JSP_TARGET_CPC` umbrella guard gates the platform layer
+  (screen addr, colour, descriptor width); the `CPC_MODE*` guard refines the
+  pixel encoding/shift within CPC.
+- **`CPC_MODE1_MONO`:** 1-bpp (monochrome) assets/tiles rendered on a Mode-1
+  screen for memory savings, still 1-px positioned. Open sub-decision (Phase 6):
+  treat the mono source as Mode-1 ink-0/1 and reuse the Mode-1 nibble shift, or
+  carry a true 1bpp shift (Mode-2 style) and expand to Mode-1 at blit. Resolve
+  when the Mode-1 path exists; the analysis does not pin it down.
+- Add a compile-time guard that **errors if zero or more than one** mode is
+  defined (mutually-exclusive selection), to fail fast.
+
+---
+
+## 9. Data-block placement and memory budget
+
+**ZX:** five tables packed at the top of RAM (`__at` in `lib/jsp_data.c`),
+selectable slot2/slot3.
+
+**CPC:** screen occupies `0xC000-0xFFFF`. JSP tables must sit **below** the
+screen. The cell-table sizes below are for the **Model-A** 2000-cell grid (§2);
+under Model B the cell count is 500/1000/2000 for M0/M1/M2 so BTT/DTT/FTT shrink
+accordingly in M0/M1 (`CPC-TILE-SIZE-ANALYSIS.md`). Size the block from the
+config macros (`JSP_GRID_COLS × JSP_GRID_ROWS`), not the constant 2000:
+
+| Table           | ZX (768 cells) | CPC Model A (2000 cells)     |
+|-----------------|----------------|------------------------------|
+| BTT (ptr/cell)  | 1536 B         | **4000 B**                   |
+| DTT (bit/cell)  | 96 B           | **250 B**                    |
+| FTT (bit/cell)  | 96 B           | **250 B**                    |
+| BAT (byte/cell) | 768 B          | **0** (dropped, §6)          |
+| rottbl          | 3584 B         | M0 512 / M1 1536 / M2 3584 B |
+
+- The per-frame scratch structures are **registry-sized, not cell-sized**, so
+  they do *not* grow with the 2000-cell grid: `jsp_frame_sprites[]`
+  (`JSP_SPRITE_REGISTRY_SIZE` × 16 B) and `cc_row_active` (`ds 32`). Leave them
+  as-is; only the cell-indexed tables above scale.
+- rottbl must stay 256-aligned (`jsp_current_rottbl_msb` derives from its high
+  byte) — unchanged constraint.
+- New CPC `__at` addresses in `lib/jsp_data.c` under `JSP_TARGET_CPC`, sized by
+  the enabled mode's rottbl. Total CPC block ≈ 4.5–8 KB depending on mode; place
+  it ending just below `0xC000` (or lower to leave a contiguous program/free
+  area, mirroring the ZX layout doc in `doc/ENGINE.md`).
+- CPC firmware/stack/restart-vector reserved areas (low RAM) must be respected;
+  pick a placement that avoids `0x0000-0x003F`, firmware jumpblocks and the
+  default stack. Document the chosen CPC memory map alongside the ZX maps in
+  `doc/ENGINE.md`.
+- **DONE (Mode 2):** the data block is `0x9800-0xBFFF` (BAT 0x9800, FTT 0xA000,
+  DTT 0xA100, BTT 0xA200, rottbl 0xB200-0xBFFF). The firmware-default SP sits
+  high (~0xB000-0xBFFF) and would overlap the rottbl, so the build **forces
+  `REGISTER_SP=0x9800`** (Makefile `CPC_CFLAGS`) — stack grows down below the
+  block. This was latent until Phase 3 (sprites first read the rottbl); the
+  phase-7 carry page `0xBF00` is exactly where the stack lands, so only xrot=7
+  sprites corrupted before the fix.
+
+---
+
+## 10. Asset format and generation
+
+> The concrete, per-mode **in-memory byte formats** (tiles + `LOAD1`/`MASK2`
+> sprites, columns-major layout, sub-cell-Y padding, shift encoding) are
+> documented authoritatively in **`doc/CPC-ASSETS-FORMAT.md`** (Mode 2/1/0/MONO
+> and the FAST variants all done). This section is the design rationale.
+
+**ZX:** `gfxgen.pl` (external `../zxtools/`) emits ZX 1bpp `mask2` (interleaved
+`(mask,graph)` byte pairs) / `load1` (graph only), columns-major with extra
+top/bottom blank rows for safe sub-cell Y positioning (seen in
+`tests/test_sprite_mask2.asm`). The covered-cell compositor's `base + pdc*
+rowstride + i*cs` math assumes this **columns-major, 8-bytes/cell** layout.
+
+**CPC plan:**
+- The asset converter must emit **per-mode planar-in-byte** pixel (and, for
+  mask2, mask) bytes: M0 odd/even interleave, M1 two nibble-planes, M2 linear
+  (analysis §4). Same columns-major, 8-lines/cell, extra top/bottom-row
+  convention so the rowstride math is unchanged.
+- JSP-CPC **defines** the byte format; the converter follows it (analysis §13).
+  Either extend `gfxgen.pl` with `--target cpc --mode {0,1,2}` or add a CPC
+  emitter. Whichever, **the §4/§8 shift masks must be unit-tested against the
+  emitted bytes** before the kernels are trusted (this is the cross-check the
+  analysis flags twice).
+- `CPC_MODE1_MONO` assets are 1bpp source; emitter packs them per the MONO
+  decision in §8.
+- The Makefile sprite-gen targets (`tests/test_sprite_mask2.asm` etc.) gain
+  per-mode variants.
+- **Reuse the ZX sprite *source art*.** The goal is CPC tests that look as close
+  to the ZX ones as possible (§11), so the same source PNGs (`assets/ball.png`,
+  `assets/backg1.png`) are re-converted per CPC mode rather than drawn anew —
+  only the *emitted byte encoding* changes, not the picture. M2 (1 bpp) reuses
+  the ZX bit pattern almost directly (it is the same monochrome shape); M0/M1
+  re-quantise the *same* source to the mode's palette. So "reuse the sprites"
+  means reuse the art and the gfxgen invocation, retargeted — not hand-authoring
+  separate CPC sprites.
+
+---
+
+## 11. Toolchain, Makefile, tests, emulation
+
+- **Compiler target:** `zcc +cpc -compiler=sdcc` instead of `+zx`. The
+  `asm_zx_*` screen helpers are `+zx`-only; the CPC build uses the new CPC
+  screen code (§7), so the link no longer needs them. JSP writes its **own** CPC
+  kernels (§4/§5) — it does **not** translate or link cpctelera.
+- **Output format:** `zcc +cpc -compiler=sdcc -create-app -subtype=dsk` emits a
+  cap32-loadable **`.dsk`** (AMSDOS binary; the catalog entry has an *empty*
+  extension, so it launches with `RUN"NAME.` — trailing dot). `-subtype=none`
+  gives a tape/`.cpc`. This resolves the prior `-create-app` unknown. Artifact
+  naming becomes target/mode-specific.
+- **Makefile:** parameterise by `JSP_TARGET` (`zx`|`cpc`) and `JSP_CPC_MODE`
+  (`0`|`1`|`2`|`1_mono`|`0_fast`|`1_fast`). `ZCC`, `CFLAGS` (`-D` the mode guard),
+  data-block `__at`/`-zorg` selection, and the run/emulator target all switch on
+  these. Keep the existing self-documenting `make` help
+  (`doc`/`semantic-makefile` convention) and the per-test pattern rules; add a
+  build-matrix target that loops the modes.
+- **Emulator / visual verification — Caprice32, via the `caprice-testing`
+  skill.** The CPC testing path is the **`caprice-testing` skill**
+  (`.claude/skills/caprice-testing/`) adapted into this project from the RAGE1
+  port, with its `tools/cap32-shot.sh` driver: it builds `+cpc`, runs the `.dsk`
+  headless in `cap32` inside a dedicated Xvfb (the live session is Wayland, where
+  root grabs come back black), and captures a screen PNG (`import -window root`
+  + cap32's F3 dump). This is the CPC analogue of the ZX `jnext-emulation`
+  skill. `make run` branches on `JSP_TARGET` to invoke it. Capture analysis uses
+  ImageMagick (`mean`=0 → black/failed; histogram → dominant colours); the CPC
+  mode-1 boot banner (yellow-on-blue "Ready") means the program did **not** run.
+- **Profiling gap (acknowledged, not hidden):** the JNEXT magic-port / T-state
+  heatmap (`reference_jnext_screenshot`, the `bench`/`profile` targets) is
+  ZX-only. cap32 gives **visual** verification but **no headless T-state
+  profiler**; CPC performance is eyeballed / wall-clock-timed until a CPC
+  profiling path exists (risk 5). Do not assume profiling parity.
+- **Tests:** every `tests/*.c` must build per CPC mode and be visually checked via
+  the `caprice-testing` skill. **Keep the CPC tests as visually similar to the ZX
+  ones as possible:** reuse the same test programs (same sprite/tile placements,
+  same movements, same layout) and the **same sprite source art** re-converted per
+  mode (§10) — ideally each CPC test is the ZX test recompiled, not a rewrite, so
+  a ZX-vs-CPC screenshot pair is a direct correctness check (most exact in Mode 2,
+  the 1 bpp mode closest to ZX). Differences should come only from the mode's
+  pixel/colour resolution, not from divergent test content. Each CPC test harness
+  must **set the screen mode and program the palette before the first
+  `jsp_redraw`** (the firmware boots in Mode 1; colour is in the pixels via the
+  gate-array palette, §6) — otherwise the screenshot's colours are
+  uninterpretable; pick a palette that mirrors the ZX colours where the mode
+  allows. Keep that setup in the test harness/`main`, not in the library. The AMSDOS `-o` name is ≤8 chars/uppercase
+  and is the `RUN"NAME.` launch target, so the ZX test names are re-mapped to
+  short disk names at build time. The benches (`test_redraw_bench`, `bench_sp1`)
+  lean on the JNEXT magic port and are ZX-only until a CPC profiling path lands.
+- **Deferred CPC tests (done through Mode 2):** the renderable ZX tests are
+  ported to `tests/cpc/` (`test_cpc_bg`, `_sprite`, `_foreground`,
+  `_btt_redraw`), using a mode-set harness + geometric tiles (CPC has no ZX ROM
+  font and no attribute colour). `test_dtt`/`test_btt_contents` are `printf`
+  console dumps — there is no CPC text console with both ROMs off, so they stay
+  ZX-only (their 80-col DTT/BTT bookkeeping is exercised indirectly by the visual
+  tests). `test_tiles_and_print` needs a CPC font (the `0x3D00` ROM-font pointers
+  are unused on CPC, §6) — revisit when CPC text lands.
+
+---
+
+## 12. Phased implementation order
+
+Ordering follows analysis §12 (Mode 2 → Mode 1 → Mode 0), prefixed by a
+refactor phase that makes the ZX/CPC seam explicit **without changing ZX
+behaviour** (the regression guard), and a config phase.
+
+**Regression gate (every phase).** No phase is considered finished until the
+full regression set is green: the **ZX** build + all ZX tests must still pass
+(byte-for-byte unchanged — there is no automated ZX runner, so this is build +
+visual verification via the `jnext-emulation` skill), **and** the CPC tests for
+every mode completed so far must pass via the `caprice-testing` skill. A phase
+that reds the baseline is not done. The ZX baseline established at the end of
+Phase R / Phase 0 is the reference each later phase regresses against.
+
+**Phase 0 — Seam & ZX regression baseline.**
+Introduce `JSP_TARGET_ZX`/`JSP_TARGET_CPC` umbrella guards around every
+platform-layer item in §1.2 *in the existing ZX code*, behind the ZX default, so
+the ZX build/tests are byte-for-byte unchanged. This isolates exactly what CPC
+must replace and gives a green baseline to regress against.
+
+**Phase 1 — Config header & geometry.**
+`include/jsp_config.h`: per-guard `ppb`, shift phases, grid dims (cols/rows/cell
+count), **cell byte size (`JSP_CELL_BYTES`) + grid dims (`JSP_GRID_COLS`,
+`JSP_GRID_ROWS`)**, rottbl size, colour mode. Exposing cell size/grid dims as
+macros (not hard-coded) keeps the byte-cell vs pixel-cell choice
+(`CPC-TILE-SIZE-ANALYSIS.md`, §2) open for M0/M1 — M2 values are identical either
+way. Mutually-exclusive-mode compile error. Decide descriptor X/Y width strategy
+(§3) and apply under guard. Replace hard-coded `768`/`32`/`24`/`96`/`8` literals
+across the engine with the config symbols (ZX values unchanged).
+
+**Phase 1.1 — Platform source-tree reorganization.**
+Pure file-organization step (no logic change, no new guards), so Phase 2 can drop
+CPC files straight into `lib/cpc/` instead of guarding shared files. Create
+`lib/zx/` and `lib/cpc/`; move the wholly-ZX platform files into `lib/zx/` and
+split `jsp_util.asm` into `lib/jsp_mem.asm` (shared) + `lib/zx/jsp_rowcolindex.asm`
+(ZX) per the §1.3 table; the moved files keep whatever Phase-0 guard/SEAM marking
+they already have (no new guards added here). Teach the Makefile to compile
+`lib/ + lib/$(JSP_TARGET)/` with `JSP_TARGET ?= zx` — **at BOTH wildcard sites**:
+the main `C_SRCS`/`ASM_SRCS` *and* the separate per-test `LIB_SRCS` (and the
+`bench-mask2` rule that reuses `LIB_SRCS`); otherwise `make tests` drops all of
+`lib/zx/` and link-fails. Extend `clean` to `lib/zx/` + `lib/cpc/`
+(`.o/.lis/.sym/.map`). No `-Ca-D` asm passthrough is added yet (the ZX build
+defines no target macro; absence satisfies `IFNDEF JSP_TARGET_CPC`). **Acceptance:**
+the ZX build links clean and **all 9 ZX test taps pass (visually verified)** —
+this is a pure move, so functional equivalence is the bar; byte-for-byte is *not*
+required (link order shifts; re-establish the baseline hash afterwards).
+*Regression gate (ZX all green) as for every phase (§12 intro).*
+
+**Phase 2 — CPC Mode 2 screen layer.**
+CPC screen addressing (§7): new `lib/cpc/` `jsp_draw_screen_tile` (8 lines ×
+`+0x800`), 25-entry `rd_rowtab` = `0xC000 + row*80`, no attribute stores. CPC
+data-block `__at` placement & init (§9), BAT dropped (§6). **Make the shared
+`lib/` files CPC-compilable:** guard the ZX-only spots that the shared files still
+contain — the `jsp_bat[]` writes in `jsp_tiles.c`/`jsp_init.c` (`jsp_init_bat`,
+`jsp_tile_put`, `jsp_clear_rect`) under `#if JSP_HAS_ATTR`, and the `0x3D00`
+ROM-font addresses in `jsp_tiles.c` under `#ifdef JSP_TARGET_ZX` (the CPC build
+provides its own glyph source). Get a *background-tile-only* CPC Mode 2 image on
+screen end-to-end (no sprites yet) — the smallest provable CPC milestone.
+
+**Phase 3 — CPC Mode 2 shift + kernels.**
+Reuse `jsp_init_rottbl()` (M2 = ZX). Port the 8 `sp1_draw_*` kernels to CPC
+Mode 2 (near-verbatim). Wire the covered-cell compositor. First moving,
+pixel-shifted CPC sprite (Mode 2). Validate sub-byte X positioning visually.
+
+**Phase 4 — CPC asset pipeline (Mode 2) + shift unit test.**
+CPC Mode-2 asset emitter (§10); unit-test the §8.1 shift/mask against the
+emitted bytes (the mandated cross-check). Adapt the sprite-gen Makefile targets.
+
+**Phase 5 — Mode 2 full test pass.**
+Build & visually verify all `tests/*` under `CPC_MODE2` on a CPC emulator.
+Lock Mode 2 as the reference CPC pipeline.
+
+**Phase 6 — CPC Mode 1.**
+Mode-1 nibble shift table + `jsp_init_rottbl` variant (§4). Mode-1 kernels (§5).
+Mode-1 asset emitter + shift unit test (§8.2). Resolve `CPC_MODE1_MONO` sub-
+decision (§8) and add it. Test pass under `CPC_MODE1` / `CPC_MODE1_MONO`.
+(Mode 1 is RAGE1's current CPC target, per analysis §12.)
+
+**Phase 7 — CPC Mode 0 (+ cell-model decision).**
+Mode 0 is the extreme 4×-cell case, so this is where the **byte-cell vs
+pixel-cell decision** (`CPC-TILE-SIZE-ANALYSIS.md`, §2) is settled: prototype the
+Mode-0 covered-cell compositor **both ways** and measure (redraw T-states under a
+representative sprite load, code size, table RAM, tile/text complexity), then pick
+and record the outcome in the analysis doc. Then: Mode-0 interleave shift (§4) +
+kernels (§5) + asset emitter + shift unit test (§8.3) in the chosen model. Test
+pass under `CPC_MODE0`. If the choice differs from the Mode-2 default, reconcile
+Mode 1 and the §2/§9 figures to it.
+
+**Phase 8 — FAST variants.**
+`CPC_MODE0_FAST` / `CPC_MODE1_FAST` / `CPC_MODE2_FAST`: force `shift=0`, use only
+the `nr` kernel, skip the shift table. A thin compile-time fast path over Modes
+0/1/2 — no new kernels: the geom include forces `JSP_XROT_MASK=0` (xrot always 0)
+and `JSP_SHIFT_PHASES=0` (an empty rottbl).  Positioning is 2-px (M0) / 4-px (M1)
+/ 8-px (M2); `CPC_MODE2_FAST` reclaims the most RAM (the M2 rottbl is the largest
+at 3584 B).
+
+A shifting build keeps a *runtime* redirect — when an individual sprite lands
+byte-aligned, `jsp_frame.asm` writes `rottbl_msb == jsp_rottbl/256 - 2` and the
+`lb`/middle kernels `jp` to the `nr` kernel.  A **FAST build goes further: it
+compiles the six rotating kernels OUT entirely** (they are wrapped in
+`IF CPC_MODE0_FAST || CPC_MODE1_FAST || CPC_MODE2_FAST` / `ELSE` / `ENDIF`, the OR
+of the three existing FAST flags — no new symbol), and `lib/cpc/jsp_covered.asm`
+dispatches the `nr` kernel directly under the same guard (skipping `graph_left`
+and the border decision).  So a FAST binary carries **no rotation table *and* no
+rotating kernel code** (~1 KB saved) with a shorter per-cell path.  See
+`doc/CPC-ASSETS-FORMAT.md` §5.
+
+**Phase 9 — Toolchain matrix & docs.**
+Finalise the `JSP_TARGET`/`JSP_CPC_MODE` Makefile matrix, CPC emulator run
+target, and the CPC visual-verification/profiling story (§11). Update
+`doc/ENGINE.md` (CPC memory maps, the colour asterisk §6, screen layout) and
+`README.md`. Add a `doc/CPC-MODES.md` reference if the per-mode detail outgrows
+this plan.
+
+---
+
+## 13. Risks and open decisions
+
+1. **Descriptor X/Y width (§3).** 8-bit `xpos` cannot address Mode 2 (640 px).
+   Widening ripples into the deferred draw/move asm and every test. Resolve in
+   Phase 1; prefer per-target field width to avoid ZX size/speed regression.
+2. **Hot-loop power-of-two assumptions (§2, §7).** `jsp_redraw.asm` extracts the
+   column as `cell & 31` (32 cols) and the row as `g >> 2` (4 groups/row, from 8
+   cells/group). CPC has 10 groups/row (80 ÷ 8) — `g/10`, `g%10` are not free
+   shifts. **Resolved** (not deferred): replace per-cell division with an explicit
+   `(row, col0)` running counter advanced once per group (`col0 += 8`, wrap at
+   80). Still the trickiest single piece of new asm; called out so it is built
+   deliberately, not by analogy to the ZX masks.
+3. **Shift masks vs asset byte order (§4, §10).** The §8 masks are *derived*, not
+   yet verified against a real converter. A first-class unit test gates each
+   mode's kernels (Phases 4/6/7). Highest-likelihood source of subtle bugs.
+4. **Colour subsystem genuinely differs (§6).** "Architecture unchanged" has an
+   honest asterisk on colour; Phase-1 CPC drops dynamic colour. Confirm with the
+   user that baked-in pixel colour is acceptable for the first CPC milestone.
+5. **CPC profiling gap (§11) — visual verification is solved, profiling is not.**
+   Visual checking is handled by the **`caprice-testing` skill** (cap32 headless
+   + `tools/cap32-shot.sh`, adapted from RAGE1), the CPC analogue of
+   `jnext-emulation`. What remains a gap is **headless T-state profiling**: there
+   is no CPC equivalent of the JNEXT magic-port/heatmap, so CPC performance is
+   eyeballed / wall-clock-timed for now. Do not claim profiling parity.
+6. **Memory budget (§9).** 2000-cell tables + rottbl must coexist below the
+   `0xC000` screen with program + free RAM. Tight in Mode 2 (largest rottbl);
+   confirm the layout fits a realistic program before committing.
+7. **`-create-app` output for `+cpc` — resolved.** `zcc +cpc -compiler=sdcc
+   -create-app -subtype=dsk` emits a cap32-loadable `.dsk`; the AMSDOS catalog
+   entry has an empty extension so it launches with `RUN"NAME.` (trailing dot,
+   handled by `tools/cap32-shot.sh`). Still validate the *org/memory map* placement
+   on first build (Phase 2).
+8. **2000-cell DTT walk cost.** The redraw walks 250 groups vs ZX's 96 (~2.6×)
+   and the screen is 16 KB vs 6.75 KB. The byte-skip clean-group fast path keeps
+   the *clean* case cheap, but a full-screen CPC redraw moves far more data.
+   Measure early; the FAST modes (§8) exist partly to claw this back. Note the
+   ZX JNEXT profiler does not cover CPC (risk 5), so this may be eyeballed first.
+
+---
+
+## 14. Definition of done
+
+- All eight configs (`CPC_MODE0/1/2`, `CPC_MODE1_MONO`, `CPC_MODE0_FAST`,
+  `CPC_MODE1_FAST`, `CPC_MODE2_FAST`) build and run pixel-smooth sprites on a CPC
+  emulator.
+- The ZX build and all ZX tests remain byte-for-byte unchanged (Phase 0
+  baseline holds).
+- Per-mode shift/mask unit tests pass against the real asset byte format.
+- The regression set was green at the end of **every** phase (ZX unchanged +
+  all completed CPC modes), not only at the end.
+- Makefile drives the full `JSP_TARGET × JSP_CPC_MODE` matrix; `doc/ENGINE.md`
+  documents the CPC memory maps, screen layout and the colour divergence.

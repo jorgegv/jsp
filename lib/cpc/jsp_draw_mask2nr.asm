@@ -4,14 +4,15 @@
 ; sinclair spectrum version
 ; 12.2024 adapted by zxjogv (zx@jogv.es) for JSP
 
+	IFDEF JSP_TARGET_CPC		; CPC shift kernel (shared by all CPC shifting modes) - port of lib/zx/jsp_draw_mask2nr.asm. Table-driven via jsp_rottbl, so the pixel encoding lives in the table, not here: identical for M2 (1bpp linear) and M1 (nibble-plane). plan section 5
 	section code_compiler
 
-	public _SP1_DRAW_MASK2NR
-	public _sp1_draw_mask2nr
+	public _JSP_DRAW_MASK2NR
+	public _jsp_draw_mask2nr
 
-;; void sp1_draw_mask2nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
+;; void jsp_draw_mask2nr( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 
-_sp1_draw_mask2nr:
+_jsp_draw_mask2nr:
 	pop de		; save ret addr
 
 	pop hl		; hl = graphic def ptr
@@ -23,7 +24,7 @@ _sp1_draw_mask2nr:
 ; bc = graphic disp
 ; hl = graphic def ptr
 
-_SP1_DRAW_MASK2NR:
+_JSP_DRAW_MASK2NR:
 
 	; hl = sprite def = (mask,graph) pairs
 	; bc = bg cell
@@ -100,3 +101,5 @@ _SP1_DRAW_MASK2NR:
 
 	pop ix	; restore!
 	ret
+
+	ENDIF			; JSP_TARGET_CPC

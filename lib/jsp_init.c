@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "jsp.h"
+#include "jsp_rottbl_formula.h"
 
 ///////////////////////////
 // Externals / Forwards
@@ -27,17 +28,17 @@ uint8_t *jsp_default_bg_tile;
 
 // initialize all btt pointers to NULL
 void jsp_init_btt( void ) {
-    jsp_memzero( jsp_btt, 768 * 2 );
+    jsp_memzero( jsp_btt, JSP_GRID_CELLS * 2 );
 }
 
 // set all cells to clean
 void jsp_init_dtt( void ) {
-    jsp_memzero( jsp_dtt, 768 / 8 );
+    jsp_memzero( jsp_dtt, JSP_DTT_BYTES );
 }
 
 // set all cells to background (no foreground)
 void jsp_init_ftt( void ) {
-    jsp_memzero( jsp_ftt, 768 / 8 );
+    jsp_memzero( jsp_ftt, JSP_FTT_BYTES );
 }
 
 // initialize rotation tables
@@ -49,24 +50,24 @@ void jsp_init_ftt( void ) {
 void jsp_init_rottbl( void ) {
     uint8_t i;
     uint16_t val;
-    for ( i = 1; i <= 7; i++ ) {
+    for ( i = 1; i <= JSP_SHIFT_PHASES; i++ ) {
         for ( val = 0; val <= 255; val++ ) {
-            jsp_rottbl[ 512 * ( i - 1 ) + val ] = ( ( 256 * val ) >> i ) / 256;
-            jsp_rottbl[ 512 * ( i - 1 ) + val +256 ] = ( ( 256 * val ) >> i ) % 256;
+            jsp_rottbl[ 512 * ( i - 1 ) + val ]      = JSP_ROTTBL_IN( val, i );
+            jsp_rottbl[ 512 * ( i - 1 ) + val +256 ] = JSP_ROTTBL_CARRY( val, i );
         }
     }
 }
 
 void jsp_init_background( uint8_t *default_bg_tile ) {
     uint16_t i;
-    for ( i = 0; i < 768; i++ )
+    for ( i = 0; i < JSP_GRID_CELLS; i++ )
         jsp_btt[ i ] = default_bg_tile;
     jsp_default_bg_tile = default_bg_tile;
 }
 
 void jsp_init_bat( uint8_t default_attr ) {
     uint16_t i;
-    for ( i = 0; i < 768; i++ )
+    for ( i = 0; i < JSP_GRID_CELLS; i++ )
         jsp_bat[ i ] = default_attr;
 }
 

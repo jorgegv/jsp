@@ -1,8 +1,39 @@
 # JSP Sprite Library
 
-JSP is an experimental sprite library for the ZX Spectrum using the [Z88DK toolchain](https://www.z88dk.org). It is based on the same algorithms as the [SP1 Sprite Library](https://github.com/z88dk/z88dk/wiki/LIBRARY-SP1-Software-Sprites-(sp1.h)) by Alvin Albrecht but with a much smaller memory footprint. Some of its internal routines have been derived from SP1 ones (thanks Alvin!).
+JSP is an experimental sprite library for the ZX Spectrum **and the Amstrad CPC** using the [Z88DK toolchain](https://www.z88dk.org). It is based on the same algorithms as the [SP1 Sprite Library](https://github.com/z88dk/z88dk/wiki/LIBRARY-SP1-Software-Sprites-(sp1.h)) by Alvin Albrecht but with a much smaller memory footprint. Some of its internal routines have been derived from SP1 ones (thanks Alvin!).
 
 See [SP1-COMPARISON.md](doc/SP1-COMPARISON.md) for a comparison between SP1 and JSP memory footprints, and [ENGINE.md](doc/ENGINE.md) for a description of how JSP works and manages to use less memory than SP1.
+
+## Amstrad CPC
+
+**Building your own CPC program?** Start with the
+[CPC usage guide](doc/CPC-USAGE.md) — build setup, the API call sequence, mode +
+palette, and making your own sprites/tiles from PNG.
+
+JSP also targets the Amstrad CPC, keeping the high-level engine identical and
+swapping only a thin per-mode platform layer (`lib/cpc/`). Eight CPC configs are
+supported: **Mode 2/1/0** (1/4/16 colours, pixel-accurate horizontal
+positioning), **Mode 1 MONO** (1 bpp assets on a Mode-1 screen for memory
+saving), and the **FAST** variants **Mode 2/0/1 FAST** (byte-aligned positioning,
+no shift table — `Mode 2 FAST` reclaims the most RAM). Colour on the CPC is baked
+into the pixels (there is no attribute RAM), so a test harness sets the screen
+mode + palette before the first redraw.
+
+Build/run the CPC matrix with the Makefile:
+
+```
+make run JSP_TARGET=cpc JSP_CPC_MODE=2          # build + screenshot Mode 2 in cap32
+make run JSP_TARGET=cpc JSP_CPC_MODE=2_FAST     # any of 2 1 0 1_MONO 2_FAST 0_FAST 1_FAST
+make cpc-matrix                                 # build every CPC config
+make run-cpc-matrix                             # build + screenshot every config
+```
+
+CPC programs are run/screenshotted headless in the Caprice32 emulator (there is
+no headless T-state profiler for the CPC yet — performance is verified visually).
+See [CPC-TARGET-PLAN.md](doc/CPC-TARGET-PLAN.md) for the full design,
+[CPC-ASSETS-FORMAT.md](doc/CPC-ASSETS-FORMAT.md) for the per-mode byte formats,
+and the CPC section of [ENGINE.md](doc/ENGINE.md) for the memory map and the
+colour divergence.
 
 Copyright 2024 ZXjogv <zx@jogv.es> (Jorge Gonzalez Villalonga), based on SP1 works by Alvin Albrecht
 

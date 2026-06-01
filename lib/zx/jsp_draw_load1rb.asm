@@ -3,18 +3,19 @@
 ; 01.2006 aralbrec, Sprite Pack v3.0
 ; sinclair spectrum version
 
+	IFNDEF JSP_TARGET_CPC		; ZX-only platform layer (seam, doc/CPC-TARGET-PLAN.md §5); CPC provides its own
 	section code_compiler
 
-	public _SP1_DRAW_LOAD1RB
-	public _sp1_draw_load1rb
+	public _JSP_DRAW_LOAD1RB
+	public _jsp_draw_load1rb
 
-	extern _SP1_DRAW_LOAD1LB
-	extern _SP1_DRAW_LOAD1LB_ALT
+	extern _JSP_DRAW_LOAD1LB
+	extern _JSP_DRAW_LOAD1LB_ALT
 	extern _jsp_rottbl
 	extern _jsp_current_rottbl_msb
 
-; void sp1_draw_load1rb( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
-_sp1_draw_load1rb:
+; void jsp_draw_load1rb( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
+_jsp_draw_load1rb:
 	pop de		; save ret addr
 
 	ld a,(_jsp_current_rottbl_msb)		; a = hor rot table
@@ -29,7 +30,7 @@ _sp1_draw_load1rb:
 ; bc = graphic disp
 ; hl = graphic def ptr
 
-_SP1_DRAW_LOAD1RB:
+_JSP_DRAW_LOAD1RB:
 
 	cp _jsp_rottbl/256 - 2
 	ret z
@@ -40,6 +41,8 @@ _SP1_DRAW_LOAD1RB:
 	;  d = shift table
 	; hl = left sprite def (graph only)
 
-_SP1Load1RBRotate:
+_JSPLoad1RBRotate:
 
-	jp _SP1_DRAW_LOAD1LB_ALT
+	jp _JSP_DRAW_LOAD1LB_ALT
+
+	ENDIF			; JSP_TARGET_CPC

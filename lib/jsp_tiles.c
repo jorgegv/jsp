@@ -30,7 +30,7 @@ void jsp_tile_register( uint8_t idx, uint8_t *gfx_ptr ) {
 // dirty.  jsp_redraw() paints both — no immediate screen writes.
 void jsp_tile_put( uint8_t row, uint8_t col, uint8_t attr, uint16_t tile ) {
     uint8_t  *pix;
-    uint16_t  idx = (uint16_t)row * 32 + col;
+    uint16_t  idx = JSP_CELL_INDEX( row, col );
 
     if ( tile < 256 )
         pix = jsp_tile_table[(uint8_t)tile];
@@ -62,7 +62,7 @@ void jsp_clear_rect( struct jsp_rect *rect, uint8_t attr,
 
     for ( r = rect->row; r < rect->row + rect->height; r++ ) {
         for ( c = rect->col; c < rect->col + rect->width; c++ ) {
-            uint16_t idx = (uint16_t)r * 32 + c;
+            uint16_t idx = JSP_CELL_INDEX( r, c );
             if ( flags & JSP_RFLAG_COLOUR )
                 jsp_bat[idx] = attr;
             if ( flags & JSP_RFLAG_TILE ) {

@@ -4,22 +4,23 @@
 ; sinclair spectrum version
 ; 12.2024 adapted by zxjogv (zx@jogv.es) for JSP
 
+	IFNDEF JSP_TARGET_CPC		; ZX-only platform layer (seam, doc/CPC-TARGET-PLAN.md §5); CPC provides its own
 	section code_compiler
 
-	public _SP1_DRAW_MASK2LB
-	public _SP1_DRAW_MASK2LB_ALT
-	public _sp1_draw_mask2lb
+	public _JSP_DRAW_MASK2LB
+	public _JSP_DRAW_MASK2LB_ALT
+	public _jsp_draw_mask2lb
 
-	extern _SP1_DRAW_MASK2NR
+	extern _JSP_DRAW_MASK2NR
 	extern _jsp_rottbl
 	extern _jsp_current_rottbl_msb
 	extern cc_scratch		; dst is always the JSP compositing buffer,
 					; so dst bytes are addressed absolutely:
 					; the two-byte reads fold into ld bc,(nn)
 
-;; void sp1_draw_mask2lb( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
+;; void jsp_draw_mask2lb( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 ;; trashes BC' !!
-_sp1_draw_mask2lb:
+_jsp_draw_mask2lb:
 	pop de		; save ret addr
 
 	ld a,(_jsp_current_rottbl_msb)		; a = hor rot table
@@ -34,14 +35,14 @@ _sp1_draw_mask2lb:
 ; hl = graphic def ptr
 ; de = left graphic def ptr
 
-_SP1_DRAW_MASK2LB:
+_JSP_DRAW_MASK2LB:
 
 	cp _jsp_rottbl/256 - 2
-	jp z, _SP1_DRAW_MASK2NR
+	jp z, _JSP_DRAW_MASK2NR
 
 	ld d,a
 
-_SP1_DRAW_MASK2LB_ALT:
+_JSP_DRAW_MASK2LB_ALT:
 
 	;  d = shift table
 	; hl = sprite def (mask,graph) pairs
@@ -54,7 +55,7 @@ _SP1_DRAW_MASK2LB_ALT:
 	ld b,a
 	exx
 
-_SP1Mask2LBRotate:
+_JSPMask2LBRotate:
 
 	; 0
 
@@ -176,3 +177,5 @@ _SP1Mask2LBRotate:
 	ld (cc_scratch+7),a
 
 	ret
+
+	ENDIF			; JSP_TARGET_CPC

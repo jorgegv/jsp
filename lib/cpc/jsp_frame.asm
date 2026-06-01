@@ -1,23 +1,33 @@
-;; jsp_frame — per-frame sprite precompute (assembly, Task 4.2)
+;; CPC jsp_frame — per-frame sprite precompute (assembly).
 ;;
-;; Assembly rewrite of the C jsp_redraw_begin() formerly in
-;; lib/jsp_composite.c.  Run once per frame at the start of jsp_redraw():
-;; for every active registered sprite it fills one jsp_frame_sprites[]
-;; entry with the constants the per-cell compositor needs, so that path
-;; never recomputes per-sprite values.
+;; Phase 3 (doc/CPC-TARGET-PLAN.md §3/§4): CPC Mode-2 port of lib/zx/
+;; jsp_frame.asm.  Run once per frame at the start of jsp_redraw(); for every
+;; active registered sprite it fills one jsp_frame_sprites[] entry with the
+;; constants the per-cell compositor needs.
 ;;
-;; The two 16-bit multiplies the C version compiled to __mulint calls are
-;; gone: cs is a power of two (8 for load1, 16 for mask2), so
-;;   rowstride = (rows+1)*cs   ->  (rows+1) << 3, or << 4 for mask2
-;;   base disp = yrot*(cs>>3)  ->  yrot, or yrot<<1 for mask2
+;; The only per-mode difference is the horizontal coordinate split: the byte
+;; column is c0 = xpos / ppb and the sub-byte phase is xrot = xpos % ppb, with
+;; ppb = 8/4/2 for Mode 2/1/0 (plan §3).  That is parametrised below by
+;; JSP_PPB_SHIFT (= log2(ppb): 3/2/1) and JSP_XROT_MASK (= ppb-1: 7/3/1; FAST
+;; modes force 0 -> always byte-aligned).  Everything else — the rottbl_msb
+;; stride (rottbl>>8 + 2*xrot - 2), cs (8/16), base, rowstride and the vertical
+;; split (r0 = ypos>>3, yrot = ypos&7, always 8 lines/cell) — is IDENTICAL across
+;; modes, because the in-byte/carry shift mechanics are encoded in jsp_rottbl,
+;; not here.  color/color_mask are still copied into the frame entry but the CPC
+;; covered-cell compositor ignores them (no attribute RAM, §6); copying is harmless.
 ;;
-;; struct jsp_sprite_s (13 bytes):
-;;   +0 rows  +1 cols  +2 xpos  +3 ypos  +4 flags  +5 pixels(w)
-;;   +7 type_ptr(w)  +9 color  +10 color_mask  +11 clip(w)
+;; X is 16-bit (jsp_xcoord_t) on CPC: c0 = xpos>>JSP_PPB_SHIFT is a 16-bit shift
+;; (0..79, no 0x1F cap); xrot = xpos & JSP_XROT_MASK. Y stays 8-bit. (plan §3.)
+;;
+;; struct jsp_sprite_s (CPC layout, 14 bytes):
+;;   +0 rows  +1 cols  +2..+3 xpos(16b)  +4 ypos  +5 flags  +6 pixels(w)
+;;   +8 type_ptr(w)  +10 color  +11 color_mask  +12 clip(w)
 ;; struct jsp_sprite_frame (16 bytes):
 ;;   +0 r0  +1 c0  +2 r1  +3 c1  +4 cs  +5 ismask2  +6 rottbl_msb
 ;;   +7 cols  +8 color  +9 color_mask  +10 base(w)  +12 rowstride(w)
 ;;   +14 clip(w)
+
+	IFDEF JSP_TARGET_CPC
 
 	section code_compiler
 
@@ -30,6 +40,10 @@
 	extern _jsp_cc_row_active_row
 
 	public _jsp_redraw_begin
+
+;; Per-mode horizontal split + MONO doubling (shared with jsp_sprite_defer.asm
+;; so render cells and dirtied cells agree).
+	include "lib/cpc/jsp_cpc_geom.inc"
 
 ;; ====================================================================
 ;; jsp_redraw_begin — fill jsp_frame_sprites[] for the frame
@@ -65,7 +79,7 @@
 ;;         fs->rottbl_msb =
 ;;             (uint8_t)( ( (uint16_t)jsp_rottbl >> 8 ) + 2 * xrot - 2 );
 ;;         fs->base      = sp->pixels - (uint16_t)yrot * ( cs >> 3 );
-;;         fs->rowstride = (uint16_t)( sp->rows + 1 ) * cs;
+;;         fs->rowstride = (uint16_t)( sp->rows + 1 ) * cs - ( cs >> 3 );
 ;;
 ;;         fs->color      = sp->color;
 ;;         fs->color_mask = sp->color_mask;
@@ -106,37 +120,41 @@ rb_loop:
 	pop ix				; IX = sp
 
 	;; if ( !initialized || !active ) continue;
-	ld a,(ix+4)
+	ld a,(ix+5)			; CPC flags @ +5
 	and 0x03			; bits 0,1 = initialized, active
 	cp 0x03
 	jp nz,rb_skip
 
-	;; --- precompute the cross-field values ---
-	ld a,(ix+3)			; r0 = ypos >> 3
+	;; --- precompute the cross-field values (CPC descriptor layout:
+	;;     xpos +2..+3 16-bit, ypos +4, flags +5, pixels +6, type +8,
+	;;     color +10, cmask +11, clip +12) ---
+	ld a,(ix+4)			; r0 = ypos >> 3   (ypos 8-bit, 0..24)
 	rrca
 	rrca
 	rrca
 	and 0x1F
 	ld (rb_r0),a
-	ld a,(ix+2)			; c0 = xpos >> 3
-	rrca
-	rrca
-	rrca
-	and 0x1F
+	ld e,(ix+2)			; c0 = xpos >> JSP_PPB_SHIFT (xpos 16-bit, 0..79)
+	ld d,(ix+3)			; (use DE, not HL: HL is the frame write ptr)
+	REPT JSP_PPB_SHIFT		; ppb=8 -> 3, ppb=4 -> 2, ppb=2 -> 1
+	srl d
+	rr e
+	ENDR
+	ld a,e				; no 0x1F cap: 80-col grid needs c0 up to 79
 	ld (rb_c0),a
-	ld a,(ix+2)			; xrot = xpos & 7
-	and 7
+	ld a,(ix+2)			; xrot = xpos & JSP_XROT_MASK (low byte; FAST forces 0)
+	and JSP_XROT_MASK
 	ld (rb_xrot),a
-	ld a,(ix+3)			; yrot = ypos & 7
+	ld a,(ix+4)			; yrot = ypos & 7
 	and 7
 	ld (rb_yrot),a
 	ld a,(ix+1)			; cols
 	ld (rb_cols),a
 	ld bc,_JSP_TYPE_MASK2		; ismask2 = (type_ptr == JSP_TYPE_MASK2)
-	ld a,(ix+7)
+	ld a,(ix+8)
 	cp c
 	jr nz,rb_notmask
-	ld a,(ix+8)
+	ld a,(ix+9)
 	cp b
 	jr nz,rb_notmask
 	ld a,1
@@ -157,11 +175,20 @@ rb_setmask:
 	add a,(ix+0)
 	ld (hl),a
 	inc hl
-	ld a,(rb_xrot)			; +3 c1 = c0 + (xrot ? cols : cols-1)
+	;; +3 c1 = c0 + (xrot ? W : W-1).  W = cols normally; in MONO each 1bpp
+	;; source column spans 2 Mode-1 screen cells, so W = 2*cols.  The doubling
+	;; must happen BEFORE the xrot test (add a,a clobbers flags; ld a,(nn) /
+	;; ld a,c do not), so we compute W into C first, then test xrot.
+	ld a,(rb_cols)
+	REPT JSP_MONO_DBL		; MONO: W = 2*cols (1bpp col -> 2 Mode-1 cells)
+	add a,a
+	ENDR
+	ld c,a				; C = W
+	ld a,(rb_xrot)
 	or a
-	ld a,(rb_cols)			; (ld a,(nn) does not affect flags)
+	ld a,c				; A = W  (does not affect flags)
 	jr nz,rb_c1
-	dec a
+	dec a				; aligned: W-1
 rb_c1:
 	ld c,a
 	ld a,(rb_c0)
@@ -188,10 +215,10 @@ rb_cs:
 	ld a,(rb_cols)			; +7 cols
 	ld (hl),a
 	inc hl
-	ld a,(ix+9)			; +8 color
+	ld a,(ix+10)			; +8 color      (CPC color @ +10)
 	ld (hl),a
 	inc hl
-	ld a,(ix+10)			; +9 color_mask
+	ld a,(ix+11)			; +9 color_mask (CPC cmask @ +11)
 	ld (hl),a
 	inc hl
 	ld a,(rb_yrot)			; +10/11 base = pixels - yrot*(cs>>3)
@@ -201,15 +228,15 @@ rb_cs:
 	jr z,rb_base
 	sla c				; mask2: disp = yrot * 2
 rb_base:
-	ld a,(ix+5)			; pixels lo - disp
+	ld a,(ix+6)			; pixels lo - disp  (CPC pixels @ +6)
 	sub c
 	ld (hl),a
 	inc hl
-	ld a,(ix+6)			; pixels hi - borrow
+	ld a,(ix+7)			; pixels hi - borrow
 	sbc a,0
 	ld (hl),a
 	inc hl
-	ld a,(ix+0)			; +12/13 rowstride = (rows+1) * cs
+	ld a,(ix+0)			; +12/13 rowstride = (rows+1)*cs - (cs>>3)
 	inc a				; rows + 1
 	ld c,a
 	ld b,0				; BC = rows + 1
@@ -225,14 +252,23 @@ rb_base:
 	sla c
 	rl b				; * 16 for mask2
 rb_rowstride:
+	;; columns sit 7 blank scanlines apart (not a full 8-line cell), so the
+	;; stride is (rows+1)*cs - (cs>>3): -1 (load1) / -2 (mask2).  The matching
+	;; 7-line trailing pad per column is emitted by tools/gfxgen.pl / cpcgfx.pl.
+	dec bc				; - (cs>>3): load1 -> -1
+	ld a,(rb_ismask2)
+	or a
+	jr z,rb_rs_store
+	dec bc				; mask2 -> -2
+rb_rs_store:
 	ld (hl),c
 	inc hl
 	ld (hl),b
 	inc hl
-	ld a,(ix+11)			; +14/15 clip
+	ld a,(ix+12)			; +14/15 clip   (CPC clip @ +12..+13)
 	ld (hl),a
 	inc hl
-	ld a,(ix+12)
+	ld a,(ix+13)
 	ld (hl),a
 	inc hl				; HL now -> next frame entry
 
@@ -264,3 +300,5 @@ rb_xrot:	db 0
 rb_yrot:	db 0
 rb_cols:	db 0
 rb_ismask2:	db 0
+
+	ENDIF			; JSP_TARGET_CPC

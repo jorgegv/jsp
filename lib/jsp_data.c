@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#include "jsp_config.h"
+
 /////////////////////////////////////////////////////////////////////
 // JSP data structures at fixed addresses, according to memory map
 //
@@ -21,13 +23,27 @@
 //                             (useful for 128K bank switching)
 /////////////////////////////////////////////////////////////////////
 
-#ifdef JSPDATA_SLOT2
+// Table base addresses, per target (doc/CPC-TARGET-PLAN.md §9).
+#ifdef JSP_TARGET_CPC
+    // CPC: 2000-cell tables packed just below the 0xC000 screen (full RAM,
+    // both ROMs off).  Sizes: ROTTBL 3584 (M2, 256-aligned), BTT 4000, DTT 250,
+    // FTT 250, BAT 2000.  Block 0x9800-0xBFFF; program + stack live below.
+    //   ROTTBL 0xB200-0xBFFF  BTT 0xA200-0xB19F  DTT 0xA100-0xA1F9
+    //   FTT 0xA000-0xA0F9     BAT 0x9800-0x9FCF
+    // BAT stays allocated for now (sprite colour is dropped on CPC, §6, but the
+    // array keeps the shared code compiling; it can be removed later).
+    #define ROTTBL_ADDR		0xB200
+    #define BTT_ADDR		0xA200
+    #define DTT_ADDR		0xA100
+    #define FTT_ADDR		0xA000
+    #define BAT_ADDR		0x9800
+#elif defined( JSPDATA_SLOT2 )
     #define ROTTBL_ADDR		0xB200
     #define BTT_ADDR		0xAC00
     #define DTT_ADDR		0xABA0
     #define FTT_ADDR		0xAB40
     #define BAT_ADDR		0xA840
-#else	// JSPDATA_SLOT3 (default)
+#else	// ZX JSPDATA_SLOT3 (default)
     #define ROTTBL_ADDR		0xF200
     #define BTT_ADDR		0xEC00
     #define DTT_ADDR		0xEBA0
@@ -35,20 +51,20 @@
     #define BAT_ADDR		0xE840
 #endif
 
-// rotation tables
-__at( ROTTBL_ADDR ) uint8_t jsp_rottbl[ 7 * 2 * 256 ];
+// rotation tables (one (in-byte,carry) page-pair per shift phase)
+__at( ROTTBL_ADDR ) uint8_t jsp_rottbl[ JSP_SHIFT_PHASES * 2 * 256 ];
 
 // Background Tiles Table: array of pointers to tile graphics
-__at( BTT_ADDR ) uint8_t *jsp_btt[ 768 ];
+__at( BTT_ADDR ) uint8_t *jsp_btt[ JSP_GRID_CELLS ];
 
 // Dirty Tiles Table: byte array
-__at( DTT_ADDR ) uint8_t jsp_dtt[ 768 / 8 ];
+__at( DTT_ADDR ) uint8_t jsp_dtt[ JSP_DTT_BYTES ];
 
 // Foreground Tiles Table: byte array
-__at( FTT_ADDR ) uint8_t jsp_ftt[ 768 / 8 ];
+__at( FTT_ADDR ) uint8_t jsp_ftt[ JSP_FTT_BYTES ];
 
 // Background Attribute Table: one attribute byte per screen cell
-__at( BAT_ADDR ) uint8_t jsp_bat[ 768 ];
+__at( BAT_ADDR ) uint8_t jsp_bat[ JSP_GRID_CELLS ];
 
 // rottbl parameter does not change while drawing a full sprite, so better
 // to set it up in a global once at the beginning instead of passing it

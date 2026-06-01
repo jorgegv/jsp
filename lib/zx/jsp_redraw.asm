@@ -216,6 +216,7 @@ rd_bg_cell:				; loop state ACTIVE in MAIN, HL = cell
 
 	;; attribute address = 0x5800 + cell = &jsp_bat[cell] + (0x5800 -
 	;; jsp_bat); derive it from HL rather than reloading the cell index.
+;; SEAM (ZX, doc/CPC-TARGET-PLAN.md §6/§7): ZX attribute RAM @ 0x5800 — dropped on CPC (no attr RAM); CPC screen layer replaces this in Phase 2.
 	ld de,0x5800-_jsp_bat
 	add hl,de			; HL = 0x5800 + cell (attribute address)
 	ld (hl),a			; store attribute
@@ -289,6 +290,7 @@ rd_pixbase:	dw 0
 ;; Screen address of the top pixel row of column 0 of each of the 24
 ;; character rows.  Fixed by the ZX Spectrum display layout, so this is a
 ;; constant table: a cell's screen address is rd_rowtab[row] + col.
+;; SEAM (ZX, doc/CPC-TARGET-PLAN.md §7): ZX 0x4000 thirds layout (24 rows). CPC uses 0xC000 + row*80 (25 rows), built in Phase 2.
 rd_rowtab:
 	dw 0x4000,0x4020,0x4040,0x4060,0x4080,0x40A0,0x40C0,0x40E0
 	dw 0x4800,0x4820,0x4840,0x4860,0x4880,0x48A0,0x48C0,0x48E0
