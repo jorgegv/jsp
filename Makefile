@@ -287,6 +287,11 @@ cpc-shift-test-mode1: $(SPRITE_MASK2_M1_ASM)
 	$(HOSTCC) -O2 -Wall -DCPC_MODE1 -I$(INCLUDE_DIR) -o $(CPCTEST_DIR)/shift_test_mode1 $(CPCTEST_DIR)/shift_test_mode1.c
 	$(CPCTEST_DIR)/shift_test_mode1 $(SPRITE_MASK2_M1_ASM)
 
+# Mode 1 MONO unit test (host cc): validates the 1bpp->Mode-1 nibble expansion + combine vs a true monochrome shift
+cpc-shift-test-mode1-mono: $(SPRITE_MASK2_ASM)
+	$(HOSTCC) -O2 -Wall -DCPC_MODE1_MONO -I$(INCLUDE_DIR) -o $(CPCTEST_DIR)/shift_test_mode1_mono $(CPCTEST_DIR)/shift_test_mode1_mono.c
+	$(CPCTEST_DIR)/shift_test_mode1_mono $(SPRITE_MASK2_ASM)
+
 ## CPC (Phase 5) — Mode 2 ports of the ZX functional tests (same layout, CPC
 ## mode setup, geometric tiles).  printf-console tests (dtt, btt_contents) and
 ## the font/text test (tiles_and_print) are ZX-only for now — see the tasklist.
