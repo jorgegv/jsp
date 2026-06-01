@@ -58,29 +58,28 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Regression gate: ZX byte-for-byte identical (`959048ee…`) + 9 taps green; CPC Mode 2 background render green (§12)
 
 - [x] **Phase 3 — CPC Mode 2 shift + kernels**
-  - [x] Reuse `jsp_init_rottbl()` for Mode 2 (= ZX linear table) (§4) — shared C, `JSP_SHIFT_PHASES=7`
+  - [x] Reuse `jsp_init_rottbl()` for Mode 2 (= ZX linear table) (§4)
   - [x] Confirm the M2 `rottbl_msb` formula + 2-page-per-phase / `inc h` carry contract carry over (§4)
-  - [x] Port the 8 `jsp_draw_*` kernels to CPC Mode 2 (near-verbatim) (§5) — `lib/cpc/jsp_draw_*.asm`
-  - [x] Wire the covered-cell compositor to the Mode 2 kernels (§5) — real `lib/cpc/jsp_covered.asm` (+ real `jsp_frame.asm`, `jsp_sprite_defer.asm`)
-  - [x] Verify a moving, sub-byte-shifted CPC Mode 2 sprite on emulator (§12) — `make run-cpc-sprite`, all xrot phases clean (fixed a stack/rottbl 0xBF00 overlap → SP=0x9800)
-  - [x] Regression gate: ZX green + CPC Mode 2 sprite render green (§12) — ZX `959048ee…`, 9 taps, CPC bg+sprite green
-  - [x] Widen CPC descriptor X to 16-bit (full 640px) + reconcile asm offsets (frame/defer) and public signatures (§3) — `jsp_xcoord_t` (16-bit X, Y stays 8-bit); verified sprites at x=100/300/500 + animated full-width bounce in cap32
+  - [x] Port the 8 `jsp_draw_*` kernels to CPC Mode 2 (near-verbatim) (§5)
+  - [x] Wire the covered-cell compositor to the Mode 2 kernels (§5)
+  - [x] Verify a moving, sub-byte-shifted CPC Mode 2 sprite on emulator (§12)
+  - [x] Widen CPC descriptor X to 16-bit (full 640px) + reconcile asm offsets and public signatures (§3)
+  - [x] Regression gate: ZX green + CPC Mode 2 sprite render green (§12)
 
 - [x] **Phase 4 — CPC Mode 2 asset pipeline + shift unit test**
-  - [x] Define and implement the CPC Mode 2 planar-in-byte pixel+mask asset format (§10) — Mode 2 is 1bpp-linear == the ZX `mask2` (mask,graph pairs) / `load1` (graph) format; documented in the Makefile asset rules + `tests/cpc/shift_test_mode2.c`
-  - [x] Add the Mode 2 asset emitter (`gfxgen` flag or new emitter) (§10) — M2 == ZX 1bpp, so the existing `gfxgen.pl` mask2/load1 invocation IS the M2 emitter; the CPC build reuses the emitted files unchanged (no new emitter needed for M2; M0/M1 get per-mode emitters in their phases)
-  - [x] Reuse the ZX sprite source art (re-convert `assets/*.png` per mode), don't hand-author CPC sprites (§10,§11) — `assets/ball.png` reused directly (M2 = same monochrome bit pattern)
-  - [x] Unit-test the §8.1 shift/mask against the emitted Mode 2 bytes (§4,§10) — `tests/cpc/shift_test_mode2.c` (`make cpc-shift-test-mode2`): validates the rottbl masks (in=src>>i, carry=src<<(8-i)) and the in|carry-from-left combine against a true 16-bit shift, exhaustively (256×256×7) + over the emitted asset bytes → 463k checks PASS
-  - [x] Adapt the sprite-gen Makefile targets for Mode 2 (§11) — M2 reuses `tests/test_sprite_mask2.asm`/`load1`; documented in the Makefile (`## extras`); per-mode variants for M0/M1 deferred to their phases
-  - [x] Regression gate: ZX green (`959048ee`, 9 taps) + CPC Mode 2 (bg + sprite + demo build) + shift unit test green (§12)
+  - [x] Define and implement the CPC Mode 2 planar-in-byte pixel+mask asset format (§10, doc/CPC-ASSETS-FORMAT.md)
+  - [x] Add the Mode 2 asset emitter (`gfxgen` flag or new emitter) (§10)
+  - [x] Reuse the ZX sprite source art (re-convert `assets/*.png` per mode), don't hand-author CPC sprites (§10,§11)
+  - [x] Unit-test the §8.1 shift/mask against the emitted Mode 2 bytes (§4,§10)
+  - [x] Adapt the sprite-gen Makefile targets for Mode 2 (§11)
+  - [x] Regression gate: ZX green + CPC Mode 2 (incl. shift unit test) green (§12)
 
 - [x] **Phase 5 — Mode 2 full test pass**
-  - [x] Keep CPC tests as the ZX tests recompiled (same layout/sprites); palette mirrors ZX colours (§11) — CPC ports in `tests/cpc/` (mode-2 setup + geometric tiles, since CPC has no ZX ROM font / no attr colour): `test_cpc_bg` (bg tiles), `test_cpc_sprite`/`_demo` (sprites, shift, 16-bit X), `test_cpc_foreground` (foreground band + pool + sprites-behind), `test_cpc_btt_redraw` (tile draw/delete/redraw)
-  - [x] Build all renderable `tests/*` under `CPC_MODE2` (§11) — `make cpc-bg cpc-sprite cpc-foreground cpc-btt-redraw cpc-sprite-demo-mode2` all build; `cpc-shift-test-mode2` (host) passes
-  - [x] Visually verify all under `CPC_MODE2` via cap32 headless (§11) — bg grid, masked/shifted/full-width sprites, foreground occlusion (ball split by band), and BTT delete "hole" all confirmed in cap32
-  - [x] Lock Mode 2 as the reference CPC pipeline (§12) — Mode 2 is the verified baseline; M0/M1/FAST diverge only in shift table + kernels + asset encoding (their shift/mask gated by the `cpc-shift-test-mode*` harness from Phase 4)
-  - [x] Regression gate: ZX green (`959048ee`, 9 taps) + CPC Mode 2 test pass green (§12)
-  - **Deferred (not Mode-2 renderable; tracked for later):** `test_dtt` / `test_btt_contents` are `printf`-to-console logic dumps — no CPC text console with both ROMs off; their 80-col DTT/BTT bookkeeping is exercised indirectly by the visual tiles/sprite tests. `test_tiles_and_print` needs a CPC font (the `0x3D00` ROM-font ptrs are unused on CPC, §6/§9) — revisit when CPC text lands. Benches (`test_redraw_bench`, `bench_sp1`) stay ZX-only (JNEXT magic port, §11).
+  - [x] Keep CPC tests as the ZX tests recompiled (same layout/sprites); palette mirrors ZX colours (§11)
+  - [x] Build all renderable `tests/*` under `CPC_MODE2` (§11)
+  - [x] Visually verify all tests under `CPC_MODE2` via the `caprice-testing` skill (cap32 headless) (§11)
+  - [x] Lock Mode 2 as the reference CPC pipeline (§12)
+  - [x] Regression gate: ZX green + full CPC Mode 2 test pass green (§12)
 
 - [ ] **Phase 6 — CPC Mode 1**
   - [ ] Add the Mode 1 nibble-plane shift table + `jsp_init_rottbl` Mode 1 variant (§4)

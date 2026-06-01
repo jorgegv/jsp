@@ -475,10 +475,22 @@ config macros (`JSP_GRID_COLS × JSP_GRID_ROWS`), not the constant 2000:
   pick a placement that avoids `0x0000-0x003F`, firmware jumpblocks and the
   default stack. Document the chosen CPC memory map alongside the ZX maps in
   `doc/ENGINE.md`.
+- **DONE (Mode 2):** the data block is `0x9800-0xBFFF` (BAT 0x9800, FTT 0xA000,
+  DTT 0xA100, BTT 0xA200, rottbl 0xB200-0xBFFF). The firmware-default SP sits
+  high (~0xB000-0xBFFF) and would overlap the rottbl, so the build **forces
+  `REGISTER_SP=0x9800`** (Makefile `CPC_CFLAGS`) — stack grows down below the
+  block. This was latent until Phase 3 (sprites first read the rottbl); the
+  phase-7 carry page `0xBF00` is exactly where the stack lands, so only xrot=7
+  sprites corrupted before the fix.
 
 ---
 
 ## 10. Asset format and generation
+
+> The concrete, per-mode **in-memory byte formats** (tiles + `LOAD1`/`MASK2`
+> sprites, columns-major layout, sub-cell-Y padding, shift encoding) are
+> documented authoritatively in **`doc/CPC-ASSETS-FORMAT.md`** (Mode 2 done;
+> Mode 1/0/MONO/FAST stubbed). This section is the design rationale.
 
 **ZX:** `gfxgen.pl` (external `../zxtools/`) emits ZX 1bpp `mask2` (interleaved
 `(mask,graph)` byte pairs) / `load1` (graph only), columns-major with extra
@@ -559,6 +571,14 @@ rowstride + i*cs` math assumes this **columns-major, 8-bytes/cell** layout.
   and is the `RUN"NAME.` launch target, so the ZX test names are re-mapped to
   short disk names at build time. The benches (`test_redraw_bench`, `bench_sp1`)
   lean on the JNEXT magic port and are ZX-only until a CPC profiling path lands.
+- **Deferred CPC tests (done through Mode 2):** the renderable ZX tests are
+  ported to `tests/cpc/` (`test_cpc_bg`, `_sprite`, `_foreground`,
+  `_btt_redraw`), using a mode-set harness + geometric tiles (CPC has no ZX ROM
+  font and no attribute colour). `test_dtt`/`test_btt_contents` are `printf`
+  console dumps — there is no CPC text console with both ROMs off, so they stay
+  ZX-only (their 80-col DTT/BTT bookkeeping is exercised indirectly by the visual
+  tests). `test_tiles_and_print` needs a CPC font (the `0x3D00` ROM-font pointers
+  are unused on CPC, §6) — revisit when CPC text lands.
 
 ---
 
