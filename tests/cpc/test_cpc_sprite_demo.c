@@ -31,7 +31,7 @@ struct {
     int8_t   dx, dy;
     struct jsp_sprite_s *sp;
 } mover[ NUM_SPRITES ] = {
-    {  40,  10,  3,  2, &sprite0 },
+    {  40,  10,  1,  1, &sprite0 },    // slow: 1 px/frame -> shows sub-pixel positioning
     { 200,  40, -2,  3, &sprite1 },
     { 340,  90,  4, -1, &sprite2 },
     { 470,  20, -3, -2, &sprite3 },
