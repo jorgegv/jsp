@@ -5,15 +5,19 @@
 ;; active registered sprite it fills one jsp_frame_sprites[] entry with the
 ;; constants the per-cell compositor needs.
 ;;
-;; Mode 2 is 1bpp-linear with ppb=8, so the coordinate split (c0 = xpos>>3,
-;; xrot = xpos&7, r0 = ypos>>3, yrot = ypos&7), the rottbl_msb stride
-;; (rottbl>>8 + 2*xrot - 2), cs (8/16), base and rowstride are all IDENTICAL
-;; to ZX — this file is a verbatim port of the ZX precompute.  color/color_mask
-;; are still copied into the frame entry but the CPC covered-cell compositor
-;; ignores them (no attribute RAM, §6); copying is harmless.
+;; The only per-mode difference is the horizontal coordinate split: the byte
+;; column is c0 = xpos / ppb and the sub-byte phase is xrot = xpos % ppb, with
+;; ppb = 8/4/2 for Mode 2/1/0 (plan §3).  That is parametrised below by
+;; JSP_PPB_SHIFT (= log2(ppb): 3/2/1) and JSP_XROT_MASK (= ppb-1: 7/3/1; FAST
+;; modes force 0 -> always byte-aligned).  Everything else — the rottbl_msb
+;; stride (rottbl>>8 + 2*xrot - 2), cs (8/16), base, rowstride and the vertical
+;; split (r0 = ypos>>3, yrot = ypos&7, always 8 lines/cell) — is IDENTICAL across
+;; modes, because the in-byte/carry shift mechanics are encoded in jsp_rottbl,
+;; not here.  color/color_mask are still copied into the frame entry but the CPC
+;; covered-cell compositor ignores them (no attribute RAM, §6); copying is harmless.
 ;;
-;; X is 16-bit (jsp_xcoord_t) on CPC: c0 = xpos>>3 is a 16-bit shift (0..79, no
-;; 0x1F cap); xrot = xpos&7. Y stays 8-bit. (plan §3.)
+;; X is 16-bit (jsp_xcoord_t) on CPC: c0 = xpos>>JSP_PPB_SHIFT is a 16-bit shift
+;; (0..79, no 0x1F cap); xrot = xpos & JSP_XROT_MASK. Y stays 8-bit. (plan §3.)
 ;;
 ;; struct jsp_sprite_s (CPC layout, 14 bytes):
 ;;   +0 rows  +1 cols  +2..+3 xpos(16b)  +4 ypos  +5 flags  +6 pixels(w)
@@ -36,6 +40,35 @@
 	extern _jsp_cc_row_active_row
 
 	public _jsp_redraw_begin
+
+;; Per-mode horizontal coordinate split (plan §3).  ppb = 8/4/2 for M2/M1/M0;
+;; JSP_PPB_SHIFT = log2(ppb) (c0 = xpos >> this); JSP_XROT_MASK = ppb-1
+;; (xrot = xpos & this).  FAST modes force the mask to 0 (always byte-aligned ->
+;; NR kernel), keeping the same byte-column shift.
+	IFDEF CPC_MODE2
+	defc JSP_PPB_SHIFT = 3
+	defc JSP_XROT_MASK = 7
+	ENDIF
+	IFDEF CPC_MODE1
+	defc JSP_PPB_SHIFT = 2
+	defc JSP_XROT_MASK = 3
+	ENDIF
+	IFDEF CPC_MODE1_MONO
+	defc JSP_PPB_SHIFT = 2
+	defc JSP_XROT_MASK = 3
+	ENDIF
+	IFDEF CPC_MODE1_FAST
+	defc JSP_PPB_SHIFT = 2
+	defc JSP_XROT_MASK = 0
+	ENDIF
+	IFDEF CPC_MODE0
+	defc JSP_PPB_SHIFT = 1
+	defc JSP_XROT_MASK = 1
+	ENDIF
+	IFDEF CPC_MODE0_FAST
+	defc JSP_PPB_SHIFT = 1
+	defc JSP_XROT_MASK = 0
+	ENDIF
 
 ;; ====================================================================
 ;; jsp_redraw_begin — fill jsp_frame_sprites[] for the frame
@@ -126,18 +159,16 @@ rb_loop:
 	rrca
 	and 0x1F
 	ld (rb_r0),a
-	ld e,(ix+2)			; c0 = xpos >> 3   (xpos 16-bit, 0..79)
+	ld e,(ix+2)			; c0 = xpos >> JSP_PPB_SHIFT (xpos 16-bit, 0..79)
 	ld d,(ix+3)			; (use DE, not HL: HL is the frame write ptr)
+	REPT JSP_PPB_SHIFT		; ppb=8 -> 3, ppb=4 -> 2, ppb=2 -> 1
 	srl d
 	rr e
-	srl d
-	rr e
-	srl d
-	rr e
+	ENDR
 	ld a,e				; no 0x1F cap: 80-col grid needs c0 up to 79
 	ld (rb_c0),a
-	ld a,(ix+2)			; xrot = xpos & 7  (low byte)
-	and 7
+	ld a,(ix+2)			; xrot = xpos & JSP_XROT_MASK (low byte; FAST forces 0)
+	and JSP_XROT_MASK
 	ld (rb_xrot),a
 	ld a,(ix+4)			; yrot = ypos & 7
 	and 7

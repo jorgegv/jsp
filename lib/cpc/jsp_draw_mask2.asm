@@ -4,7 +4,7 @@
 ; sinclair spectrum version
 ; 12.2024 adapted by zxjogv (zx@jogv.es) for JSP
 
-	IFDEF JSP_TARGET_CPC		; CPC Mode-2 kernel - verbatim 1bpp port of lib/zx/jsp_draw_mask2.asm (M2 ppb=8 == ZX, plan section 5)
+	IFDEF JSP_TARGET_CPC		; CPC shift kernel (shared by all CPC shifting modes) - port of lib/zx/jsp_draw_mask2.asm. Table-driven via jsp_rottbl, so the pixel encoding lives in the table, not here: identical for M2 (1bpp linear) and M1 (nibble-plane). plan section 5
 	section code_compiler
 
 	public _JSP_DRAW_MASK2

@@ -3,7 +3,7 @@
 ; 01.2006 aralbrec, Sprite Pack v3.0
 ; sinclair spectrum version
 
-	IFDEF JSP_TARGET_CPC		; CPC Mode-2 kernel - verbatim 1bpp port of lib/zx/jsp_draw_load1rb.asm (M2 ppb=8 == ZX, plan section 5)
+	IFDEF JSP_TARGET_CPC		; CPC shift kernel (shared by all CPC shifting modes) - port of lib/zx/jsp_draw_load1rb.asm. Table-driven via jsp_rottbl, so the pixel encoding lives in the table, not here: identical for M2 (1bpp linear) and M1 (nibble-plane). plan section 5
 	section code_compiler
 
 	public _JSP_DRAW_LOAD1RB
