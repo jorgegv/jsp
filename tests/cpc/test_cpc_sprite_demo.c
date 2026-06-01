@@ -38,8 +38,10 @@ struct {
     { 590,  70,  1,  4, &sprite4 },
 };
 
-static uint8_t tile_stripe[8] = { 0xAA,0x55,0xAA,0x55,0xAA,0x55,0xAA,0x55 };
-static uint8_t tile_blank[8]  = { 0,0,0,0,0,0,0,0 };
+// Crossbar / graph-paper grid (top + left edge -> 8x8-box grid); calmer under
+// continuous motion than a fine stripe (the unsynced blit tears less visibly).
+static uint8_t tile_grid[8]  = { 0xFF,0x80,0x80,0x80,0x80,0x80,0x80,0x80 };
+static uint8_t tile_blank[8] = { 0,0,0,0,0,0,0,0 };
 
 // Set Mode 2 + black(pen0)/white(pen1); both ROMs off (0x8E) so 0x0000-0xBFFF
 // is RAM (code at 0x1200 stays visible — project_cpc_bringup_rmr_rom memory).
@@ -67,10 +69,10 @@ void main( void ) {
     jsp_init( tile_blank, 0 );
 
     (void)tile_blank;
-    // striped background across the full 80x25 grid (texture under the balls)
+    // crossbar grid background across the full 80x25 grid (texture under the balls)
     for ( r = 0; r < 25; r++ )
         for ( c = 0; c < 80; c++ )
-            jsp_draw_background_tile( r, c, tile_stripe );
+            jsp_draw_background_tile( r, c, tile_grid );
 
     // bounce forever across the full 640px Mode-2 screen (16-bit X)
     for ( ;; ) {

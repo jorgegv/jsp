@@ -11,7 +11,7 @@
 // Background TILES are 1bpp too in MONO: the BTT holds the 1bpp tile and the
 // blit expands nibble(col&1) to Mode-1 (a 1bpp 8-px tile spans two Mode-1
 // cells, so a uniform fill tiles the 8-px pattern seamlessly).  This test draws
-// the SAME 1bpp stripe tile the ZX / CPC-Mode-2 sprite test uses, with the SAME
+// the SAME 1bpp grid tile the CPC-Mode-2 sprite test uses, with the SAME
 // per-cell loop — both sprite and tile assets are plain Mode-2 1bpp, halving
 // their memory vs full Mode 1.
 //
@@ -46,10 +46,11 @@ struct {
     { 295,  70,  1,  4, &sprite4 },
 };
 
-// Plain 1bpp (Mode-2 / ZX) stripe tile — the SAME asset the Mode-2 test uses.
-// MONO expands it nibble(col&1) at blit; a uniform fill tiles it seamlessly.
-static uint8_t tile_stripe[8] = { 0xAA,0x55,0xAA,0x55,0xAA,0x55,0xAA,0x55 };
-static uint8_t tile_blank[8]  = { 0,0,0,0,0,0,0,0 };
+// Plain 1bpp (Mode-2 / ZX) crossbar-grid tile — the SAME asset the Mode-2 test
+// uses.  MONO expands it nibble(col&1) at blit; a uniform fill tiles the 8x8-box
+// grid seamlessly across two Mode-1 cells per tile.
+static uint8_t tile_grid[8]  = { 0xFF,0x80,0x80,0x80,0x80,0x80,0x80,0x80 };
+static uint8_t tile_blank[8] = { 0,0,0,0,0,0,0,0 };
 
 static void cpc_setup_mode1( void ) {
     __asm
@@ -85,7 +86,7 @@ void main( void ) {
 
     for ( r = 0; r < 25; r++ )
         for ( c = 0; c < 80; c++ )
-            jsp_draw_background_tile( r, c, tile_stripe );
+            jsp_draw_background_tile( r, c, tile_grid );
 
     for ( f = 0; f < ANIM_FRAMES; f++ ) {
         for ( r = 0; r < NUM_SPRITES; r++ ) {

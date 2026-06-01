@@ -3,8 +3,8 @@
 //
 // Mode 1 is 4 px/byte (2 bits/pixel, two interleaved nibble-planes), 320 px
 // wide -> 80 byte-columns.  This is the Mode-1 analogue of test_cpc_sprite.c:
-// it sets CPC Mode 1 + a 4-pen palette, inits JSP, paints a 4-colour vertical-
-// bar background (exercising both bit-planes), then animates MASK2 balls and
+// it sets CPC Mode 1 + a 4-pen palette, inits JSP, paints a cyan crossbar-grid
+// background (a Mode-1-only colour), then animates MASK2 balls and
 // settles into a still final frame (deterministic for screenshots).
 //
 // The ball asset is the Mode-1 two-nibble-plane re-encoding of the same source
@@ -42,12 +42,17 @@ struct {
     { 295,  70,  1,  4, &sprite4 },
 };
 
-// 4-colour vertical bars: each byte = pixels (pen0,pen1,pen2,pen3) left-to-right
-// in the Mode-1 interleaved encoding (plane0 bit @ 7-p, plane1 bit @ 3-p):
-//   p0=pen0=00 -> -      p1=pen1=01 -> bit6
-//   p2=pen2=10 -> bit1   p3=pen3=11 -> bit4|bit0   => 0x53
-static uint8_t tile_bars[8]  = { 0x53,0x53,0x53,0x53,0x53,0x53,0x53,0x53 };
-static uint8_t tile_blank[8] = { 0,0,0,0,0,0,0,0 };
+// Crossbar / graph-paper grid in cyan (pen2) on black (pen0).  Mode-1 cells are
+// only 4 px wide, so two tiles alternate per column to space the vertical lines
+// every 8 px (every other cell): tile_grid_a carries the vertical line, _b only
+// the shared horizontal top line.  Mode-1 pen2 = binary 10 -> plane-1 bit only:
+//   top row, 4 px pen2 = low nibble all set = 0x0F
+//   left px pen2       = plane-1 bit (3-0) = 0x08
+// Calmer under motion than the old per-pixel 4-colour bars, and still shows a
+// Mode-1-only colour (cyan) the ball/Mode-2 cannot.
+static uint8_t tile_grid_a[8] = { 0x0F, 0x08,0x08,0x08,0x08,0x08,0x08,0x08 };
+static uint8_t tile_grid_b[8] = { 0x0F, 0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
+static uint8_t tile_blank[8]  = { 0,0,0,0,0,0,0,0 };
 
 // Set Mode 1 + a 4-pen palette; both ROMs off (0x8D = RMR mode 1, ROMs off) so
 // 0x0000-0xBFFF is RAM (code at 0x1200 stays visible).
@@ -83,10 +88,10 @@ void main( void ) {
     cpc_setup_mode1();
     jsp_init( tile_blank, 0 );
 
-    // 4-colour bar background across the full 80x25 grid (texture under balls)
+    // cyan crossbar grid across the full 80x25 grid (vertical line every 8 px)
     for ( r = 0; r < 25; r++ )
         for ( c = 0; c < 80; c++ )
-            jsp_draw_background_tile( r, c, tile_bars );
+            jsp_draw_background_tile( r, c, ( c & 1 ) ? tile_grid_b : tile_grid_a );
 
     // animate for a fixed number of frames, bouncing across the 320px screen,
     // then settle into a clean final frame.

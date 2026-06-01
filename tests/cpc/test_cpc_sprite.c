@@ -2,7 +2,7 @@
 // over a textured background.
 //
 // Sets CPC Mode 2 (full RAM, both ROMs off) + a black/white palette, inits
-// JSP, paints a striped background grid, then animates several MASK2 balls for
+// JSP, paints a crossbar (grid) background, then animates several MASK2 balls for
 // a fixed number of frames and settles into a still final frame (deterministic
 // for screenshots).  Exercises the full Phase-3 sprite path: deferred move
 // (old-footprint dirtying -> no trails), the per-frame precompute, the
@@ -43,8 +43,11 @@ struct {
     { 590,  70,  1,  4, &sprite4 },
 };
 
-static uint8_t tile_stripe[8] = { 0xAA,0x55,0xAA,0x55,0xAA,0x55,0xAA,0x55 };
-static uint8_t tile_blank[8]  = { 0,0,0,0,0,0,0,0 };
+// Crossbar / graph-paper grid: top edge + left edge, so a uniform fill draws a
+// grid of 8x8 boxes (horizontal + vertical lines every 8 px).  Calmer under
+// motion than a fine stripe (the unsynced blit tears less visibly, §5.1).
+static uint8_t tile_grid[8]  = { 0xFF,0x80,0x80,0x80,0x80,0x80,0x80,0x80 };
+static uint8_t tile_blank[8] = { 0,0,0,0,0,0,0,0 };
 
 // Set Mode 2 + black(pen0)/white(pen1); both ROMs off (0x8E) so 0x0000-0xBFFF
 // is RAM (code at 0x1200 stays visible — project_cpc_bringup_rmr_rom memory).
@@ -73,10 +76,10 @@ void main( void ) {
     jsp_init( tile_blank, 0 );
 
     (void)tile_blank;
-    // striped background across the full 80x25 grid (texture under the balls)
+    // crossbar grid background across the full 80x25 grid (texture under the balls)
     for ( r = 0; r < 25; r++ )
         for ( c = 0; c < 80; c++ )
-            jsp_draw_background_tile( r, c, tile_stripe );
+            jsp_draw_background_tile( r, c, tile_grid );
 
     // animate for a fixed number of frames, bouncing across the FULL 640px
     // Mode-2 screen (16-bit X), then settle into a clean final frame.
