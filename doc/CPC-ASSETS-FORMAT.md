@@ -9,18 +9,16 @@ not the asset *tool*. The converter (`gfxgen.pl`, or a future per-mode emitter)
 must produce exactly this layout; the shift/mask unit tests
 (`make cpc-shift-test-mode<N>`) cross-check the engine's shift tables against it.
 
-> Status: **Mode 2, Mode 1 and Mode 1 MONO are implemented and verified.**
-> Mode 0 and the FAST variants are specified here from the design
-> (doc/CPC-TARGET-PLAN.md §4/§8/§10) but **not yet implemented** — their sections
-> are marked TODO and must be confirmed by their own shift unit test before being
-> relied upon.
+> Status: **Mode 2, Mode 1, Mode 1 MONO and Mode 0 are implemented and verified.**
+> The FAST variants are specified here from the design (doc/CPC-TARGET-PLAN.md
+> §4/§8/§10) but **not yet implemented** — that section is marked TODO.
 
 | Mode            | px/byte | colours | shift phases | status        |
 |-----------------|---------|---------|--------------|---------------|
 | Mode 2          | 8       | 2       | 7 (xrot 1–7) | **done**      |
 | Mode 1          | 4       | 4       | 3 (xrot 1–3) | **done**      |
 | Mode 1 MONO     | 8 (1bpp, = Mode 2) | 2 | 3 (xrot 1–3, Mode-1 table) | **done**      |
-| Mode 0          | 2       | 16      | 1 (xrot 1)   | TODO (Ph. 7)  |
+| Mode 0          | 2       | 16      | 1 (xrot 1)   | **done**      |
 | Mode 0/1 FAST   | 2 / 4   | 16 / 4  | 0 (aligned)  | TODO (Ph. 8)  |
 
 ---
@@ -291,20 +289,28 @@ two-nibble-plane and need no expansion.)
 
 ---
 
-## 4. Mode 0 (16 colours, odd/even interleave) — TODO (Phase 7)
-
-**Planned (doc/CPC-TARGET-PLAN.md §4/§8/§10); not yet implemented.**
+## 4. Mode 0 (16 colours, odd/even interleave) — IMPLEMENTED
 
 - `ppb = 2` (2 pixels/byte, 4 bits/pixel), `JSP_SHIFT_PHASES = 1` (xrot 0/1),
-  `cs = 8/16`, same columns-major + pad layout.
-- **Pixel encoding:** CPC Mode-0 byte holds 2 pixels with the four bit-planes
-  interleaved (odd/even pixel bits spread across the byte).
-- **Shift (one-pixel step):** `in = (src & 0xAA) >> 1`, `carry = (src & 0x55) << 1`
-  (single phase; xrot 0 = aligned, no shift).
-- **Cell model** (byte-cell vs pixel-cell) is settled in Phase 7 by measurement
-  (doc/CPC-TILE-SIZE-ANALYSIS.md); if it differs from the Model-A default the
-  grid/asset sizing notes here must be reconciled.
-- Validate with `make cpc-shift-test-mode0`.
+  `cs = 8/16`, same columns-major + pre-rows + (rows+1) layout as §1.
+- **Pixel encoding:** the CPC Mode-0 byte holds 2 pixels with the four bit-planes
+  interleaved.  Pixel 0 (left) occupies the odd bit positions {7,5,3,1}, pixel 1
+  (right) the even {6,4,2,0}; cell-pixel `cp`'s plane `q` bit is `(7-cp) - q*ppc`
+  (plane stride = `ppb` = 2).  Each 8-px ZX source column → **4 Mode-0 cells**
+  (2 px each), so a 16-px-wide sprite is `cols = 8`.  For 2-colour art only
+  plane 0 (pen 1) is set; full 16-pen art is a future emitter extension.
+- **Shift (single phase):** `in = (src & 0xAA) >> 1`, `carry = (src & 0x55) << 1`
+  (xrot 0 = aligned/no shift, xrot 1 = the 1-px step) — in
+  `include/jsp_rottbl_formula.h` (guard `CPC_MODE0`).  `jsp_init_rottbl` builds
+  the 512-byte table unchanged; `rottbl_msb` keeps the `2*xrot-2` stride.  The
+  kernels are the **same** table-driven `lib/cpc/jsp_draw_*` files as M1/M2.
+- **Cell model:** Model A (byte-cell), decided in Phase 7 — see
+  `doc/CPC-TILE-SIZE-ANALYSIS.md`.  Grid 80×25, cell = 1 byte = 2 px wide.
+- **Asset:** emitted by `tools/cpcgfx.pl --mode 0`; mask transparent pixel sets
+  all four planes (so the AND keeps the background).
+- Validated by `make cpc-shift-test-mode0` (exhaustive combine + emitted bytes
+  vs an independent Mode-0 pixel-array shift) and visually in cap32
+  (`make run-cpc-sprite-mode0`).
 
 ---
 

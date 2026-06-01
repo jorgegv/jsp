@@ -99,16 +99,16 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Test pass under `CPC_MODE1_MONO` (`tests/cpc/test_cpc_sprite_mode1_mono.c`, `make run-cpc-sprite-mode1-mono`); verified in cap32 (masked balls over 4-colour bg, all xrot 0–3 pixel-clean)
   - [x] Regression gate: ZX byte-for-byte (`959048ee…`) + 9 taps + CPC Mode 2 + Mode 1 + Mode 1 MONO green (§12)
 
-- [ ] **Phase 7 — CPC Mode 0 (+ cell-model decision)**
-  - [ ] Prototype the Mode 0 covered-cell compositor both ways (byte-cell A / pixel-cell B) and measure (CPC-TILE-SIZE-ANALYSIS.md)
-  - [ ] Pick the cell model, record the outcome in CPC-TILE-SIZE-ANALYSIS.md, reconcile §2/§9 + Mode 1 if it differs from the M2 default
-  - [ ] Add the Mode 0 odd/even interleave shift table (single phase) (§4)
-  - [ ] Define the Mode 0 `rottbl_msb` / single-phase table addressing (xrot 0/1) (§4)
-  - [ ] Write the Mode 0 `jsp_draw_*` kernels (§5)
-  - [ ] Define + emit the Mode 0 interleaved asset format (§10)
-  - [ ] Unit-test the §8.3 shift/mask against the emitted Mode 0 bytes (§4,§10)
-  - [ ] Test pass under `CPC_MODE0` (§12)
-  - [ ] Regression gate: ZX green + CPC Mode 2 + Mode 1/MONO + Mode 0 green (§12)
+- [x] **Phase 7 — CPC Mode 0 (+ cell-model decision)**
+  - [x] Cell-model decision: **DECIDED Model A (byte-cell)** for the whole port — context changed (M2+M1 already verified in A; no CPC profiler to measure B's claimed win; B would mean redoing verified Mode 1 + the 20-col DTT wrinkle). Recorded in `CPC-TILE-SIZE-ANALYSIS.md`; §2/§9 already match (no prototype-both-ways needed)
+  - [x] Pick the cell model, record the outcome in CPC-TILE-SIZE-ANALYSIS.md, reconcile §2/§9 + Mode 1 (Model A → Mode 1 unchanged)
+  - [x] Add the Mode 0 odd/even interleave shift table (single phase) (§4) — `JSP_ROTTBL_IN/CARRY` Mode-0 macros in `jsp_rottbl_formula.h` (`in=(v&0xAA)>>1`, `carry=(v&0x55)<<1`); `jsp_init_rottbl` reused (1 phase, 512B)
+  - [x] Define the Mode 0 `rottbl_msb` / single-phase table addressing (xrot 0/1) (§4) — same `2*xrot-2` stride; xrot 0 → NR, xrot 1 → base page; X-split `JSP_PPB_SHIFT=1`/`XROT_MASK=1`
+  - [x] Write the Mode 0 `jsp_draw_*` kernels (§5) — table-driven `lib/cpc/jsp_draw_*` reused verbatim (same as M1/M2)
+  - [x] Define + emit the Mode 0 interleaved asset format (§10) — `tools/cpcgfx.pl --mode 0` (4 cells/8-px col, 2 px/cell); `tests/test_sprite_{mask2,load1}_m0.asm`
+  - [x] Unit-test the §8.3 shift/mask against the emitted Mode 0 bytes (§4,§10) — `tests/cpc/shift_test_mode0.c`, `make cpc-shift-test-mode0` (PASS, incl. emitted-byte cross-check)
+  - [x] Test pass under `CPC_MODE0` (§12) — `tests/cpc/test_cpc_sprite_mode0.c`, `make run-cpc-sprite-mode0`; verified in cap32 (masked balls over grid, xrot 0 + 1 clean)
+  - [x] Regression gate: ZX byte-for-byte (`959048ee…`) + 9 taps + CPC Mode 2 + Mode 1/MONO + Mode 0 green (§12)
 
 - [ ] **Phase 8 — FAST variants**
   - [ ] Implement `CPC_MODE0_FAST` (force shift=0, `nr` kernel only, no shift table) (§3,§8)
