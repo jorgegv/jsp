@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -115,7 +115,12 @@ profile: $(TAP)
 
 ## tests
 
+# Test programs are split by platform, mirroring the lib/ layout: shared
+# generated sprite assets live in tests/ (like lib/*.asm), ZX test programs in
+# tests/zx/, CPC test programs in tests/cpc/.
 TESTS_DIR	= tests
+ZXTEST_DIR	= tests/zx
+CPCTEST_DIR	= tests/cpc
 LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) \
 		  $(wildcard $(PLATDIR)/*.c) $(wildcard $(PLATDIR)/*.asm)
 
@@ -125,29 +130,29 @@ SPRITE_LOAD1_ASM = $(TESTS_DIR)/test_sprite_load1.asm
 TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
 		  test_sprite_move test_pool_and_colour test_tiles_and_print \
 		  test_foreground_tiles test_redraw_bench
-TEST_TAPS	= $(TESTS:%=$(TESTS_DIR)/%.tap)
+TEST_TAPS	= $(TESTS:%=$(ZXTEST_DIR)/%.tap)
 
-# Build all test taps
+# Build all (ZX) test taps
 tests: $(TEST_TAPS)
 
 ## Pattern rule: compile test + all lib sources in one zcc invocation
-$(TESTS_DIR)/%.tap: $(TESTS_DIR)/%.c $(LIB_SRCS)
+$(ZXTEST_DIR)/%.tap: $(ZXTEST_DIR)/%.c $(LIB_SRCS)
 	echo Building $@...
 	$(ZCC) $(CFLAGS) $(LDFLAGS) $^ -o $(@:.tap=.bin) -create-app
 
 ## Extra sprite data prerequisites for tests that use sprites
-$(TESTS_DIR)/test_sprite_draw.tap: $(SPRITE_MASK2_ASM)
-$(TESTS_DIR)/test_sprite_move.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
-$(TESTS_DIR)/test_pool_and_colour.tap: $(SPRITE_MASK2_ASM)
-$(TESTS_DIR)/test_foreground_tiles.tap: $(SPRITE_MASK2_ASM)
-$(TESTS_DIR)/test_redraw_bench.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
+$(ZXTEST_DIR)/test_sprite_draw.tap: $(SPRITE_MASK2_ASM)
+$(ZXTEST_DIR)/test_sprite_move.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
+$(ZXTEST_DIR)/test_pool_and_colour.tap: $(SPRITE_MASK2_ASM)
+$(ZXTEST_DIR)/test_foreground_tiles.tap: $(SPRITE_MASK2_ASM)
+$(ZXTEST_DIR)/test_redraw_bench.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
 
 # Build and launch one test in FUSE (usage: make run-test TEST=test_dtt)
-run-test: $(TESTS_DIR)/$(TEST).tap
-	fuse $(TESTS_DIR)/$(TEST).tap
+run-test: $(ZXTEST_DIR)/$(TEST).tap
+	fuse $(ZXTEST_DIR)/$(TEST).tap
 
 # Build and run the redraw speed benchmark headless in JNEXT
-bench: $(TESTS_DIR)/test_redraw_bench.tap
+bench: $(ZXTEST_DIR)/test_redraw_bench.tap
 	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
 		--load $< --magic-port 0x00FF --magic-port-mode ascii \
 		--delayed-automatic-exit 300 2>&1 | grep -E '^(A0?=|B=|END)'
@@ -156,23 +161,23 @@ bench: $(TESTS_DIR)/test_redraw_bench.tap
 bench-mask2: $(SPRITE_MASK2_ASM)
 	echo Building all-MASK2 JSP benchmark...
 	$(ZCC) $(CFLAGS) $(LDFLAGS) -DBENCH_ALL_MASK2 \
-		$(TESTS_DIR)/test_redraw_bench.c $(LIB_SRCS) $(SPRITE_MASK2_ASM) \
-		-o $(TESTS_DIR)/test_redraw_bench_mask2.bin -create-app
+		$(ZXTEST_DIR)/test_redraw_bench.c $(LIB_SRCS) $(SPRITE_MASK2_ASM) \
+		-o $(ZXTEST_DIR)/test_redraw_bench_mask2.bin -create-app
 	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
-		--load $(TESTS_DIR)/test_redraw_bench_mask2.tap \
+		--load $(ZXTEST_DIR)/test_redraw_bench_mask2.tap \
 		--magic-port 0x00FF --magic-port-mode ascii \
 		--delayed-automatic-exit 300 2>&1 | grep -E '^(A0?=|B=|END)'
 
 ## SP1 benchmark — standalone SP1 program, built with the z88dk new C
 ## library (-clib=sdcc_iy): sdcc then uses IY as its frame pointer, so
 ## SP1's asm (which trashes IX) does not corrupt C frames.  No JSP sources.
-$(TESTS_DIR)/bench_sp1.tap: $(TESTS_DIR)/bench_sp1.c
+$(ZXTEST_DIR)/bench_sp1.tap: $(ZXTEST_DIR)/bench_sp1.c
 	echo Building $@...
 	$(ZCC) -vn -SO3 --max-allocs-per-node200000 -startup=31 -clib=sdcc_iy -m \
 		$< -o $(@:.tap=.bin) -create-app
 
 # Build and run the SP1 redraw benchmark headless (JSP-vs-SP1 comparison)
-bench-sp1: $(TESTS_DIR)/bench_sp1.tap
+bench-sp1: $(ZXTEST_DIR)/bench_sp1.tap
 	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
 		--load $< --magic-port 0x00FF --magic-port-mode ascii \
 		--delayed-automatic-exit 600 2>&1 | grep -E '^(A0?=|B=|END)'
@@ -181,19 +186,21 @@ bench-sp1: $(TESTS_DIR)/bench_sp1.tap
 bench-sp1-mask2:
 	echo Building all-MASK2 SP1 benchmark...
 	$(ZCC) -vn -SO3 --max-allocs-per-node200000 -startup=31 -clib=sdcc_iy -m \
-		-DBENCH_ALL_MASK2 $(TESTS_DIR)/bench_sp1.c \
-		-o $(TESTS_DIR)/bench_sp1_mask2.bin -create-app
+		-DBENCH_ALL_MASK2 $(ZXTEST_DIR)/bench_sp1.c \
+		-o $(ZXTEST_DIR)/bench_sp1_mask2.bin -create-app
 	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
-		--load $(TESTS_DIR)/bench_sp1_mask2.tap \
+		--load $(ZXTEST_DIR)/bench_sp1_mask2.tap \
 		--magic-port 0x00FF --magic-port-mode ascii \
 		--delayed-automatic-exit 600 2>&1 | grep -E '^(A0?=|B=|END)'
 
 clean-tests:
 	echo Cleaning tests...
-	-rm -f $(TEST_TAPS) $(TESTS:%=$(TESTS_DIR)/%.bin) 2>/dev/null
-	-rm -f $(TESTS_DIR)/bench_sp1.tap $(TESTS_DIR)/bench_sp1_mask2.tap 2>/dev/null
-	-rm -f $(TESTS_DIR)/test_redraw_bench_mask2.tap 2>/dev/null
+	-rm -f $(TEST_TAPS) $(TESTS:%=$(ZXTEST_DIR)/%.bin) 2>/dev/null
+	-rm -f $(ZXTEST_DIR)/bench_sp1.tap $(ZXTEST_DIR)/bench_sp1_mask2.tap 2>/dev/null
+	-rm -f $(ZXTEST_DIR)/test_redraw_bench_mask2.tap 2>/dev/null
 	-rm -f $(TESTS_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
+	-rm -f $(ZXTEST_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
+	-rm -f $(CPCTEST_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
 
 ## CPC (Phase 2) — build the Mode 2 background test as a .dsk (zcc +cpc).
 ## Compiles lib/ (shared) + lib/cpc/ (CPC platform layer), per JSP_TARGET dir
@@ -216,7 +223,7 @@ CPC_LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) $(wildcard lib/cpc/*.as
 cpc-bg:
 	echo Building CPC Mode $(CPC_MODE) background test...
 	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
-		$(TESTS_DIR)/test_cpc_bg.c $(CPC_LIB_SRCS) -o $(CPC_BG_NAME) -m
+		$(CPCTEST_DIR)/test_cpc_bg.c $(CPC_LIB_SRCS) -o $(CPC_BG_NAME) -m
 	echo "Created $(CPC_BG_NAME).dsk"
 
 # Build and screenshot the CPC background test headless in cap32
@@ -228,11 +235,11 @@ run-cpc-bg: cpc-bg
 ## and exercises the lib/cpc kernels + covered-cell compositor.
 CPC_SPR_NAME	= CPCSPR
 
-# Build the CPC Mode 2 sprite test (.dsk)
+# Build the CPC Mode 2 sprite test (.dsk) — settles to a still frame
 cpc-sprite: $(SPRITE_MASK2_ASM)
 	echo Building CPC Mode $(CPC_MODE) sprite test...
 	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
-		$(TESTS_DIR)/test_cpc_sprite.c $(SPRITE_MASK2_ASM) $(CPC_LIB_SRCS) \
+		$(CPCTEST_DIR)/test_cpc_sprite.c $(SPRITE_MASK2_ASM) $(CPC_LIB_SRCS) \
 		-o $(CPC_SPR_NAME) -m
 	echo "Created $(CPC_SPR_NAME).dsk"
 

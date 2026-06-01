@@ -27,15 +27,27 @@ make test_sprite_load1.asm
 
 ## Running Tests
 
-Tests are integration tests that run visually on the ZX Spectrum emulator — there is no automated test runner. Each test is a self-contained program in `tests/`.
+Tests are integration tests that run visually on the emulator — there is no
+automated test runner. Test programs are split by platform, mirroring `lib/`:
+shared generated sprite assets live in `tests/` (like `lib/*.asm`), ZX test
+programs in `tests/zx/`, CPC test programs in `tests/cpc/`.
 
 ```bash
-make tests                        # Build all test taps
-make tests/test_NAME.tap          # Build a single test
-make run-test TEST=test_NAME      # Build and launch a single test in FUSE
+make tests                        # Build all ZX test taps (tests/zx/)
+make tests/zx/test_NAME.tap       # Build a single ZX test
+make run-test TEST=test_NAME      # Build and launch a single ZX test in FUSE
 ```
 
-Available tests: `test_dtt`, `test_btt_contents`, `test_btt_redraw`, `test_sprite_draw`, `test_sprite_move`, `test_pool_and_colour`, `test_tiles_and_print`, `test_foreground_tiles`.
+Available ZX tests: `test_dtt`, `test_btt_contents`, `test_btt_redraw`, `test_sprite_draw`, `test_sprite_move`, `test_pool_and_colour`, `test_tiles_and_print`, `test_foreground_tiles`.
+
+CPC tests (`zcc +cpc`, headless cap32 screenshot via the `caprice-testing` skill):
+
+```bash
+make run-cpc-bg                   # Mode 2 background-tile test
+make run-cpc-sprite               # Mode 2 sprite test (settles for screenshot)
+make cpc-sprite-demo-mode2        # Mode 2 sprite demo (bounces continuously);
+                                  #   watch: cap32 -a 'run"CPCSPRD.' CPCSPRD.dsk
+```
 
 ## Code Structure
 

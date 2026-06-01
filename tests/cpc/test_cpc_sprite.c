@@ -1,18 +1,20 @@
-// JSP-CPC Phase 3 test — masked, sub-byte-shifted Mode 2 sprites over a
-// textured background.
+// JSP-CPC Phase 3 regression test — masked, sub-byte-shifted Mode 2 sprites
+// over a textured background.
 //
 // Sets CPC Mode 2 (full RAM, both ROMs off) + a black/white palette, inits
 // JSP, paints a striped background grid, then animates several MASK2 balls for
-// a fixed number of frames and settles into a still final frame.  Exercises the
-// full Phase-3 sprite path: deferred move (old-footprint dirtying -> no trails),
-// the per-frame precompute, the covered-cell compositor and the verbatim 1bpp
-// Mode-2 shift kernels (sub-byte X positions -> pixel-rotated masking).
+// a fixed number of frames and settles into a still final frame (deterministic
+// for screenshots).  Exercises the full Phase-3 sprite path: deferred move
+// (old-footprint dirtying -> no trails), the per-frame precompute, the
+// covered-cell compositor and the verbatim 1bpp Mode-2 shift kernels (sub-byte
+// X positions -> pixel-rotated masking).
 //
-// Coordinates are 8-bit for this milestone (left ~256 px / 32 cells), matching
-// the ZX test_sprite_move range.  Reuses the ZX 1bpp mask2 sprite asset
-// (Mode 2 is 1bpp-linear — identical byte format).
+// X is 16-bit (full 640px Mode-2 screen); Y is 8-bit.  Reuses the ZX 1bpp mask2
+// sprite asset (Mode 2 is 1bpp-linear — identical byte format).
 //
 // Build:  make cpc-sprite      then verify in cap32 (make run-cpc-sprite).
+// For a continuous (non-settling) version to watch live, see
+// tests/cpc/test_cpc_sprite_demo.c  (make cpc-sprite-demo-mode2).
 
 #include <stdint.h>
 #include "jsp.h"
