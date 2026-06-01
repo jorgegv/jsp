@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#include "jsp_config.h"
+
 /////////////////////////////////////////////////////////////////////
 // JSP data structures at fixed addresses, according to memory map
 //
@@ -41,20 +43,20 @@
     #define BAT_ADDR		0xE840
 #endif
 
-// rotation tables
-__at( ROTTBL_ADDR ) uint8_t jsp_rottbl[ 7 * 2 * 256 ];
+// rotation tables (one (in-byte,carry) page-pair per shift phase)
+__at( ROTTBL_ADDR ) uint8_t jsp_rottbl[ JSP_SHIFT_PHASES * 2 * 256 ];
 
 // Background Tiles Table: array of pointers to tile graphics
-__at( BTT_ADDR ) uint8_t *jsp_btt[ 768 ];
+__at( BTT_ADDR ) uint8_t *jsp_btt[ JSP_GRID_CELLS ];
 
 // Dirty Tiles Table: byte array
-__at( DTT_ADDR ) uint8_t jsp_dtt[ 768 / 8 ];
+__at( DTT_ADDR ) uint8_t jsp_dtt[ JSP_DTT_BYTES ];
 
 // Foreground Tiles Table: byte array
-__at( FTT_ADDR ) uint8_t jsp_ftt[ 768 / 8 ];
+__at( FTT_ADDR ) uint8_t jsp_ftt[ JSP_FTT_BYTES ];
 
 // Background Attribute Table: one attribute byte per screen cell
-__at( BAT_ADDR ) uint8_t jsp_bat[ 768 ];
+__at( BAT_ADDR ) uint8_t jsp_bat[ JSP_GRID_CELLS ];
 
 // rottbl parameter does not change while drawing a full sprite, so better
 // to set it up in a global once at the beginning instead of passing it

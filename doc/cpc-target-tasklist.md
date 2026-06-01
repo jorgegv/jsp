@@ -26,14 +26,14 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Guard the 8 `jsp_draw_*` kernels whole-file `IFNDEF` (`jsp_rottbl` init left shared — CPC Mode 2 reuses it, §4) (§4,§5)
   - [x] Capture a green ZX build + full ZX test pass as the regression baseline (main.tap byte-for-byte identical; 9 test taps green)
 
-- [ ] **Phase 1 — Config header & geometry**
-  - [ ] Create `include/jsp_config.h` deriving per-guard constants from the mode (§8)
-  - [ ] Define `ppb`, shift-phase count, grid cols/rows/cellcount, cell pixel size, rottbl size, colour mode per guard (§8)
-  - [ ] Expose `JSP_CELL_BYTES`/`JSP_GRID_COLS`/`JSP_GRID_ROWS` as macros to keep byte-cell vs pixel-cell open (CPC-TILE-SIZE-ANALYSIS.md, §2)
-  - [ ] Add a compile error when zero or >1 mode guard is defined (§8)
-  - [ ] Replace hard-coded `768`/`32`/`24`/`96`/`8` literals across the engine with config symbols (§2)
-  - [ ] Decide and apply the descriptor X/Y width strategy (per-target field width) (§3)
-  - [ ] Regression gate: ZX build + all ZX tests green (§12)
+- [x] **Phase 1 — Config header & geometry**
+  - [x] Create `include/jsp_config.h` deriving per-guard constants from the mode (§8)
+  - [x] Define `ppb`, shift-phase count, grid cols/rows/cellcount, cell size, rottbl phases, colour mode (`JSP_HAS_ATTR`) per guard (§8)
+  - [x] Expose `JSP_CELL_BYTES`/`JSP_GRID_COLS`/`JSP_GRID_ROWS` as macros to keep byte-cell vs pixel-cell open (CPC-TILE-SIZE-ANALYSIS.md, §2)
+  - [x] Add a compile error when zero or >1 mode guard is defined (§8)
+  - [x] Replace hard-coded `768`/`32`/`24`/`96`/`7` literals in the C engine with config symbols (asm grid math deferred to its Phase-2 CPC variants) (§2)
+  - [x] Decide descriptor X/Y width (per-target `jsp_coord_t`, ZX=uint8_t byte-for-byte; 16-bit CPC X applied with the asm/API in Phase 3) (§3)
+  - [x] Regression gate: ZX build byte-for-byte identical + 9 test taps green (§12)
 
 - [ ] **Phase 2 — CPC Mode 2 screen layer**
   - [ ] Write CPC `jsp_draw_screen_tile` blitting 8 lines stepping `+0x800` (§7)

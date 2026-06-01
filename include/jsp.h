@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "jsp_target.h"
+#include "jsp_config.h"
 
 // JSP data block placement (compile-time); the names refer to the Z80's
 // 16K memory slots.  Define JSPDATA_SLOT2 to put the JSP data block in
@@ -67,9 +68,10 @@ struct jsp_sprite_s {
     uint8_t rows;	// ofs: +0
     uint8_t cols;	// ofs: +1
 
-    // sprite current position
-    uint8_t xpos;	// ofs: +2
-    uint8_t ypos;	// ofs: +3
+    // sprite current position.  jsp_coord_t is per-target (jsp_config.h):
+    // uint8_t on ZX (and CPC for now); widened to 16-bit X for CPC in Phase 3.
+    jsp_coord_t xpos;	// ofs: +2
+    jsp_coord_t ypos;	// ofs: +3
 
     // sprite flags
     struct {

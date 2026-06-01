@@ -19,8 +19,8 @@ void jsp_print_set_pos( struct jsp_print_ctx *ctx,
 
 void jsp_print_string( struct jsp_print_ctx *ctx, const char *str ) {
     uint8_t ch;
-    uint8_t clip_right  = ctx->clip ? ctx->clip->col + ctx->clip->width  : 32;
-    uint8_t clip_bottom = ctx->clip ? ctx->clip->row + ctx->clip->height : 24;
+    uint8_t clip_right  = ctx->clip ? ctx->clip->col + ctx->clip->width  : JSP_GRID_COLS;
+    uint8_t clip_bottom = ctx->clip ? ctx->clip->row + ctx->clip->height : JSP_GRID_ROWS;
 
     while ( (ch = (uint8_t)*str++) != 0 ) {
         if ( ch < 32 || ch > 127 )

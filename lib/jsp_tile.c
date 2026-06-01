@@ -14,7 +14,7 @@
 
 // draw 8x8 tile to BTT (clears foreground flag, marks cell dirty)
 void jsp_draw_background_tile( uint8_t row, uint8_t col, uint8_t *pix ) {
-    jsp_btt[ (uint16_t)row * 32 + col ] = pix;
+    jsp_btt[ JSP_CELL_INDEX( row, col ) ] = pix;
     jsp_ftt_mark_bg( row, col );
     jsp_dtt_mark_dirty( row, col );
 }
@@ -28,7 +28,7 @@ void jsp_delete_background_tile( uint8_t row, uint8_t col ) {
 // Foreground cells are painted from BTT by jsp_redraw and never composited
 // over by sprites — sprites pass behind them.
 void jsp_draw_foreground_tile( uint8_t row, uint8_t col, uint8_t *pix ) {
-    jsp_btt[ (uint16_t)row * 32 + col ] = pix;
+    jsp_btt[ JSP_CELL_INDEX( row, col ) ] = pix;
     jsp_ftt_mark_fg( row, col );
     jsp_dtt_mark_dirty( row, col );
 }
