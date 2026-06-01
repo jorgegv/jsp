@@ -26,13 +26,16 @@
 #     mask_right  = ((src_mask & 0x0F) << 4) | (src_mask & 0x0F)
 #
 # Layout matches the ZX sprite convention (columns-major, 7 transparent pre-rows
-# before the label, optional extra blank bottom cell-row per column) so the
-# engine's rowstride math (base + pdc*rowstride + i*cs) is unchanged.
+# before the label).  For safe sub-cell Y, each column is followed by 7 (NOT 8)
+# blank scanlines: the vertical shift reads at most 7 lines beyond the data, and a
+# column's trailing 7 blanks serve as the next column's leading 7 (they overlap).
+# So the engine column stride is rows*cs + 7*(cs/8) = (rows+1)*cs - (cs/8); the
+# matching `- (cs>>3)` correction lives in jsp_frame.asm (base + pdc*rowstride + i*cs).
 
 use strict;
 use warnings;
 use FindBin;
-use lib "$FindBin::Bin/../../zxtools/lib";
+use lib "$FindBin::Bin/lib";	# vendored ZXGfx.pm (tools/lib) — JSP self-contained
 
 use Getopt::Long;
 use ZXGfx;
@@ -131,7 +134,11 @@ my $hcells = zxgfx_get_height_cells($gfx);
 my $ncols  = $subcols * $wcells;  # each 8-px source column -> $subcols Mode-N cells
 my $cs     = $is_mask ? 16 : 8;   # bytes per Mode-N cell-row
 my $bottom = $opt_extra_bottom_row ? 1 : 0;
-my $body_bytes = $ncols * ($hcells + $bottom) * $cs;
+# Only 7 blank scanlines (not a full 8-line cell) are needed for sub-cell Y: the
+# vertical shift reads at most 7 lines past the data, and a column's trailing 7
+# blanks double as the next column's leading 7 (they overlap).  So each column is
+# rows*cs + 7*(cs/8) bytes apart, matching the engine rowstride (see jsp_frame.asm).
+my $body_bytes = $ncols * ($hcells * $cs + ($bottom ? 7 * ($cs / 8) : 0));
 
 # ---- emit one Mode-N cell ($sub = sub-column 0..$subcols-1 of source col) ---
 sub emit_cell {
@@ -181,6 +188,6 @@ foreach my $mc (0 .. $ncols - 1) {
     foreach my $row (0 .. $hcells - 1) {
         emit_cell($col, $row, $sub);
     }
-    emit_blank_lines(8 * $bottom);  # extra blank bottom cell-row
+    emit_blank_lines(7 * $bottom);  # 7-line bottom/inter-column gap (see header)
 }
 print ";;;;;;\n";

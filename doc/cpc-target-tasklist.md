@@ -8,6 +8,14 @@ tasks are done. Set a task's checkbox to [~] the moment you start working on it.
 + all ZX tests still pass, plus the CPC tests for every mode completed so far.
 This is the last checkbox of each phase; do not tick the phase until it passes.
 
+> **Note (post-Phase-9):** the ZX `main.tap` baseline `959048ee…` referenced in
+> the phase regression gates below was the byte-for-byte reference *during the
+> port*. It was later **intentionally rebaselined** to `1ca61859…` by the
+> sprite-padding optimization (7-line trailing pad instead of a full 8-line cell;
+> `rowstride = (rows+1)*cs - (cs>>3)`), which also vendored the asset generators
+> in-repo (`tools/gfxgen.pl` + `tools/lib/ZXGfx.pm`) so JSP no longer depends on
+> `../zxtools`. The old hash is historical; current ZX builds produce `1ca61859…`.
+
 - [x] **Phase R — `sp1_*` → `jsp_*` rename (prerequisite)**
   - [x] Rename the 8 `lib/sp1_draw_*.asm` kernel files to `lib/jsp_draw_*.asm`
   - [x] Rename the public symbols `_sp1_draw_*` / `_SP1_DRAW_*` to `_jsp_draw_*` / `_JSP_DRAW_*`

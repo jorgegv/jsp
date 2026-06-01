@@ -2,7 +2,7 @@
 
 ;; CPC Mode 1 sprite '_test_sprite_mask2_m1_pixels' (sprite_mask)
 ;; source assets/ball.png region (0,0) 16x16 px -> 4 Mode-1 cols x 2 rows (+extra bottom row)
-;; _test_sprite_mask2_m1_pixels: 192 body bytes (cs=16, 4 px/cell)
+;; _test_sprite_mask2_m1_pixels: 184 body bytes (cs=16, 4 px/cell)
 	;; 7 transparent pre-rows before label (safe sub-cell Y)
 	db	$ff,$00
 	db	$ff,$00
@@ -37,7 +37,6 @@ _test_sprite_mask2_m1_pixels:
 	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
-	db	$ff,$00
 	;; Mode-1 col 1 (src col 0, slice 1)
 	db	$88,$00		;; mask #... pix ....
 	db	$00,$30		;; mask .... pix ..##
@@ -55,7 +54,6 @@ _test_sprite_mask2_m1_pixels:
 	db	$00,$c0		;; mask .... pix ##..
 	db	$00,$30		;; mask .... pix ..##
 	db	$88,$00		;; mask #... pix ....
-	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
@@ -87,7 +85,6 @@ _test_sprite_mask2_m1_pixels:
 	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
-	db	$ff,$00
 	;; Mode-1 col 3 (src col 1, slice 1)
 	db	$ff,$00		;; mask #### pix ....
 	db	$77,$00		;; mask .### pix ....
@@ -105,7 +102,6 @@ _test_sprite_mask2_m1_pixels:
 	db	$33,$00		;; mask ..## pix ....
 	db	$77,$00		;; mask .### pix ....
 	db	$ff,$00		;; mask #### pix ....
-	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00

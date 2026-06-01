@@ -459,9 +459,11 @@ cpc-btt-redraw:
 run-cpc-btt-redraw: cpc-btt-redraw
 	./tools/cap32-shot.sh $(CPC_TILE_NAME).dsk $(CPC_TILE_NAME)
 
-## extras — sprite assets (generated from assets/*.png via gfxgen.pl).
-## These are the ZX 1bpp mask2 (mask,graph pairs) / load1 (graph only) byte
-## format, columns-major, 8 lines/cell, with extra top/bottom blank rows for
+## extras — sprite assets (generated from assets/*.png via the in-repo,
+## vendored tools/gfxgen.pl + tools/lib/ZXGfx.pm — JSP is self-contained, no
+## external ../zxtools dependency).  These are the ZX 1bpp mask2 (mask,graph
+## pairs) / load1 (graph only) byte format, columns-major, 8 lines/cell, with 7
+## transparent pre-rows + 7 trailing blank lines per column (overlapping) for
 ## safe sub-cell Y.  CPC Mode 2 is 1bpp-linear (8 px/byte) — IDENTICAL format —
 ## so the CPC Mode-2 build reuses these very files unchanged (the cpc-sprite*
 ## targets link test_sprite_mask2.asm directly); cpc-shift-test-mode2 validates
@@ -470,13 +472,13 @@ run-cpc-btt-redraw: cpc-btt-redraw
 ## arrive with those phases (plan §10).
 
 $(TESTS_DIR)/test_sprite_mask2.asm:
-	../zxtools/bin/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 \
 		--code-type asm -s _test_sprite_mask2_pixels \
 		-g sprite_mask -l columns --extra-bottom-row --extra-top-rows > $@
 
 $(TESTS_DIR)/test_sprite_load1.asm:
-	../zxtools/bin/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 \
 		--code-type asm -s _test_sprite_load1_pixels \
 		-g sprite_load -l columns --extra-bottom-row --extra-top-rows > $@
