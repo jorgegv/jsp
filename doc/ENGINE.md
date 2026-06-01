@@ -217,13 +217,13 @@ horizontal granularity.
 ROTTBL ≤ 3584 B (Mode 2; Mode 1 1536, Mode 0 512, FAST 0), BTT 4000, DTT 250,
 FTT 250, BAT 2000 (still allocated but unused, §6).  Block `9800-BFFF`:
 
-| Range     | Contents                                            |
-|-----------|-----------------------------------------------------|
-| B200-BFFF | Rotation tables (Mode 2 size; smaller/empty per mode)|
-| A200-B19F | Background Tiles Table, BTT (4000 B)                |
-| A100-A1F9 | Dirty Tiles Table, DTT (250 bytes)                  |
-| A000-A0F9 | Foreground Tiles Table, FTT (250 bytes)            |
-| 9800-9FCF | Background Attribute Table, BAT (2000 B, unused)   |
+| Range     | Contents                                                |
+|-----------|---------------------------------------------------------|
+| B200-BFFF | Rotation tables (Mode 2 size; smaller/empty per mode)   |
+| A200-B19F | Background Tiles Table, BTT (4000 B)                    |
+| A100-A1F9 | Dirty Tiles Table, DTT (250 bytes)                      |
+| A000-A0F9 | Foreground Tiles Table, FTT (250 bytes)                 |
+| 9800-9FCF | Background Attribute Table, BAT (2000 B, unused)        |
 | below     | program code/data + stack (forced `REGISTER_SP=0x9800`) |
 
 The firmware-default stack sits high (~`B000-BFFF`) and would overlap the
