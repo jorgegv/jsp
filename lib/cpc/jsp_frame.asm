@@ -41,34 +41,9 @@
 
 	public _jsp_redraw_begin
 
-;; Per-mode horizontal coordinate split (plan §3).  ppb = 8/4/2 for M2/M1/M0;
-;; JSP_PPB_SHIFT = log2(ppb) (c0 = xpos >> this); JSP_XROT_MASK = ppb-1
-;; (xrot = xpos & this).  FAST modes force the mask to 0 (always byte-aligned ->
-;; NR kernel), keeping the same byte-column shift.
-	IFDEF CPC_MODE2
-	defc JSP_PPB_SHIFT = 3
-	defc JSP_XROT_MASK = 7
-	ENDIF
-	IFDEF CPC_MODE1
-	defc JSP_PPB_SHIFT = 2
-	defc JSP_XROT_MASK = 3
-	ENDIF
-	IFDEF CPC_MODE1_MONO
-	defc JSP_PPB_SHIFT = 2
-	defc JSP_XROT_MASK = 3
-	ENDIF
-	IFDEF CPC_MODE1_FAST
-	defc JSP_PPB_SHIFT = 2
-	defc JSP_XROT_MASK = 0
-	ENDIF
-	IFDEF CPC_MODE0
-	defc JSP_PPB_SHIFT = 1
-	defc JSP_XROT_MASK = 1
-	ENDIF
-	IFDEF CPC_MODE0_FAST
-	defc JSP_PPB_SHIFT = 1
-	defc JSP_XROT_MASK = 0
-	ENDIF
+;; Per-mode horizontal split + MONO doubling (shared with jsp_sprite_defer.asm
+;; so render cells and dirtied cells agree).
+	include "lib/cpc/jsp_cpc_geom.inc"
 
 ;; ====================================================================
 ;; jsp_redraw_begin — fill jsp_frame_sprites[] for the frame
@@ -200,11 +175,20 @@ rb_setmask:
 	add a,(ix+0)
 	ld (hl),a
 	inc hl
-	ld a,(rb_xrot)			; +3 c1 = c0 + (xrot ? cols : cols-1)
+	;; +3 c1 = c0 + (xrot ? W : W-1).  W = cols normally; in MONO each 1bpp
+	;; source column spans 2 Mode-1 screen cells, so W = 2*cols.  The doubling
+	;; must happen BEFORE the xrot test (add a,a clobbers flags; ld a,(nn) /
+	;; ld a,c do not), so we compute W into C first, then test xrot.
+	ld a,(rb_cols)
+	REPT JSP_MONO_DBL		; MONO: W = 2*cols (1bpp col -> 2 Mode-1 cells)
+	add a,a
+	ENDR
+	ld c,a				; C = W
+	ld a,(rb_xrot)
 	or a
-	ld a,(rb_cols)			; (ld a,(nn) does not affect flags)
+	ld a,c				; A = W  (does not affect flags)
 	jr nz,rb_c1
-	dec a
+	dec a				; aligned: W-1
 rb_c1:
 	ld c,a
 	ld a,(rb_c0)

@@ -29,6 +29,10 @@
 
 	section code_compiler
 
+	;; Per-mode horizontal split + MONO doubling, shared with jsp_frame.asm so
+	;; the cells a sprite renders into and the cells marked dirty for it agree.
+	include "lib/cpc/jsp_cpc_geom.inc"
+
 	extern _jsp_dtt
 	extern _jsp_register_sprite
 
@@ -201,17 +205,24 @@ mark_footprint:
 	ld (mr_r0),a
 	add a,(ix+0)			; r1 = r0 + rows
 	ld (mr_r1),a
-	ld l,(ix+2)			; c0 = xpos >> 3   (CPC xpos @ +2..+3, 16-bit)
+	ld l,(ix+2)			; c0 = xpos >> JSP_PPB_SHIFT (xpos @ +2..+3, 16-bit)
 	ld h,(ix+3)
+	REPT JSP_PPB_SHIFT		; ppb=8/4/2 -> 3/2/1 shifts
 	srl h
 	rr l
-	srl h
-	rr l
-	srl h
-	rr l
+	ENDR
 	ld a,l				; no 0x1F cap (80-col grid, c0 up to 79)
 	ld (mr_c0),a
-	add a,(ix+1)			; c1 = c0 + cols
+	;; c1 = c0 + W, W = cols (full) or 2*cols (MONO: 1bpp col spans 2 cells).
+	;; mark_rect marks the inclusive c0..c1, i.e. W+1 columns — the +1 covers
+	;; the sub-cell shift spill (matches the frame's xrot footprint widening).
+	ld a,(ix+1)			; cols
+	REPT JSP_MONO_DBL
+	add a,a
+	ENDR
+	ld c,a				; C = W
+	ld a,(mr_c0)
+	add a,c
 	ld (mr_c1),a
 	ld a,d				; clip == NULL ?
 	or e
