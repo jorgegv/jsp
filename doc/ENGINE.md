@@ -166,3 +166,71 @@ slot 3 (`C000-FFFF`) free of JSP data:
 | 5D00-A83F | free for program code and data                    |
 
 - These structures should not be in contended memory, since they must be checked at top speed.
+
+## AMSTRAD CPC TARGET
+
+JSP also targets the Amstrad CPC.  The **high-level engine is unchanged** — the
+same deferred-recompositing model, the same four tables, the same sprite
+registry, per-frame precompute and covered-cell compositor flow.  Only a thin
+**platform layer** is swapped (`lib/cpc/` instead of `lib/zx/`), selected by the
+`JSP_TARGET_CPC` umbrella guard plus exactly one `CPC_MODE*` mode guard.  The
+full design lives in `doc/CPC-TARGET-PLAN.md`; the per-mode asset byte formats in
+`doc/CPC-ASSETS-FORMAT.md`.  Three things genuinely differ from the ZX, because
+the hardware does:
+
+**1. Screen layout.**  The CPC framebuffer is 80 bytes/line × 200 lines = 16 KB
+at `C000-FFFF` in **all** modes; the mode only changes how many pixels a byte
+holds (8/4/2 for Mode 2/1/0).  A scan-line `y` address is
+`0xC000 + (y & 7) * 0x800 + (y >> 3) * 80`, so within an 8-line cell the pixel
+lines step by **`+0x800`** (not the ZX `+0x100`).  The cell grid is 80 × 25 =
+2000 cells (Model A "byte-cell": a cell is always 8 lines × 1 byte, so a cell is
+8/4/2 px wide in Mode 2/1/0).  There is no thirds layout: `rd_rowtab` is 25
+entries of `0xC000 + row*80`, and the redraw walks an explicit `(row, col0)`
+running counter (80 ÷ 8 = 10 groups/row is not a power of two).
+
+**2. Colour — no attribute RAM (the honest asterisk).**  The CPC has no
+attribute byte per cell: colour is encoded in the **pixel bits themselves**
+(palette index per pixel, planar-in-byte), interpreted through the gate-array
+palette.  So on CPC the **BAT is dropped**, `jsp_apply_sprite_color()` is a no-op,
+and the redraw paths skip the attribute store — colour is baked into the
+sprite/tile pixel data by the asset converter (`tools/cpcgfx.pl`).  Mode 0 (16)
+and Mode 1 (4) carry a real per-pixel palette index; Mode 2 (1 bpp) is
+monochrome-per-screen (ink/paper from palette registers), exactly like
+ZX-without-attributes.  A CPC test harness must therefore **set the screen mode
+and program the palette before the first `jsp_redraw()`** (the firmware boots in
+Mode 1) — kept in the test `main`, never in the library.
+
+**3. Coordinates + per-mode shift.**  X is widened to 16-bit on CPC
+(`jsp_xcoord_t`; Mode 2 is 640 px wide), Y stays 8-bit.  The horizontal split is
+`byte_col = x >> log2(ppb)`, `shift = x & (ppb-1)` with `ppb` = 8/4/2.  The
+sub-byte shift lives entirely in `jsp_rottbl` (mode-selected encoding: Mode 2
+1bpp-linear / Mode 1 nibble-plane / Mode 0 odd-even interleave), so the composite
+kernels are **shared and table-driven** across modes.  The **FAST** modes
+(`CPC_MODE2/1/0_FAST`) force `shift = 0` (byte-aligned positioning, 8/4/2-px
+granularity) and build no shift table; the kernels already redirect the aligned
+case to the no-rotate path, so FAST is purely a compile-time fast path.
+
+**CPC memory map (Model A, all modes packed below the `C000` screen).**  Sizes:
+ROTTBL ≤ 3584 B (Mode 2; Mode 1 1536, Mode 0 512, FAST 0), BTT 4000, DTT 250,
+FTT 250, BAT 2000 (still allocated but unused, §6).  Block `9800-BFFF`:
+
+| Range     | Contents                                            |
+|-----------|-----------------------------------------------------|
+| B200-BFFF | Rotation tables (Mode 2 size; smaller/empty per mode)|
+| A200-B19F | Background Tiles Table, BTT (4000 B)                |
+| A100-A1F9 | Dirty Tiles Table, DTT (250 bytes)                  |
+| A000-A0F9 | Foreground Tiles Table, FTT (250 bytes)            |
+| 9800-9FCF | Background Attribute Table, BAT (2000 B, unused)   |
+| below     | program code/data + stack (forced `REGISTER_SP=0x9800`) |
+
+The firmware-default stack sits high (~`B000-BFFF`) and would overlap the
+rottbl, so the CPC build forces `REGISTER_SP=0x9800` (stack grows down below the
+block).  Both ROMs are kept off (code at `0x1200`, in the lower-ROM region).
+
+**Build / verify.**  The Makefile drives the matrix: `make run JSP_TARGET=cpc
+JSP_CPC_MODE=<2|1|0|1_MONO|2_FAST|0_FAST|1_FAST>` builds and screenshots one
+config in cap32; `make cpc-matrix` builds all of them; `make run-cpc-matrix`
+screenshots all of them.  There is **no headless T-state profiler** for the CPC
+(the JNEXT magic-port/heatmap path is ZX-only): CPC performance is eyeballed /
+wall-clock-timed via the `caprice-testing` skill (`tools/cap32-shot.sh`, cap32
+headless in a private Xvfb) until a CPC profiling path exists.

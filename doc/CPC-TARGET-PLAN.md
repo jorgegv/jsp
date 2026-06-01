@@ -1,7 +1,9 @@
 # JSP-CPC Target — Design & Implementation Plan
 
-**Status:** Design — not yet started.
-**Date:** 2026-05-31
+**Status:** Implemented — all phases (R/0/1/1.1/2..9) done; all eight CPC configs
+(Mode 2/1/0, Mode 1 MONO, Mode 2/0/1 FAST) build and render verified in cap32,
+ZX baseline byte-for-byte unchanged.  This document is kept as the design record.
+**Date:** 2026-05-31 (design); 2026-06-01 (implementation complete)
 **Goal:** Add Amstrad CPC support to JSP with pixel-perfect sprite positioning
 in Mode 0 (4 bpp), Mode 1 (2 bpp) and Mode 2 (1 bpp), keeping JSP's high-level
 architecture identical to the ZX version. Only the thin low-level layer (shift

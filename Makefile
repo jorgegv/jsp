@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -96,9 +96,26 @@ $(BIN): $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS)
 
 $(TAP): $(BIN)
 
-# Build and launch main.tap in the FUSE emulator
+# JSP_CPC_MODE selects which CPC config `make run JSP_TARGET=cpc` builds and
+# screenshots.  Tokens match the CPC_MODE guard suffix: 2 1 0 1_MONO 2_FAST
+# 0_FAST 1_FAST (see the build matrix below).  Default: Mode 2 (closest to ZX).
+JSP_CPC_MODE		?= 2
+CPC_RUNTGT_2		= run-cpc-sprite
+CPC_RUNTGT_1		= run-cpc-sprite-mode1
+CPC_RUNTGT_1_MONO	= run-cpc-sprite-mode1-mono
+CPC_RUNTGT_0		= run-cpc-sprite-mode0
+CPC_RUNTGT_2_FAST	= run-cpc-sprite-mode2-fast
+CPC_RUNTGT_0_FAST	= run-cpc-sprite-mode0-fast
+CPC_RUNTGT_1_FAST	= run-cpc-sprite-mode1-fast
+
+ifeq ($(JSP_TARGET),cpc)
+run:
+	$(MAKE) $(CPC_RUNTGT_$(JSP_CPC_MODE))
+else
+# Launch in FUSE (ZX); with JSP_TARGET=cpc [JSP_CPC_MODE=N] build+screenshot in cap32
 run: $(TAP)
 	$(FUSE) $(TAP)
+endif
 
 # Build and launch main.tap in the JNEXT emulator (GUI)
 run-jnext: $(TAP)
@@ -358,6 +375,31 @@ cpc-sprite-mode1-fast: $(SPRITE_MASK2_M1_ASM)
 # Build and screenshot the CPC Mode 1 FAST sprite test headless in cap32
 run-cpc-sprite-mode1-fast: cpc-sprite-mode1-fast
 	./tools/cap32-shot.sh $(CPC_SPR_M1F_NAME).dsk $(CPC_SPR_M1F_NAME)
+
+## CPC (Phase 9) — the full build matrix.  The eight JSP_CPC_MODE configs
+## (Mode 2/1/0 + Mode 1 MONO + Mode 2/0/1 FAST) over the one engine.  Each is
+## the SAME sprite test recompiled with its mode guard; cpc-matrix builds them
+## all serially (via recursive $(MAKE) so the shared lib objects are not raced
+## by -j4), run-cpc-matrix additionally screenshots each into screenshot_<tgt>.png.
+CPC_BUILD_TARGETS = cpc-sprite cpc-sprite-mode1 cpc-sprite-mode1-mono \
+		    cpc-sprite-mode0 cpc-sprite-mode2-fast cpc-sprite-mode0-fast \
+		    cpc-sprite-mode1-fast
+CPC_RUN_TARGETS	  = run-cpc-sprite run-cpc-sprite-mode1 run-cpc-sprite-mode1-mono \
+		    run-cpc-sprite-mode0 run-cpc-sprite-mode2-fast \
+		    run-cpc-sprite-mode0-fast run-cpc-sprite-mode1-fast
+
+# Build every CPC config's sprite test (the full mode matrix; no emulator)
+cpc-matrix:
+	for t in $(CPC_BUILD_TARGETS); do $(MAKE) $$t || exit 1; done
+	echo "CPC build matrix complete ($(words $(CPC_BUILD_TARGETS)) configs)."
+
+# Build + screenshot every CPC config (screenshot_<target>.png per mode)
+run-cpc-matrix:
+	for t in $(CPC_RUN_TARGETS); do \
+		$(MAKE) $$t || exit 1; \
+		cp -f shot.png screenshot_$$t.png; \
+	done
+	echo "CPC run matrix complete; see screenshot_run-cpc-*.png."
 
 # Build the CPC Mode 2 sprite DEMO (.dsk) — balls bounce continuously (watch live: cap32 -a 'run"CPCSPRD.' CPCSPRD.dsk)
 cpc-sprite-demo-mode2: $(SPRITE_MASK2_ASM)

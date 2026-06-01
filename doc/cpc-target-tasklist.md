@@ -117,14 +117,14 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Test pass under all three FAST modes (§12) — `make run-cpc-sprite-mode{2,0,1}-fast`; verified in cap32 (masked balls byte-aligned over the per-mode grids, all clean)
   - [x] Regression gate: ZX byte-for-byte (`959048ee…`) + 9 taps + all CPC modes incl. FAST green (§12)
 
-- [ ] **Phase 9 — Toolchain matrix & docs**
-  - [ ] Parameterise the Makefile by `JSP_TARGET` and `JSP_CPC_MODE` with a build-matrix target (§11)
-  - [ ] Build `+cpc -create-app -subtype=dsk` and add a `make run` branch invoking the `caprice-testing` skill (§11,risk7)
-  - [ ] Adapt `tools/cap32-shot.sh` defaults / wire it to the JSP test build outputs (§11)
-  - [ ] Document the CPC profiling gap (visual via cap32; no T-state heatmap yet) (§11,risk5)
-  - [ ] Update `doc/ENGINE.md` with CPC memory maps, screen layout and the colour divergence (§6,§9)
-  - [ ] Update `README.md`; add `doc/CPC-MODES.md` if per-mode detail outgrows the plan (§12)
-  - [ ] Regression gate: full matrix green (ZX + all CPC modes) (§12)
+- [x] **Phase 9 — Toolchain matrix & docs**
+  - [x] Parameterise the Makefile by `JSP_TARGET` and `JSP_CPC_MODE` with a build-matrix target (§11) — `JSP_CPC_MODE` knob + `cpc-matrix` (build all) + `run-cpc-matrix` (build+screenshot all)
+  - [x] Build `+cpc -create-app -subtype=dsk` and add a `make run` branch invoking the `caprice-testing` skill (§11,risk7) — `run` now dispatches on `JSP_TARGET`: `make run JSP_TARGET=cpc JSP_CPC_MODE=<m>` builds+shots that config in cap32
+  - [x] Adapt `tools/cap32-shot.sh` defaults / wire it to the JSP test build outputs (§11) — already auto-detects the single `.dsk` + derives the AMSDOS run-name; wired into every `run-cpc-*` target
+  - [x] Document the CPC profiling gap (visual via cap32; no T-state heatmap yet) (§11,risk5) — noted in `doc/ENGINE.md` (CPC section) + `README.md`
+  - [x] Update `doc/ENGINE.md` with CPC memory maps, screen layout and the colour divergence (§6,§9) — added "AMSTRAD CPC TARGET" section (screen layout, colour asterisk, memory map, FAST, build/verify)
+  - [x] Update `README.md`; add `doc/CPC-MODES.md` if per-mode detail outgrows the plan (§12) — README CPC section added; `CPC-MODES.md` NOT needed (per-mode detail fits `CPC-TARGET-PLAN.md` + `CPC-ASSETS-FORMAT.md`)
+  - [x] Regression gate: full matrix green (ZX + all CPC modes) (§12)
 
 - [ ] **Cross-cutting / sign-off**
   - [ ] Confirm with user that baked-in pixel colour (no dynamic recolour) is acceptable for first CPC milestone (§6,risk4)
