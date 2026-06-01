@@ -81,15 +81,23 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Lock Mode 2 as the reference CPC pipeline (§12)
   - [x] Regression gate: ZX green + full CPC Mode 2 test pass green (§12)
 
-- [ ] **Phase 6 — CPC Mode 1**
-  - [ ] Add the Mode 1 nibble-plane shift table + `jsp_init_rottbl` Mode 1 variant (§4)
-  - [ ] Define the Mode 1 `rottbl_msb` formula + table stride (3 phases, 2-page-per-phase) (§4)
-  - [ ] Write the Mode 1 `jsp_draw_*` kernels (§5)
-  - [ ] Define + emit the Mode 1 planar (two nibble-planes) asset format (§10)
-  - [ ] Unit-test the §8.2 shift/mask against the emitted Mode 1 bytes (§4,§10)
-  - [ ] Resolve and implement the `CPC_MODE1_MONO` encoding decision (§8)
-  - [ ] Test pass under `CPC_MODE1` and `CPC_MODE1_MONO` (§12)
-  - [ ] Regression gate: ZX green + CPC Mode 2 + Mode 1/MONO green (§12)
+- [x] **Phase 6 — CPC Mode 1** (full 4-colour mode; MONO split out to Phase 6.1)
+  - [x] Add the Mode 1 nibble-plane shift table + `jsp_init_rottbl` Mode 1 variant (§4) — M1 IN/CARRY macros in `include/jsp_rottbl_formula.h`, guard-selected; `jsp_init_rottbl` reused (3 phases)
+  - [x] Define the Mode 1 `rottbl_msb` formula + table stride (3 phases, 2-page-per-phase) (§4) — same `2*xrot-2` stride/`inc h` carry as M2; X-split parametrised by `JSP_PPB_SHIFT`/`JSP_XROT_MASK` in `lib/cpc/jsp_frame.asm`
+  - [x] Write the Mode 1 `jsp_draw_*` kernels (§5) — the Mode-2 `lib/cpc/jsp_draw_*` kernels are table-driven, so Mode 1 reuses them verbatim (pixel encoding lives in `jsp_rottbl`, not the kernel)
+  - [x] Define + emit the Mode 1 planar (two nibble-planes) asset format (§10) — in-repo emitter `tools/cpcgfx.pl`; `tests/test_sprite_{mask2,load1}_m1.asm`
+  - [x] Unit-test the §8.2 shift/mask against the emitted Mode 1 bytes (§4,§10) — `tests/cpc/shift_test_mode1.c`, `make cpc-shift-test-mode1` (PASS, incl. emitted-byte cross-check)
+  - [x] Test pass under `CPC_MODE1` (§12) — `tests/cpc/test_cpc_sprite_mode1.c`, `make run-cpc-sprite-mode1`; verified in cap32 (4-colour bg both planes, masked balls, all xrot 0–3 pixel-perfect)
+  - [x] Regression gate: ZX byte-for-byte (`959048ee…`) + 9 taps + CPC Mode 2 (shift test + 4 builds) + Mode 1 green (§12)
+
+- [ ] **Phase 6.1 — CPC Mode 1 MONO** (1bpp assets on a Mode-1 screen, §8/§3.1)
+  - [ ] Resolve the table-vs-blitter split (DECIDED: reuse the Mode-1 nibble `jsp_rottbl` + an expanding blitter; expand 1bpp→Mode-1 per covered cell into scratch, then run the existing Mode-1 middle kernels — nothing stored). Record in `doc/CPC-ASSETS-FORMAT.md` §3.1
+  - [ ] Host-test the 1bpp→Mode-1 nibble expansion + combine vs a true monochrome shift (`tests/cpc/shift_test_mode1_mono.c`, `make cpc-shift-test-mode1-mono`)
+  - [ ] `jsp_frame.asm`: MONO footprint width `c1 = c0 + (xrot ? 2*cols : 2*cols-1)` (each 1bpp col → 2 Mode-1 screen cells)
+  - [ ] MONO covered-cell compositor (`lib/cpc/jsp_covered_mono.asm`, guarded `IFDEF CPC_MODE1_MONO`; existing `jsp_covered.asm` guarded `IFNDEF CPC_MODE1_MONO`): screen-col→(1bpp src col, nibble) mapping, expand this+left nibbles to scratch, always call the middle kernel
+  - [ ] MONO reuses the Mode-2 1bpp assets unchanged (`test_sprite_{mask2,load1}.asm`)
+  - [ ] Test pass under `CPC_MODE1_MONO` (`tests/cpc/test_cpc_sprite_mode1_mono.c`); verify in cap32
+  - [ ] Regression gate: ZX green + CPC Mode 2 + Mode 1 + Mode 1 MONO green (§12)
 
 - [ ] **Phase 7 — CPC Mode 0 (+ cell-model decision)**
   - [ ] Prototype the Mode 0 covered-cell compositor both ways (byte-cell A / pixel-cell B) and measure (CPC-TILE-SIZE-ANALYSIS.md)

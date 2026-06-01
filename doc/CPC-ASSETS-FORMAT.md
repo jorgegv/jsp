@@ -17,8 +17,8 @@ must produce exactly this layout; the shift/mask unit tests
 | Mode            | px/byte | colours | shift phases | status        |
 |-----------------|---------|---------|--------------|---------------|
 | Mode 2          | 8       | 2       | 7 (xrot 1–7) | **done**      |
-| Mode 1          | 4       | 4       | 3 (xrot 1–3) | TODO (Ph. 6)  |
-| Mode 1 MONO     | 8 (1bpp, = Mode 2) | 2 | TBD (§3.1)    | TODO (Ph. 6)  |
+| Mode 1          | 4       | 4       | 3 (xrot 1–3) | **done**      |
+| Mode 1 MONO     | 8 (1bpp, = Mode 2) | 2 | 3 (xrot 1–3, Mode-1 table) | TODO (Ph. 6.1) |
 | Mode 0          | 2       | 16      | 1 (xrot 1)   | TODO (Ph. 7)  |
 | Mode 0/1 FAST   | 2 / 4   | 16 / 4  | 0 (aligned)  | TODO (Ph. 8)  |
 
@@ -208,26 +208,33 @@ emitted encoding changes per mode, not the artwork.
 
 ---
 
-## 3. Mode 1 (4 colours, two nibble-planes) — TODO (Phase 6)
-
-**Planned (doc/CPC-TARGET-PLAN.md §4/§8/§10); not yet implemented.**
+## 3. Mode 1 (4 colours, two nibble-planes) — IMPLEMENTED
 
 - `ppb = 4` (4 pixels/byte, 2 bits/pixel), `JSP_SHIFT_PHASES = 3` (xrot 1–3),
   `cs = 8` (LOAD1) / `16` (MASK2) — same cell-line count, same columns-major +
   pre-rows + (rows+1) layout as §1.
-- **Pixel encoding:** CPC Mode-1 byte holds 4 pixels with the two bit-planes
-  interleaved (each pixel = one bit in the high nibble + one in the low nibble).
+- **Pixel encoding:** the CPC Mode-1 byte holds 4 pixels with the two bit-planes
+  interleaved: pixel `p` (0 = leftmost) has its plane-0 bit at position `(7-p)`
+  (high nibble) and its plane-1 bit at `(3-p)` (low nibble); pixel value =
+  `(plane1<<1)|plane0`.  So an 8-px ZX cell maps to TWO 4-px Mode-1 cells (the
+  source px 7..4 → one byte's px 0..3, px 3..0 → the next byte's px 0..3) and a
+  16-px-wide sprite is `cols = 4` Mode-1 columns.
 - **Shift (one-pixel step):** `in = (src & 0xEE) >> 1`, `carry = (src & 0x11) << 3`;
-  the 2- and 3-pixel phases compose the 1-pixel step. `jsp_init_rottbl()` gains a
-  Mode-1 variant generating a 256-entry in/carry table per phase.
-- **MASK2** mask is shifted with the **same** per-mode op as the pixels;
-  composite stays `screen = (screen & shifted_mask) | shifted_pixels`.
-- **Asset:** two nibble-plane pixel (and, for MASK2, mask) bytes; re-quantise the
-  same source art to the 4-colour palette.
-- Must be validated by `make cpc-shift-test-mode1` against the emitted bytes
-  before the kernels are trusted.
+  the closed forms for phases 1..3 are in `include/jsp_rottbl_formula.h`
+  (guard-selected by `CPC_MODE1`/`CPC_MODE1_MONO`).  `jsp_init_rottbl()` builds the
+  table unchanged (3 phases via `JSP_SHIFT_PHASES`); `rottbl_msb` keeps the M2
+  `2*xrot-2` stride / `inc h` carry contract.  The kernels are the **same**
+  table-driven `lib/cpc/jsp_draw_*` files as Mode 2 (only the table differs).
+- **MASK2** mask is shifted with the **same** op as the pixels; composite stays
+  `screen = (screen & shifted_mask) | shifted_pixels`.
+- **Asset:** two nibble-plane pixel (and, for MASK2, mask) bytes, emitted by the
+  in-repo `tools/cpcgfx.pl` (`--mode 1`) from the same source art.  For 2-colour
+  art the low plane is 0 (pen 0/1); full 4-pen art is a future emitter extension.
+- Validated by `make cpc-shift-test-mode1` (exhaustive combine vs an independent
+  pixel-array shift, plus the emitted bytes) and visually in cap32
+  (`make run-cpc-sprite-mode1`).
 
-### 3.1 Mode 1 MONO — TODO (Phase 6)
+### 3.1 Mode 1 MONO — TODO (Phase 6.1)
 
 **The asset format is identical to SP1 / CPC Mode 2 — plain 1bpp** (`MASK2`
 mask,graph pairs / `LOAD1` graph-only, MSB = leftmost, columns-major, the same
@@ -241,17 +248,32 @@ pen 1 = set / pen 0 = clear; one 8-pixel source byte writes two Mode-1 screen
 bytes, since Mode 1 = 4 px/byte). The conversion lives in the kernel, never in
 the stored asset.
 
-**OPEN (decide at MONO implementation, Phase 6):** how to split the work between
-the shift table and the blitter. Two plausible designs:
-1. reuse the existing Mode-2 1bpp shift table (`jsp_rottbl`, 7 phases,
-   `in=src>>i`/`carry=src<<(8-i)`) and put all the Mode-1 expansion in a smarter
-   blitter; or
-2. use a smarter (likely larger) MONO shift table that already produces values
-   closer to the Mode-1 layout, with a simpler blitter.
-Pick when the MONO kernels are actually written and measured; update this
-section (and the status-table "shift phases" entry, currently a guess) then.
+**DECIDED (Phase 6.1).** Reuse the **Mode-1 nibble `jsp_rottbl`** (3 phases, the
+same table full Mode 1 uses) and put the 1bpp→Mode-1 expansion in the blitter.
+Rationale: the expansion (a few nibble-mask instructions per byte) is cheap, and
+reusing the already-verified Mode-1 table + middle kernels is far lower risk than
+a bespoke MONO table.  Concretely:
+
+- The MONO covered-cell compositor (`lib/cpc/jsp_covered_mono.asm`, guarded
+  `IFDEF CPC_MODE1_MONO`; the full-colour `jsp_covered.asm` is guarded
+  `IFNDEF CPC_MODE1_MONO`) maps each Mode-1 **screen** cell `j = col - c0` to a
+  1bpp **source** column `j>>1` and a nibble `j&1` (0 = source px 7..4 → this
+  cell, 1 = source px 3..0).  It expands the 8 lines of the selected nibble
+  (and of the left screen cell's nibble, for the shift carry) into two transient
+  Mode-1 scratch cells, then calls the **existing Mode-1 middle kernel**.  Because
+  the left scratch is always supplied (zeroed at the sprite's left edge), MONO
+  needs only the middle `mask2`/`load1` kernels — no `lb`/`rb` variants.
+- The per-nibble expansion is exactly the `tools/cpcgfx.pl` byte transform:
+  `graph_hi=g&0xF0`, `graph_lo=(g&0x0F)<<4`; `mask_hi=(m&0xF0)|((m&0xF0)>>4)`,
+  `mask_lo=((m&0x0F)<<4)|(m&0x0F)`.
+- `jsp_frame.asm` widens the MONO footprint to `c1 = c0 + (xrot ? 2*cols : 2*cols-1)`
+  (each 1bpp column spans two Mode-1 screen cells); `cols` stays the 1bpp count.
+- Nothing is stored expanded — the conversion is transient, per covered cell.
+- Validated by `make cpc-shift-test-mode1-mono` (the expansion + combine vs a
+  true monochrome shift) and visually in cap32.
+
 (This is distinct from full Mode 1 above, whose assets are genuinely 4-colour
-two-nibble-plane.)
+two-nibble-plane and need no expansion.)
 
 ---
 
