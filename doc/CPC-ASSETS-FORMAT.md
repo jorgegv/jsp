@@ -18,7 +18,7 @@ must produce exactly this layout; the shift/mask unit tests
 |-----------------|---------|---------|--------------|---------------|
 | Mode 2          | 8       | 2       | 7 (xrot 1–7) | **done**      |
 | Mode 1          | 4       | 4       | 3 (xrot 1–3) | TODO (Ph. 6)  |
-| Mode 1 MONO     | 4 (1bpp src) | 2  | 3            | TODO (Ph. 6)  |
+| Mode 1 MONO     | 8 (1bpp, = Mode 2) | 2 | 7 (= Mode 2) | TODO (Ph. 6)  |
 | Mode 0          | 2       | 16      | 1 (xrot 1)   | TODO (Ph. 7)  |
 | Mode 0/1 FAST   | 2 / 4   | 16 / 4  | 0 (aligned)  | TODO (Ph. 8)  |
 
@@ -229,9 +229,24 @@ emitted encoding changes per mode, not the artwork.
 
 ### 3.1 Mode 1 MONO — TODO (Phase 6)
 
-1bpp source art packed into the Mode-1 framebuffer per the MONO encoding decision
-(doc/CPC-TARGET-PLAN.md §8, still open). Document the chosen packing here once
-decided.
+**The asset format is identical to SP1 / CPC Mode 2 — plain 1bpp** (`MASK2`
+mask,graph pairs / `LOAD1` graph-only, MSB = leftmost, columns-major, the same
+pre-rows / `(rows+1)` / `cs` = 8 or 16 layout). MONO therefore **reuses the
+Mode-2 assets unchanged** (the very same `tests/test_sprite_mask2.asm` /
+`load1` files) and the **same Mode-2 1bpp shift table** (`jsp_rottbl`, 7 phases,
+`in = src>>i`, `carry = src<<(8-i)`).
+
+What differs is **only the blitting kernels**: the Mode-1 MONO `jsp_draw_*`
+kernels take the (1bpp) source bytes and **expand them into the Mode-1 planar
+framebuffer at draw time** — each source pixel bit becomes a 2-colour Mode-1
+pixel (pen 1 = set, pen 0 = clear), so one 8-pixel source byte writes two Mode-1
+screen bytes (Mode 1 = 4 px/byte). The 1bpp→Mode-1 conversion lives in the
+kernel, never in the stored asset.
+
+Consequences: the asset emitter, the `cpc-shift-test-mode1mono` shift check
+(reuses the Mode-2 1bpp shift), and the source art are all the Mode-2 ones; only
+the Mode-1-MONO kernel set is new. (This is distinct from full Mode 1 above,
+whose assets are genuinely 4-colour two-nibble-plane.)
 
 ---
 
