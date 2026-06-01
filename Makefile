@@ -201,8 +201,14 @@ clean-tests:
 ## (-Ca-D). A fuller JSP_TARGET/JSP_CPC_MODE build matrix is Phase 9.
 CPC_BG_NAME	= CPCBG
 CPC_MODE	?= 2
+# REGISTER_SP=0x9800 places the stack just below the JSP data block (BAT base,
+# see lib/jsp_data.c): the firmware default SP sits high (~0xB000-0xBFFF) and
+# would overlap the rottbl (0xB200-0xBFFF), corrupting it — invisible until
+# sprites read the rottbl (Phase 3); the phase-7 carry page 0xBF00-0xBFFF is
+# right where the stack grows, so only xrot=7 sprites streaked.
 CPC_CFLAGS	= -DJSP_TARGET_CPC -Ca-DJSP_TARGET_CPC \
 		  -DCPC_MODE$(CPC_MODE) -Ca-DCPC_MODE$(CPC_MODE) \
+		  -pragma-define:REGISTER_SP=0x9800 \
 		  -SO2 --max-allocs-per-node200000 -I$(INCLUDE_DIR)
 CPC_LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) $(wildcard lib/cpc/*.asm)
 
@@ -216,6 +222,23 @@ cpc-bg:
 # Build and screenshot the CPC background test headless in cap32
 run-cpc-bg: cpc-bg
 	./tools/cap32-shot.sh $(CPC_BG_NAME).dsk $(CPC_BG_NAME)
+
+## CPC (Phase 3) — masked, sub-byte-shifted Mode 2 sprites over a background.
+## Same toolchain as cpc-bg; additionally links the (1bpp) mask2 sprite asset
+## and exercises the lib/cpc kernels + covered-cell compositor.
+CPC_SPR_NAME	= CPCSPR
+
+# Build the CPC Mode 2 sprite test (.dsk)
+cpc-sprite: $(SPRITE_MASK2_ASM)
+	echo Building CPC Mode $(CPC_MODE) sprite test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(TESTS_DIR)/test_cpc_sprite.c $(SPRITE_MASK2_ASM) $(CPC_LIB_SRCS) \
+		-o $(CPC_SPR_NAME) -m
+	echo "Created $(CPC_SPR_NAME).dsk"
+
+# Build and screenshot the CPC sprite test headless in cap32
+run-cpc-sprite: cpc-sprite
+	./tools/cap32-shot.sh $(CPC_SPR_NAME).dsk $(CPC_SPR_NAME)
 
 ## extras
 
