@@ -9,9 +9,8 @@ not the asset *tool*. The converter (`gfxgen.pl`, or a future per-mode emitter)
 must produce exactly this layout; the shift/mask unit tests
 (`make cpc-shift-test-mode<N>`) cross-check the engine's shift tables against it.
 
-> Status: **Mode 2, Mode 1, Mode 1 MONO and Mode 0 are implemented and verified.**
-> The FAST variants are specified here from the design (doc/CPC-TARGET-PLAN.md
-> §4/§8/§10) but **not yet implemented** — that section is marked TODO.
+> Status: **Mode 2, Mode 1, Mode 1 MONO, Mode 0 and the FAST variants
+> (Mode 0/1/2 FAST) are implemented and verified.**
 
 | Mode            | px/byte | colours | shift phases | status        |
 |-----------------|---------|---------|--------------|---------------|
@@ -19,7 +18,7 @@ must produce exactly this layout; the shift/mask unit tests
 | Mode 1          | 4       | 4       | 3 (xrot 1–3) | **done**      |
 | Mode 1 MONO     | 8 (1bpp, = Mode 2) | 2 | 3 (xrot 1–3, Mode-1 table) | **done**      |
 | Mode 0          | 2       | 16      | 1 (xrot 1)   | **done**      |
-| Mode 0/1 FAST   | 2 / 4   | 16 / 4  | 0 (aligned)  | TODO (Ph. 8)  |
+| Mode 0/1/2 FAST | 2 / 4 / 8 | 16 / 4 / 2 | 0 (aligned)  | **done**      |
 
 ---
 
@@ -314,14 +313,27 @@ two-nibble-plane and need no expansion.)
 
 ---
 
-## 5. FAST variants (`CPC_MODE0_FAST`, `CPC_MODE1_FAST`) — TODO (Phase 8)
+## 5. FAST variants (`CPC_MODE0_FAST`, `CPC_MODE1_FAST`, `CPC_MODE2_FAST`) — done
 
-**Planned; not yet implemented.** Force `xrot = 0` (byte-aligned positioning,
-`JSP_SHIFT_PHASES = 0`): no rotation table, the `nr` (no-rotate) kernel only.
-Asset bytes are the same per-mode pixel encoding as the non-FAST mode; only the
-positioning granularity (2 px for Mode 0, 4 px for Mode 1) and the absence of
-sub-byte shifting differ. No shift unit test is needed (no shift), but a
-no-rotate render test should confirm alignment.
+Force `xrot = 0` (byte-aligned positioning, `JSP_SHIFT_PHASES = 0`): no rotation
+table, the `nr` (no-rotate) kernel only.  **Asset bytes are byte-for-byte the
+same per-mode pixel encoding as the non-FAST mode** — a FAST build links the very
+same emitted assets (`CPC_MODE2_FAST` reuses the ZX/Mode-2 1bpp `test_sprite_*`,
+`CPC_MODE0/1_FAST` reuse the `_m0`/`_m1` planar assets).  Only the positioning
+granularity (8 px for Mode 2, 4 px for Mode 1, 2 px for Mode 0) and the absence
+of sub-byte shifting differ.
+
+**No new kernels and no asset change.**  The lb/middle composite kernels already
+detect the aligned case (`jsp_current_rottbl_msb == jsp_rottbl/256 - 2`, which is
+exactly what `jsp_frame.asm` writes when `xrot == 0`) and `jp` to the `nr` kernel.
+FAST builds simply guarantee that condition for every cell — the geom include
+(`lib/cpc/jsp_cpc_geom.inc`) sets `JSP_XROT_MASK = 0`, and `jsp_init_rottbl`
+builds an empty table (`JSP_SHIFT_PHASES = 0`).  `CPC_MODE2_FAST` reclaims the
+most RAM, since the Mode-2 rottbl is the largest (3584 B → 0).
+
+No shift unit test is needed (no shift); the no-rotate render is confirmed by
+`make run-cpc-sprite-mode{2,0,1}-fast` (masked balls byte-aligned over the
+per-mode grid, verified in cap32).
 
 ---
 

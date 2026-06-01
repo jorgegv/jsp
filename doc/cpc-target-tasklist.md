@@ -110,11 +110,12 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Test pass under `CPC_MODE0` (§12) — `tests/cpc/test_cpc_sprite_mode0.c`, `make run-cpc-sprite-mode0`; verified in cap32 (masked balls over grid, xrot 0 + 1 clean)
   - [x] Regression gate: ZX byte-for-byte (`959048ee…`) + 9 taps + CPC Mode 2 + Mode 1/MONO + Mode 0 green (§12)
 
-- [ ] **Phase 8 — FAST variants**
-  - [ ] Implement `CPC_MODE0_FAST` (force shift=0, `nr` kernel only, no shift table) (§3,§8)
-  - [ ] Implement `CPC_MODE1_FAST` (force shift=0, `nr` kernel only, no shift table) (§3,§8)
-  - [ ] Test pass under both FAST modes (§12)
-  - [ ] Regression gate: ZX green + all CPC modes incl. FAST green (§12)
+- [x] **Phase 8 — FAST variants**
+  - [x] Implement `CPC_MODE0_FAST` (force shift=0, `nr` kernel only, no shift table) (§3,§8) — config/geom guards (`JSP_XROT_MASK=0`, `JSP_SHIFT_PHASES=0`); the lb/middle kernels already redirect the aligned case to `nr`, so no new kernels
+  - [x] Implement `CPC_MODE1_FAST` (force shift=0, `nr` kernel only, no shift table) (§3,§8) — same mechanism as M0 FAST, reusing the Mode-1 nibble assets
+  - [x] Implement `CPC_MODE2_FAST` (8-px aligned, `nr` only; reclaims the most RAM — largest rottbl) (§3,§8) — added at user request; same mechanism, reusing the ZX 1bpp assets
+  - [x] Test pass under all three FAST modes (§12) — `make run-cpc-sprite-mode{2,0,1}-fast`; verified in cap32 (masked balls byte-aligned over the per-mode grids, all clean)
+  - [x] Regression gate: ZX byte-for-byte (`959048ee…`) + 9 taps + all CPC modes incl. FAST green (§12)
 
 - [ ] **Phase 9 — Toolchain matrix & docs**
   - [ ] Parameterise the Makefile by `JSP_TARGET` and `JSP_CPC_MODE` with a build-matrix target (§11)
@@ -129,4 +130,4 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [ ] Confirm with user that baked-in pixel colour (no dynamic recolour) is acceptable for first CPC milestone (§6,risk4)
   - [ ] Confirm the Mode 2 memory budget (tables + rottbl + program) fits below `0xC000` (§9,risk6)
   - [ ] Measure the 2000-cell / 250-group redraw cost early vs the ZX 768/96 baseline (§13 risk8)
-  - [ ] Definition-of-done: all 7 configs run pixel-smooth on emulator, ZX baseline unchanged, shift unit tests green (§14)
+  - [ ] Definition-of-done: all 8 configs (incl. `CPC_MODE2_FAST`) run pixel-smooth on emulator, ZX baseline unchanged, shift unit tests green (§14)

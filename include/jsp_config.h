@@ -34,8 +34,8 @@
 #ifdef JSP_TARGET_CPC
   #if ( defined( CPC_MODE0 ) + defined( CPC_MODE1 ) + defined( CPC_MODE2 ) + \
         defined( CPC_MODE1_MONO ) + defined( CPC_MODE0_FAST ) + \
-        defined( CPC_MODE1_FAST ) ) != 1
-    #error "JSP CPC build: define exactly ONE CPC mode (CPC_MODE0, CPC_MODE1, CPC_MODE2, CPC_MODE1_MONO, CPC_MODE0_FAST or CPC_MODE1_FAST)"
+        defined( CPC_MODE1_FAST ) + defined( CPC_MODE2_FAST ) ) != 1
+    #error "JSP CPC build: define exactly ONE CPC mode (CPC_MODE0, CPC_MODE1, CPC_MODE2, CPC_MODE1_MONO, CPC_MODE0_FAST, CPC_MODE1_FAST or CPC_MODE2_FAST)"
   #endif
 #endif
 
@@ -80,6 +80,9 @@
   #elif defined( CPC_MODE2 )
     #define JSP_PPB          8
     #define JSP_SHIFT_PHASES 7
+  #elif defined( CPC_MODE2_FAST )
+    #define JSP_PPB          8
+    #define JSP_SHIFT_PHASES 0    // 8-px byte-aligned fast path (no shift table)
   #endif
 
 #endif // JSP_TARGET_CPC

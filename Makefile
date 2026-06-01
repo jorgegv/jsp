@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -306,6 +306,58 @@ cpc-sprite-mode0: $(SPRITE_MASK2_M0_ASM)
 # Build and screenshot the CPC Mode 0 sprite test headless in cap32
 run-cpc-sprite-mode0: cpc-sprite-mode0
 	./tools/cap32-shot.sh $(CPC_SPR_M0_NAME).dsk $(CPC_SPR_M0_NAME)
+
+## CPC (Phase 8) — FAST variants: byte-aligned sprites (xrot forced to 0), no
+## shift table, NR kernel only.  Built from the SAME Mode 0/1 sprite tests +
+## assets with CPC_MODE=0_FAST / 1_FAST -> -DCPC_MODE0_FAST / -DCPC_MODE1_FAST.
+## The geom include forces JSP_XROT_MASK=0 (xrot always 0) and JSP_SHIFT_PHASES=0
+## (jsp_init_rottbl builds no table); the lb/middle kernels already redirect the
+## aligned case (rottbl_msb == jsp_rottbl/256 - 2) to the NR kernel, so FAST needs
+## no new kernels — only the compile-time guards.  Visibly: sprite0 (1 px/frame)
+## snaps to 8-px (M2) / 2-px (M0) / 4-px (M1) byte boundaries instead of sub-pixel
+## stepping.  Mode 2 FAST claws back the most RAM (the M2 rottbl is the largest).
+CPC_SPR_M2F_NAME = CPCSPR2F
+CPC_SPR_M0F_NAME = CPCSPR0F
+CPC_SPR_M1F_NAME = CPCSPR1F
+
+# Build the CPC Mode 2 FAST sprite test (.dsk) — byte-aligned (8-px) sprites
+cpc-sprite-mode2-fast: CPC_MODE := 2_FAST
+cpc-sprite-mode2-fast: $(SPRITE_MASK2_ASM)
+	echo Building CPC Mode 2 FAST sprite test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_sprite.c $(SPRITE_MASK2_ASM) $(CPC_LIB_SRCS) \
+		-o $(CPC_SPR_M2F_NAME) -m
+	echo "Created $(CPC_SPR_M2F_NAME).dsk"
+
+# Build and screenshot the CPC Mode 2 FAST sprite test headless in cap32
+run-cpc-sprite-mode2-fast: cpc-sprite-mode2-fast
+	./tools/cap32-shot.sh $(CPC_SPR_M2F_NAME).dsk $(CPC_SPR_M2F_NAME)
+
+# Build the CPC Mode 0 FAST sprite test (.dsk) — byte-aligned (2-px) sprites
+cpc-sprite-mode0-fast: CPC_MODE := 0_FAST
+cpc-sprite-mode0-fast: $(SPRITE_MASK2_M0_ASM)
+	echo Building CPC Mode 0 FAST sprite test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_sprite_mode0.c $(SPRITE_MASK2_M0_ASM) $(CPC_LIB_SRCS) \
+		-o $(CPC_SPR_M0F_NAME) -m
+	echo "Created $(CPC_SPR_M0F_NAME).dsk"
+
+# Build and screenshot the CPC Mode 0 FAST sprite test headless in cap32
+run-cpc-sprite-mode0-fast: cpc-sprite-mode0-fast
+	./tools/cap32-shot.sh $(CPC_SPR_M0F_NAME).dsk $(CPC_SPR_M0F_NAME)
+
+# Build the CPC Mode 1 FAST sprite test (.dsk) — byte-aligned (4-px) sprites
+cpc-sprite-mode1-fast: CPC_MODE := 1_FAST
+cpc-sprite-mode1-fast: $(SPRITE_MASK2_M1_ASM)
+	echo Building CPC Mode 1 FAST sprite test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_sprite_mode1.c $(SPRITE_MASK2_M1_ASM) $(CPC_LIB_SRCS) \
+		-o $(CPC_SPR_M1F_NAME) -m
+	echo "Created $(CPC_SPR_M1F_NAME).dsk"
+
+# Build and screenshot the CPC Mode 1 FAST sprite test headless in cap32
+run-cpc-sprite-mode1-fast: cpc-sprite-mode1-fast
+	./tools/cap32-shot.sh $(CPC_SPR_M1F_NAME).dsk $(CPC_SPR_M1F_NAME)
 
 # Build the CPC Mode 2 sprite DEMO (.dsk) — balls bounce continuously (watch live: cap32 -a 'run"CPCSPRD.' CPCSPRD.dsk)
 cpc-sprite-demo-mode2: $(SPRITE_MASK2_ASM)

@@ -222,9 +222,11 @@ shift   (phase)     = x_pixels &  (ppb-1)        ; 0..ppb-1
 
 - M0: ppb=2 → 1 shift phase (offset 0/1).  M1: ppb=4 → 3 phases (1..3).
   M2: ppb=8 → 7 phases (1..7), identical to ZX.
-- **FAST modes** (`CPC_MODE0_FAST`, `CPC_MODE1_FAST`): discard the sub-byte bits
-  entirely (`shift` forced to 0) → byte-aligned, no shift kernel, fast path.
-  `CPC_MODE0_FAST` = 2-px positioning, `CPC_MODE1_FAST` = 4-px positioning.
+- **FAST modes** (`CPC_MODE0_FAST`, `CPC_MODE1_FAST`, `CPC_MODE2_FAST`): discard
+  the sub-byte bits entirely (`shift` forced to 0) → byte-aligned, no shift
+  kernel, fast path.  `CPC_MODE0_FAST` = 2-px positioning, `CPC_MODE1_FAST` =
+  4-px positioning, `CPC_MODE2_FAST` = 8-px positioning (`CPC_MODE2_FAST` claws
+  back the most RAM — the M2 rottbl is the largest, 3584 B).
 - Y is the scan-line directly (1-px vertical free in every mode, analysis §4);
   `r0 = y >> 3`, `yrot = y & 7` is unchanged (8 lines/cell) — but the `& 0x1F`
   cap on `r0`/`c0` in `lib/jsp_frame.asm` must be widened (see §2 consequences).
@@ -428,6 +430,7 @@ mode-dependent constant the rest of the code reads:
 | `CPC_MODE1_MONO`       | 4   | 3            | 80×25            | 4×8           | M1 nibble       | per-pixel (1bpp assets) |
 | `CPC_MODE0_FAST`       | 2   | 0 (aligned)  | 80×25            | 2×8           | none (`nr`)     | per-pixel (16)          |
 | `CPC_MODE1_FAST`       | 4   | 0 (aligned)  | 80×25            | 4×8           | none (`nr`)     | per-pixel (4)           |
+| `CPC_MODE2_FAST`       | 8   | 0 (aligned)  | 80×25            | 8×8           | none (`nr`)     | mono/screen (2)         |
 
 - A `JSP_TARGET_ZX` / `JSP_TARGET_CPC` umbrella guard gates the platform layer
   (screen addr, colour, descriptor width); the `CPC_MODE*` guard refines the
@@ -489,8 +492,8 @@ config macros (`JSP_GRID_COLS × JSP_GRID_ROWS`), not the constant 2000:
 
 > The concrete, per-mode **in-memory byte formats** (tiles + `LOAD1`/`MASK2`
 > sprites, columns-major layout, sub-cell-Y padding, shift encoding) are
-> documented authoritatively in **`doc/CPC-ASSETS-FORMAT.md`** (Mode 2 done;
-> Mode 1/0/MONO/FAST stubbed). This section is the design rationale.
+> documented authoritatively in **`doc/CPC-ASSETS-FORMAT.md`** (Mode 2/1/0/MONO
+> and the FAST variants all done). This section is the design rationale.
 
 **ZX:** `gfxgen.pl` (external `../zxtools/`) emits ZX 1bpp `mask2` (interleaved
 `(mask,graph)` byte pairs) / `load1` (graph only), columns-major with extra
@@ -671,8 +674,14 @@ pass under `CPC_MODE0`. If the choice differs from the Mode-2 default, reconcile
 Mode 1 and the §2/§9 figures to it.
 
 **Phase 8 — FAST variants.**
-`CPC_MODE0_FAST` / `CPC_MODE1_FAST`: force `shift=0`, use only the `nr` kernel,
-skip the shift table. A thin compile-time fast path over Modes 0/1.
+`CPC_MODE0_FAST` / `CPC_MODE1_FAST` / `CPC_MODE2_FAST`: force `shift=0`, use only
+the `nr` kernel, skip the shift table. A thin compile-time fast path over Modes
+0/1/2 — no new kernels: the geom include forces `JSP_XROT_MASK=0` (xrot always 0)
+and `JSP_SHIFT_PHASES=0` (an empty rottbl), and the `lb`/middle kernels already
+redirect the aligned case (`rottbl_msb == jsp_rottbl/256 - 2`) to the `nr` kernel,
+so the entire FAST render path is the existing aligned-cell copy.  Positioning is
+2-px (M0) / 4-px (M1) / 8-px (M2); `CPC_MODE2_FAST` reclaims the most RAM (the M2
+rottbl is the largest at 3584 B).
 
 **Phase 9 — Toolchain matrix & docs.**
 Finalise the `JSP_TARGET`/`JSP_CPC_MODE` Makefile matrix, CPC emulator run
@@ -725,8 +734,9 @@ this plan.
 
 ## 14. Definition of done
 
-- All seven configs (`CPC_MODE0/1/2`, `CPC_MODE1_MONO`, `CPC_MODE0_FAST`,
-  `CPC_MODE1_FAST`) build and run pixel-smooth sprites on a CPC emulator.
+- All eight configs (`CPC_MODE0/1/2`, `CPC_MODE1_MONO`, `CPC_MODE0_FAST`,
+  `CPC_MODE1_FAST`, `CPC_MODE2_FAST`) build and run pixel-smooth sprites on a CPC
+  emulator.
 - The ZX build and all ZX tests remain byte-for-byte unchanged (Phase 0
   baseline holds).
 - Per-mode shift/mask unit tests pass against the real asset byte format.
