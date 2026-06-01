@@ -25,8 +25,14 @@ PROFILE_TOP	= 25
 
 INCLUDE_DIR	= include
 
-C_SRCS		= $(wildcard lib/*.c) $(wildcard *.c)
-ASM_SRCS	= $(wildcard lib/*.asm) $(wildcard *.asm)
+# Platform selection: compile lib/ (platform-independent) plus the platform
+# layer in lib/$(JSP_TARGET)/.  Defaults to the ZX target.  See §1.3 of
+# doc/CPC-TARGET-PLAN.md.
+JSP_TARGET	?= zx
+PLATDIR		= lib/$(JSP_TARGET)
+
+C_SRCS		= $(wildcard lib/*.c) $(wildcard $(PLATDIR)/*.c) $(wildcard *.c)
+ASM_SRCS	= $(wildcard lib/*.asm) $(wildcard $(PLATDIR)/*.asm) $(wildcard *.asm)
 
 C_OBJS		= $(C_SRCS:.c=.o)
 ASM_OBJS	= $(ASM_SRCS:.asm=.o)
@@ -80,6 +86,7 @@ clean: clean-tests
 	echo Cleaning up...
 	-rm -f $(BIN) $(TAP) *.{map,lst,o,lis,sym,bin} 2>/dev/null
 	-rm -f lib/*.{map,lst,o,lis,sym,bin} 2>/dev/null
+	-rm -f lib/zx/*.{map,lst,o,lis,sym,bin} lib/cpc/*.{map,lst,o,lis,sym,bin} 2>/dev/null
 
 ## binary
 $(BIN): $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS)
@@ -109,7 +116,8 @@ profile: $(TAP)
 ## tests
 
 TESTS_DIR	= tests
-LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm)
+LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) \
+		  $(wildcard $(PLATDIR)/*.c) $(wildcard $(PLATDIR)/*.asm)
 
 SPRITE_MASK2_ASM = $(TESTS_DIR)/test_sprite_mask2.asm
 SPRITE_LOAD1_ASM = $(TESTS_DIR)/test_sprite_load1.asm

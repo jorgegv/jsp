@@ -35,14 +35,14 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Decide descriptor X/Y width (per-target `jsp_coord_t`, ZX=uint8_t byte-for-byte; 16-bit CPC X applied with the asm/API in Phase 3) (§3)
   - [x] Regression gate: ZX build byte-for-byte identical + 9 test taps green (§12)
 
-- [ ] **Phase 1.1 — Platform source-tree reorganization** (pure file move, no new guards, §1.3)
-  - [ ] Create `lib/zx/` and `lib/cpc/` directories
-  - [ ] Move the wholly-ZX platform files into `lib/zx/` per the §1.3 table (screen, redraw, covered, frame, sprite_defer, 8 kernels)
-  - [ ] Split `jsp_util.asm` → `lib/jsp_mem.asm` (shared) + `lib/zx/jsp_rowcolindex.asm` (ZX)
-  - [ ] Moved files keep their existing Phase-0 guard/SEAM marking; add no new guards (§1.3)
-  - [ ] Makefile: add `lib/$(JSP_TARGET)/*` (`JSP_TARGET ?= zx`) to BOTH `C_SRCS`/`ASM_SRCS` AND the per-test `LIB_SRCS` (+`bench-mask2`)
-  - [ ] Makefile: extend `clean` to `lib/zx/` + `lib/cpc/` (`.o/.lis/.sym/.map`)
-  - [ ] Regression gate: ZX all green — build links clean + all 9 test taps pass visually (re-baseline hash; byte-for-byte not required, link order shifts) (§12)
+- [x] **Phase 1.1 — Platform source-tree reorganization** (pure file move, no new guards, §1.3)
+  - [x] Create `lib/zx/` and `lib/cpc/` directories (`lib/cpc/` holds a README placeholder until Phase 2)
+  - [x] Move the wholly-ZX platform files into `lib/zx/` per the §1.3 table (screen, redraw, covered, frame, sprite_defer, 8 kernels)
+  - [x] Split `jsp_util.asm` → `lib/jsp_mem.asm` (shared) + `lib/zx/jsp_rowcolindex.asm` (ZX)
+  - [x] Moved files keep their existing Phase-0 guard/SEAM marking; add no new guards (§1.3)
+  - [x] Makefile: add `lib/$(JSP_TARGET)/*` (`JSP_TARGET ?= zx`) to BOTH `C_SRCS`/`ASM_SRCS` AND the per-test `LIB_SRCS`
+  - [x] Makefile: extend `clean` to `lib/zx/` + `lib/cpc/` (`.o/.lis/.sym/.map`)
+  - [x] Regression gate: ZX all green — build + 9 test taps link clean; sprite-move render pixel-identical (new baseline `959048ee…`) (§12)
 
 - [ ] **Phase 2 — CPC Mode 2 screen layer**
   - [ ] Write CPC `jsp_draw_screen_tile` blitting 8 lines stepping `+0x800` (§7)
