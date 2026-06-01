@@ -9,7 +9,9 @@ tables/kernels, pixel encoding, screen addressing, mask/composite) is swapped.
 
 **Required reading first:** `doc/refs/CPC-SPRITE-ENGINE-ANALYSIS.md` (the
 strategic context and the per-mode shift mechanics, §4, §8, §11.1) and
-`doc/ENGINE.md` (the ZX engine this plan ports).
+`doc/ENGINE.md` (the ZX engine this plan ports). The cell/tile-size model
+(byte-cell vs pixel-cell, §2) is an open, deferred decision analysed separately
+in `doc/CPC-TILE-SIZE-ANALYSIS.md`.
 
 ---
 
@@ -66,28 +68,52 @@ The grid is fixed 32×24 = 768 cells.
 *all three modes*. The mode only changes how many pixels a byte holds
 (2/4/8 for M0/M1/M2). So the byte grid is always 80 columns wide.
 
-**Decision — keep "cell = 8 lines × 1 byte" (8 bytes) for every CPC mode.**
+**Provisional decision — "cell = 8 lines × 1 byte" (8 bytes) for the Mode-2
+bring-up; the Mode-0/1 cell model is an OPEN, deferred decision.**
 
-- Preserves every **screen/scratch** 8-byte invariant above → the covered-cell
-  compositor, the scratch, the seed copy, the BTT-as-8-byte-tile model carry
-  over unchanged.
+There are two viable cell models, and they are **identical in Mode 2** (8 px =
+8 bytes = a 1-byte cell either way), so the choice only affects Mode 0/1 and need
+not be made until then. They are analysed in full in
+**`doc/CPC-TILE-SIZE-ANALYSIS.md`**:
+
+- **Model A — "byte-cell"** (this section's working assumption): cell = 8 bytes
+  always; grid 80×25 in every mode; cell pixel-width = 2/4/8 px (M0/M1/M2).
+  Keeps the sprite compositor/scratch/grid math simplest and most ZX-like, at the
+  cost of multi-cell glyphs/tiles in M0/M1 (a char/tile spans 2–4 cells) and
+  `cols` measured in 2-px byte units.
+- **Model B — "pixel-cell"**: cell = 8×8 px always; cell byte-width = 32/16/8 B;
+  grid = 20×25 / 40×25 / 80×25. Keeps the tilemap/text/sprite-footprint semantics
+  identical to ZX (1 cell = 1 tile = 1 char), needs less table RAM and less
+  per-cell overhead in M0/M1 (likely *faster* there — total pixel work is equal,
+  coarser cells just cut per-cell overhead), at the cost of a more complex
+  covered-cell compositor (intra-cell byte-column mapping) and a Mode-0
+  20-column DTT-alignment wrinkle (20 is not a multiple of 8).
+
+**Decision is deferred** and will be made for Mode 0/1 by prototyping the Mode-0
+compositor **both ways** and measuring (T-states, code size, RAM, tile/text
+complexity) — see `CPC-TILE-SIZE-ANALYSIS.md` "Decision process". To keep both
+open, the engine is **parameterized** (Phase 1): `JSP_CELL_BYTES`,
+`JSP_GRID_COLS`, `JSP_GRID_ROWS` (and the derived cell count) are config macros,
+not hard-coded. The rest of this section describes **Model A**, the Mode-2
+working assumption; figures that differ under Model B are flagged.
+
+Under Model A:
+- The **screen/scratch** 8-byte invariants are preserved → the covered-cell
+  compositor, the scratch, the seed copy, the BTT-as-8-byte-tile model carry over
+  unchanged. (Under Model B the kernel/scratch can still stay 8 bytes by looping
+  the byte-column kernel over each cell's 1/2/4 byte-columns — see the analysis.)
 - The **source `mask2` cell stays 16 bytes** (mask+graph), `load1` 8 bytes, in
   every CPC mode — but for M0/M1 those bytes are now *planar-in-byte* pixels and
   the mask byte is planar too (§5, §10). `cs` / rowstride math is unchanged; only
   the *meaning* of the bytes changes per mode.
-- Grid becomes **80 columns × 25 rows = 2000 cells** in every mode.
-- A cell therefore spans a *mode-dependent pixel width*: M0 = 2 px, M1 = 4 px,
-  M2 = 8 px wide (always 8 px tall). Sprite `cols` is a count of **bytes**, not
-  pixels — exactly as ZX `cols` is already a byte count (8 px) that happens to
-  equal pixel-cells there.
+- Grid is **80 columns × 25 rows = 2000 cells** in every mode (Model B: 500/1000/
+  2000 for M0/M1/M2).
+- A cell spans a *mode-dependent pixel width*: M0 = 2 px, M1 = 4 px, M2 = 8 px
+  wide (always 8 px tall). Sprite `cols` is a count of **bytes**, not pixels
+  (Model B: `cols` is 8-px tiles, exactly as ZX).
 
-**Rejected alternative:** "cell = 8×8 *pixels*, variable byte width"
-(M0 = 4 B, M1 = 2 B, M2 = 1 B wide). This keeps a 32-ish-column grid but makes
-the per-cell byte count mode-dependent, breaking *every* 8-byte invariant and
-forcing a different scratch/blit/rowstride per mode. The whole point of §11.1 is
-to keep the high-level engine untouched; an 8-byte cell does that. Rejected.
-
-**Consequences to carry through the plan:**
+**Consequences to carry through the plan (Model A figures; Model B differs per
+`CPC-TILE-SIZE-ANALYSIS.md`):**
 
 - **Cell-indexed** tables scale from 768 → 2000 cells (§9 memory budget):
   BTT 4000 B, DTT 250 B, FTT 250 B, BAT dropped (§6). The **registry-sized**
@@ -363,9 +389,12 @@ mode-dependent constant the rest of the code reads:
 selectable slot2/slot3.
 
 **CPC:** screen occupies `0xC000-0xFFFF`. JSP tables must sit **below** the
-screen. With the 2000-cell grid (§2):
+screen. The cell-table sizes below are for the **Model-A** 2000-cell grid (§2);
+under Model B the cell count is 500/1000/2000 for M0/M1/M2 so BTT/DTT/FTT shrink
+accordingly in M0/M1 (`CPC-TILE-SIZE-ANALYSIS.md`). Size the block from the
+config macros (`JSP_GRID_COLS × JSP_GRID_ROWS`), not the constant 2000:
 
-| Table           | ZX (768 cells) | CPC (2000 cells)             |
+| Table           | ZX (768 cells) | CPC Model A (2000 cells)     |
 |-----------------|----------------|------------------------------|
 | BTT (ptr/cell)  | 1536 B         | **4000 B**                   |
 | DTT (bit/cell)  | 96 B           | **250 B**                    |
@@ -496,10 +525,13 @@ must replace and gives a green baseline to regress against.
 
 **Phase 1 — Config header & geometry.**
 `include/jsp_config.h`: per-guard `ppb`, shift phases, grid dims (cols/rows/cell
-count), cell pixel size, rottbl size, colour mode. Mutually-exclusive-mode
-compile error. Decide descriptor X/Y width strategy (§3) and apply under guard.
-Replace hard-coded `768`/`32`/`24`/`96` literals across the engine with the
-config symbols (ZX values unchanged).
+count), **cell byte size (`JSP_CELL_BYTES`) + grid dims (`JSP_GRID_COLS`,
+`JSP_GRID_ROWS`)**, rottbl size, colour mode. Exposing cell size/grid dims as
+macros (not hard-coded) keeps the byte-cell vs pixel-cell choice
+(`CPC-TILE-SIZE-ANALYSIS.md`, §2) open for M0/M1 — M2 values are identical either
+way. Mutually-exclusive-mode compile error. Decide descriptor X/Y width strategy
+(§3) and apply under guard. Replace hard-coded `768`/`32`/`24`/`96`/`8` literals
+across the engine with the config symbols (ZX values unchanged).
 
 **Phase 2 — CPC Mode 2 screen layer.**
 CPC screen addressing (§7): new `jsp_draw_screen_tile` (8 lines × `+0x800`),
@@ -527,9 +559,15 @@ Mode-1 asset emitter + shift unit test (§8.2). Resolve `CPC_MODE1_MONO` sub-
 decision (§8) and add it. Test pass under `CPC_MODE1` / `CPC_MODE1_MONO`.
 (Mode 1 is RAGE1's current CPC target, per analysis §12.)
 
-**Phase 7 — CPC Mode 0.**
-Mode-0 interleave shift (§4) + kernels (§5) + asset emitter + shift unit test
-(§8.3). Test pass under `CPC_MODE0`.
+**Phase 7 — CPC Mode 0 (+ cell-model decision).**
+Mode 0 is the extreme 4×-cell case, so this is where the **byte-cell vs
+pixel-cell decision** (`CPC-TILE-SIZE-ANALYSIS.md`, §2) is settled: prototype the
+Mode-0 covered-cell compositor **both ways** and measure (redraw T-states under a
+representative sprite load, code size, table RAM, tile/text complexity), then pick
+and record the outcome in the analysis doc. Then: Mode-0 interleave shift (§4) +
+kernels (§5) + asset emitter + shift unit test (§8.3) in the chosen model. Test
+pass under `CPC_MODE0`. If the choice differs from the Mode-2 default, reconcile
+Mode 1 and the §2/§9 figures to it.
 
 **Phase 8 — FAST variants.**
 `CPC_MODE0_FAST` / `CPC_MODE1_FAST`: force `shift=0`, use only the `nr` kernel,

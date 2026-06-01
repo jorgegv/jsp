@@ -29,8 +29,9 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
 - [ ] **Phase 1 — Config header & geometry**
   - [ ] Create `include/jsp_config.h` deriving per-guard constants from the mode (§8)
   - [ ] Define `ppb`, shift-phase count, grid cols/rows/cellcount, cell pixel size, rottbl size, colour mode per guard (§8)
+  - [ ] Expose `JSP_CELL_BYTES`/`JSP_GRID_COLS`/`JSP_GRID_ROWS` as macros to keep byte-cell vs pixel-cell open (CPC-TILE-SIZE-ANALYSIS.md, §2)
   - [ ] Add a compile error when zero or >1 mode guard is defined (§8)
-  - [ ] Replace hard-coded `768`/`32`/`24`/`96` literals across the engine with config symbols (§2)
+  - [ ] Replace hard-coded `768`/`32`/`24`/`96`/`8` literals across the engine with config symbols (§2)
   - [ ] Decide and apply the descriptor X/Y width strategy (per-target field width) (§3)
   - [ ] Regression gate: ZX build + all ZX tests green (§12)
 
@@ -79,7 +80,9 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [ ] Test pass under `CPC_MODE1` and `CPC_MODE1_MONO` (§12)
   - [ ] Regression gate: ZX green + CPC Mode 2 + Mode 1/MONO green (§12)
 
-- [ ] **Phase 7 — CPC Mode 0**
+- [ ] **Phase 7 — CPC Mode 0 (+ cell-model decision)**
+  - [ ] Prototype the Mode 0 covered-cell compositor both ways (byte-cell A / pixel-cell B) and measure (CPC-TILE-SIZE-ANALYSIS.md)
+  - [ ] Pick the cell model, record the outcome in CPC-TILE-SIZE-ANALYSIS.md, reconcile §2/§9 + Mode 1 if it differs from the M2 default
   - [ ] Add the Mode 0 odd/even interleave shift table (single phase) (§4)
   - [ ] Define the Mode 0 `rottbl_msb` / single-phase table addressing (xrot 0/1) (§4)
   - [ ] Write the Mode 0 `jsp_draw_*` kernels (§5)
