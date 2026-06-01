@@ -6,6 +6,10 @@ See [SP1-COMPARISON.md](doc/SP1-COMPARISON.md) for a comparison between SP1 and 
 
 ## Amstrad CPC
 
+**Building your own CPC program?** Start with the
+[CPC usage guide](doc/CPC-USAGE.md) — build setup, the API call sequence, mode +
+palette, and making your own sprites/tiles from PNG.
+
 JSP also targets the Amstrad CPC, keeping the high-level engine identical and
 swapping only a thin per-mode platform layer (`lib/cpc/`). Eight CPC configs are
 supported: **Mode 2/1/0** (1/4/16 colours, pixel-accurate horizontal

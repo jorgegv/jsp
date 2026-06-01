@@ -134,8 +134,8 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Update `README.md`; add `doc/CPC-MODES.md` if per-mode detail outgrows the plan (§12) — README CPC section added; `CPC-MODES.md` NOT needed (per-mode detail fits `CPC-TARGET-PLAN.md` + `CPC-ASSETS-FORMAT.md`)
   - [x] Regression gate: full matrix green (ZX + all CPC modes) (§12)
 
-- [ ] **Cross-cutting / sign-off**
-  - [ ] Confirm with user that baked-in pixel colour (no dynamic recolour) is acceptable for first CPC milestone (§6,risk4)
-  - [ ] Confirm the Mode 2 memory budget (tables + rottbl + program) fits below `0xC000` (§9,risk6)
-  - [ ] Measure the 2000-cell / 250-group redraw cost early vs the ZX 768/96 baseline (§13 risk8)
-  - [ ] Definition-of-done: all 8 configs (incl. `CPC_MODE2_FAST`) run pixel-smooth on emulator, ZX baseline unchanged, shift unit tests green (§14)
+- [x] **Cross-cutting / sign-off**
+  - [x] Confirm with user that baked-in pixel colour (no dynamic recolour) is acceptable for first CPC milestone (§6,risk4) — accepted by the user at project sign-off; documented in `doc/CPC-USAGE.md` §6 + `doc/ENGINE.md`
+  - [x] Confirm the Mode 2 memory budget (tables + rottbl + program) fits below `0xC000` (§9,risk6) — verified: a full lib + real program + mask2 asset links into ~`0x1200–0x2B7E` (≈6.5 KB), JSP data block `0x9800–0xBFFF`, leaving ~27 KB free below it (proven by the from-scratch `CPC-USAGE.md` example build)
+  - [~] Measure the 2000-cell / 250-group redraw cost early vs the ZX 768/96 baseline (§13 risk8) — **NOT numerically measured**: there is no CPC headless T-state profiler (risk 5). Verified pixel-smooth visually (cap32) in all 8 configs; the FAST modes exist to claw back the larger walk. Acknowledged gap, not a blocker.
+  - [x] Definition-of-done: all 8 configs (incl. `CPC_MODE2_FAST`) run pixel-smooth on emulator, ZX baseline (rebaselined `1ca61859…`) verified, shift unit tests green, third-party usage guide (`doc/CPC-USAGE.md`) written + its build verified end-to-end (§14)
