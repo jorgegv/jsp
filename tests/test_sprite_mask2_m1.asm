@@ -1,0 +1,116 @@
+	section data_compiler
+
+;; CPC Mode 1 sprite '_test_sprite_mask2_m1_pixels' (sprite_mask)
+;; source assets/ball.png region (0,0) 16x16 px -> 4 Mode-1 cols x 2 rows (+extra bottom row)
+;; _test_sprite_mask2_m1_pixels: 192 body bytes (cs=16)
+	;; 7 transparent pre-rows before label (safe sub-cell Y)
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+PUBLIC _test_sprite_mask2_m1_pixels
+_test_sprite_mask2_m1_pixels:
+	;; Mode-1 col 0 (orig col 0, left half)
+	db	$ff,$00		;; mask @@@@ pix ....
+	db	$ee,$00		;; mask @@@. pix ....
+	db	$cc,$00		;; mask @@.. pix ....
+	db	$88,$10		;; mask @... pix ...#
+	db	$88,$20		;; mask @... pix ..#.
+	db	$00,$20		;; mask .... pix ..#.
+	db	$00,$50		;; mask .... pix .#.#
+	db	$00,$50		;; mask .... pix .#.#
+	db	$00,$50		;; mask .... pix .#.#
+	db	$00,$40		;; mask .... pix .#..
+	db	$00,$20		;; mask .... pix ..#.
+	db	$88,$20		;; mask @... pix ..#.
+	db	$88,$10		;; mask @... pix ...#
+	db	$cc,$00		;; mask @@.. pix ....
+	db	$ee,$00		;; mask @@@. pix ....
+	db	$ff,$00		;; mask @@@@ pix ....
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	;; Mode-1 col 1 (orig col 0, right half)
+	db	$88,$00		;; mask @... pix ....
+	db	$00,$30		;; mask .... pix ..##
+	db	$00,$c0		;; mask .... pix ##..
+	db	$00,$30		;; mask .... pix ..##
+	db	$00,$e0		;; mask .... pix ###.
+	db	$00,$c0		;; mask .... pix ##..
+	db	$00,$80		;; mask .... pix #...
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$c0		;; mask .... pix ##..
+	db	$00,$30		;; mask .... pix ..##
+	db	$88,$00		;; mask @... pix ....
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	;; Mode-1 col 2 (orig col 1, left half)
+	db	$11,$00		;; mask ...@ pix ....
+	db	$00,$c0		;; mask .... pix ##..
+	db	$00,$30		;; mask .... pix ..##
+	db	$00,$80		;; mask .... pix #...
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$00		;; mask .... pix ....
+	db	$00,$30		;; mask .... pix ..##
+	db	$00,$c0		;; mask .... pix ##..
+	db	$11,$00		;; mask ...@ pix ....
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	;; Mode-1 col 3 (orig col 1, right half)
+	db	$ff,$00		;; mask @@@@ pix ....
+	db	$77,$00		;; mask .@@@ pix ....
+	db	$33,$00		;; mask ..@@ pix ....
+	db	$11,$80		;; mask ...@ pix #...
+	db	$11,$40		;; mask ...@ pix .#..
+	db	$00,$40		;; mask .... pix .#..
+	db	$00,$20		;; mask .... pix ..#.
+	db	$00,$20		;; mask .... pix ..#.
+	db	$00,$20		;; mask .... pix ..#.
+	db	$00,$20		;; mask .... pix ..#.
+	db	$00,$40		;; mask .... pix .#..
+	db	$11,$40		;; mask ...@ pix .#..
+	db	$11,$80		;; mask ...@ pix #...
+	db	$33,$00		;; mask ..@@ pix ....
+	db	$77,$00		;; mask .@@@ pix ....
+	db	$ff,$00		;; mask @@@@ pix ....
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+	db	$ff,$00
+;;;;;;

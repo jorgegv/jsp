@@ -126,6 +126,8 @@ LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) \
 
 SPRITE_MASK2_ASM = $(TESTS_DIR)/test_sprite_mask2.asm
 SPRITE_LOAD1_ASM = $(TESTS_DIR)/test_sprite_load1.asm
+SPRITE_MASK2_M1_ASM = $(TESTS_DIR)/test_sprite_mask2_m1.asm
+SPRITE_LOAD1_M1_ASM = $(TESTS_DIR)/test_sprite_load1_m1.asm
 
 TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
 		  test_sprite_move test_pool_and_colour test_tiles_and_print \
@@ -317,3 +319,22 @@ $(TESTS_DIR)/test_sprite_load1.asm:
 		-m FF0000 -f FFFFFF -b 000000 \
 		--code-type asm -s _test_sprite_load1_pixels \
 		-g sprite_load -l columns --extra-bottom-row --extra-top-rows > $@
+
+## CPC Mode-1 sprite assets (two-nibble-plane planar, in-repo tools/cpcgfx.pl,
+## plan §10).  Same source art as the ZX/Mode-2 assets, re-encoded to Mode 1:
+## each 8-px ZX column becomes two 4-px Mode-1 columns, so a 16x16 ball is 4
+## Mode-1 cols wide (the test descriptors use cols=4).  Symbol names carry a
+## _m1 suffix so a build can link Mode-1 and Mode-2 assets side by side.
+## (SPRITE_*_M1_ASM are defined near SPRITE_*_ASM above.)
+
+$(TESTS_DIR)/test_sprite_mask2_m1.asm:
+	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 --mode 1 \
+		-s _test_sprite_mask2_m1_pixels \
+		-g sprite_mask --extra-bottom-row --extra-top-rows > $@
+
+$(TESTS_DIR)/test_sprite_load1_m1.asm:
+	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 --mode 1 \
+		-s _test_sprite_load1_m1_pixels \
+		-g sprite_load --extra-bottom-row --extra-top-rows > $@
