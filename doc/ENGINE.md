@@ -207,8 +207,11 @@ sub-byte shift lives entirely in `jsp_rottbl` (mode-selected encoding: Mode 2
 1bpp-linear / Mode 1 nibble-plane / Mode 0 odd-even interleave), so the composite
 kernels are **shared and table-driven** across modes.  The **FAST** modes
 (`CPC_MODE2/1/0_FAST`) force `shift = 0` (byte-aligned positioning, 8/4/2-px
-granularity) and build no shift table; the kernels already redirect the aligned
-case to the no-rotate path, so FAST is purely a compile-time fast path.
+granularity), build no shift table, and **compile the six rotating composite
+kernels out** — the covered-cell compositor calls the no-rotate kernel directly
+(guarded by the OR of the `CPC_MODE*_FAST` flags), so a FAST binary carries
+neither the rotation table nor the rotating kernel code (~1 KB), at a coarser
+horizontal granularity.
 
 **CPC memory map (Model A, all modes packed below the `C000` screen).**  Sizes:
 ROTTBL ≤ 3584 B (Mode 2; Mode 1 1536, Mode 0 512, FAST 0), BTT 4000, DTT 250,

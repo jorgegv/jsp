@@ -32,12 +32,19 @@
 	extern _jsp_frame_sprites
 	extern _jsp_btt
 	extern _jsp_current_rottbl_msb
+	IF CPC_MODE0_FAST || CPC_MODE1_FAST || CPC_MODE2_FAST
+	; FAST (byte-aligned): only the no-rotate kernels exist; the rotating
+	; kernels are not assembled (see lib/cpc/jsp_draw_*.asm).
+	extern _jsp_draw_load1nr
+	extern _jsp_draw_mask2nr
+	ELSE
 	extern _jsp_draw_load1
 	extern _jsp_draw_load1lb
 	extern _jsp_draw_load1rb
 	extern _jsp_draw_mask2
 	extern _jsp_draw_mask2lb
 	extern _jsp_draw_mask2rb
+	ENDIF
 	extern jsp_draw_screen_tile_saddr
 
 	public _jsp_redraw_covered_cell
@@ -225,6 +232,28 @@ cc_i_add:
 cc_no_i:
 	ld (cc_graph),hl
 
+	IF CPC_MODE0_FAST || CPC_MODE1_FAST || CPC_MODE2_FAST
+
+;; ---- FAST (byte-aligned): straight no-rotate copy of this column ----
+;; xrot is forced to 0, so every covering cell maps to exactly one source
+;; column — there is no sub-byte shift, no left/right border and no
+;; graph_left.  Call the no-rotate kernel with (dst, graph); no rotating
+;; kernel (or its rottbl redirect) is linked into a FAST binary.
+	ld de,cc_scratch
+	push de				; dst
+	ld de,(cc_graph)
+	push de				; graph
+	ld a,(ix+5)			; ismask2
+	or a
+	jr nz,cc_fast_mask
+	call _jsp_draw_load1nr
+	jr cc_comp_next
+cc_fast_mask:
+	call _jsp_draw_mask2nr
+	jr cc_comp_next
+
+	ELSE
+
 	;; dispatch: j==0 left border, j>=cols right border, else middle
 	ld a,(cc_j)
 	or a
@@ -281,6 +310,8 @@ cc_draw_rb:
 	jr cc_comp_next
 cc_rb_mask:
 	call _jsp_draw_mask2rb
+
+	ENDIF			; CPC_MODE*_FAST
 
 ;; SEAM (CPC, §6): no sprite colour merge — colour is baked into the pixels.
 

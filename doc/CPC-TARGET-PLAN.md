@@ -679,11 +679,20 @@ Mode 1 and the §2/§9 figures to it.
 `CPC_MODE0_FAST` / `CPC_MODE1_FAST` / `CPC_MODE2_FAST`: force `shift=0`, use only
 the `nr` kernel, skip the shift table. A thin compile-time fast path over Modes
 0/1/2 — no new kernels: the geom include forces `JSP_XROT_MASK=0` (xrot always 0)
-and `JSP_SHIFT_PHASES=0` (an empty rottbl), and the `lb`/middle kernels already
-redirect the aligned case (`rottbl_msb == jsp_rottbl/256 - 2`) to the `nr` kernel,
-so the entire FAST render path is the existing aligned-cell copy.  Positioning is
-2-px (M0) / 4-px (M1) / 8-px (M2); `CPC_MODE2_FAST` reclaims the most RAM (the M2
-rottbl is the largest at 3584 B).
+and `JSP_SHIFT_PHASES=0` (an empty rottbl).  Positioning is 2-px (M0) / 4-px (M1)
+/ 8-px (M2); `CPC_MODE2_FAST` reclaims the most RAM (the M2 rottbl is the largest
+at 3584 B).
+
+A shifting build keeps a *runtime* redirect — when an individual sprite lands
+byte-aligned, `jsp_frame.asm` writes `rottbl_msb == jsp_rottbl/256 - 2` and the
+`lb`/middle kernels `jp` to the `nr` kernel.  A **FAST build goes further: it
+compiles the six rotating kernels OUT entirely** (they are wrapped in
+`IF CPC_MODE0_FAST || CPC_MODE1_FAST || CPC_MODE2_FAST` / `ELSE` / `ENDIF`, the OR
+of the three existing FAST flags — no new symbol), and `lib/cpc/jsp_covered.asm`
+dispatches the `nr` kernel directly under the same guard (skipping `graph_left`
+and the border decision).  So a FAST binary carries **no rotation table *and* no
+rotating kernel code** (~1 KB saved) with a shorter per-cell path.  See
+`doc/CPC-ASSETS-FORMAT.md` §5.
 
 **Phase 9 — Toolchain matrix & docs.**
 Finalise the `JSP_TARGET`/`JSP_CPC_MODE` Makefile matrix, CPC emulator run

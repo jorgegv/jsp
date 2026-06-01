@@ -323,13 +323,38 @@ same emitted assets (`CPC_MODE2_FAST` reuses the ZX/Mode-2 1bpp `test_sprite_*`,
 granularity (8 px for Mode 2, 4 px for Mode 1, 2 px for Mode 0) and the absence
 of sub-byte shifting differ.
 
-**No new kernels and no asset change.**  The lb/middle composite kernels already
-detect the aligned case (`jsp_current_rottbl_msb == jsp_rottbl/256 - 2`, which is
-exactly what `jsp_frame.asm` writes when `xrot == 0`) and `jp` to the `nr` kernel.
-FAST builds simply guarantee that condition for every cell — the geom include
-(`lib/cpc/jsp_cpc_geom.inc`) sets `JSP_XROT_MASK = 0`, and `jsp_init_rottbl`
-builds an empty table (`JSP_SHIFT_PHASES = 0`).  `CPC_MODE2_FAST` reclaims the
-most RAM, since the Mode-2 rottbl is the largest (3584 B → 0).
+**No asset change.**  FAST builds simply guarantee byte alignment for every cell:
+the geom include (`lib/cpc/jsp_cpc_geom.inc`) sets `JSP_XROT_MASK = 0` (xrot
+always 0) and `jsp_init_rottbl` builds an empty table (`JSP_SHIFT_PHASES = 0`).
+`CPC_MODE2_FAST` reclaims the most RAM, since the Mode-2 rottbl is the largest
+(3584 B → 0).
+
+**The rotating kernels are compiled OUT of a FAST binary (not merely bypassed).**
+A non-FAST build relies on a *runtime* redirect: when a sprite happens to land
+byte-aligned (`xrot == 0`), `jsp_frame.asm` writes `rottbl_msb == jsp_rottbl/256
+- 2`, and the lb/middle composite kernels detect that and `jp` to the `nr` kernel.
+That redirect still exists for the occasional aligned sprite in a *shifting*
+build.  In a FAST build, where *every* cell is aligned, the redirect would be
+pure overhead and the six rotating kernels (`mask2`/`load1` × middle/`lb`/`rb`)
+would be dead code, so they are removed at assembly time:
+
+- The six `lib/cpc/jsp_draw_*` rotating kernels are wrapped in
+  `IF CPC_MODE0_FAST || CPC_MODE1_FAST || CPC_MODE2_FAST` … `ELSE` … `ENDIF`, so
+  in a FAST build they assemble to nothing (no symbol, no code linked).  The two
+  `nr` kernels (`jsp_draw_mask2nr`, `jsp_draw_load1nr`) are always present.
+- The covered-cell compositor (`lib/cpc/jsp_covered.asm`) has a matching FAST
+  dispatch under the same guard: it skips the `graph_left` computation and the
+  left/right-border decision entirely and `call`s the `nr` kernel directly with
+  `(dst, graph)`.
+- The guard is the **OR of the three existing `CPC_MODE*_FAST` flags** — no new
+  "is-FAST" symbol is introduced (z80asm treats an undefined symbol as 0 in an
+  `IF` expression, so the OR is true iff one FAST mode is defined).
+
+Net effect of a FAST build vs the corresponding shifting mode: **no rotation
+table** (RAM saved: 3584/1536/512 B for M2/M1/M0 → 0) **and no rotating kernel
+code** (~1 KB of composite kernels gone), with a shorter per-cell path (no
+redirect prologue, no `graph_left`).  Verified: the FAST maps contain only the
+`nr` kernels; the rotating kernel symbols are absent.
 
 No shift unit test is needed (no shift); the no-rotate render is confirmed by
 `make run-cpc-sprite-mode{2,0,1}-fast` (masked balls byte-aligned over the
