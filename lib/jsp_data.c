@@ -21,6 +21,12 @@
 //                             (useful for 128K bank switching)
 /////////////////////////////////////////////////////////////////////
 
+// SEAM (ZX-specific, doc/CPC-TARGET-PLAN.md §9): these __at addresses and table
+// sizes are the ZX memory map (768 cells, block at the top of RAM).  The CPC
+// target needs a different placement (tables sized for 2000 cells, block below
+// the 0xC000 screen) under JSP_TARGET_CPC — added in Phase 2.  Until then a CPC
+// build deliberately falls through to the ZX layout, which is wrong for CPC;
+// Phase 2 introduces the JSP_TARGET_CPC branch here.
 #ifdef JSPDATA_SLOT2
     #define ROTTBL_ADDR		0xB200
     #define BTT_ADDR		0xAC00

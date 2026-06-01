@@ -1,3 +1,4 @@
+	IFNDEF JSP_TARGET_CPC		; ZX-only platform layer (seam, doc/CPC-TARGET-PLAN.md §7); CPC provides its own
 	section code_compiler
 
 ;; screen drawing functions
@@ -89,3 +90,5 @@ _jsp_draw_screen_tile_attr:
 			; DE = src data
 
 	jp jsp_draw_screen_tile_regs
+
+	ENDIF			; JSP_TARGET_CPC

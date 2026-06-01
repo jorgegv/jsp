@@ -276,6 +276,7 @@ cc_rb_mask:
 	call _jsp_draw_mask2rb
 
 ;; ---- apply sprite colour (skipped when color == 0) ----
+;; SEAM (ZX, doc/CPC-TARGET-PLAN.md §6): ZX attribute colour merge — no-op on CPC (colour is in the pixels).
 cc_after_draw:
 	ld a,(cc_color)
 	or a
@@ -320,6 +321,7 @@ cc_do_draw:
 	ld l,a
 	call jsp_draw_screen_tile_regs
 
+;; SEAM (ZX, doc/CPC-TARGET-PLAN.md §6): ZX attribute RAM store — dropped on CPC.
 	;; *(0x5800 + cell) = cc_attr
 	ld hl,(cc_cell)
 	ld de,0x5800

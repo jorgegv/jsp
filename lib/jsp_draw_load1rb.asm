@@ -3,6 +3,7 @@
 ; 01.2006 aralbrec, Sprite Pack v3.0
 ; sinclair spectrum version
 
+	IFNDEF JSP_TARGET_CPC		; ZX-only platform layer (seam, doc/CPC-TARGET-PLAN.md §5); CPC provides its own
 	section code_compiler
 
 	public _JSP_DRAW_LOAD1RB
@@ -43,3 +44,5 @@ _JSP_DRAW_LOAD1RB:
 _JSPLoad1RBRotate:
 
 	jp _JSP_DRAW_LOAD1LB_ALT
+
+	ENDIF			; JSP_TARGET_CPC

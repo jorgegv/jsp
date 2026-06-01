@@ -19,12 +19,12 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Leave the standalone SP1 benchmark (`tests/bench_sp1.c`) untouched — it uses the real SP1
   - [x] Rebuild ZX + full ZX test pass green after the rename
 
-- [ ] **Phase 0 — Seam & ZX regression baseline**
-  - [ ] Add `JSP_TARGET_ZX`/`JSP_TARGET_CPC` umbrella guards (ZX default) around all platform-layer items (§1.2)
-  - [ ] Guard the screen-addressing code (`jsp_screen.asm`, `rd_rowtab`, `0x4000`/`0x5800`) as ZX-only (§7)
-  - [ ] Guard the BAT/attribute/colour code (`jsp_color.c`, BAT paints, color merge) as ZX-only (§6)
-  - [ ] Guard `jsp_rottbl` init/contents and the `jsp_draw_*` kernels (renamed in Phase R) as ZX-only (§4,§5)
-  - [ ] Capture a green ZX build + full ZX test pass as the regression baseline
+- [x] **Phase 0 — Seam & ZX regression baseline**
+  - [x] Add `JSP_TARGET_ZX`/`JSP_TARGET_CPC` umbrella guards (ZX default) via `include/jsp_target.h`; asm uses `IFNDEF JSP_TARGET_CPC` + zcc `-Ca-D` passthrough (§1.2)
+  - [x] Guard the screen-addressing code: `jsp_screen.asm` whole-file `IFNDEF`; `rd_rowtab`/`0x4000`/`0x5800` in `jsp_redraw.asm` SEAM-marked (functional split is Phase 2's CPC rewrite) (§7)
+  - [x] Guard the BAT/attribute/colour code: `jsp_color.c` body under `JSP_TARGET_ZX` (no-op on CPC); BAT paint/colour merge in `jsp_redraw`/`jsp_covered` SEAM-marked (§6)
+  - [x] Guard the 8 `jsp_draw_*` kernels whole-file `IFNDEF` (`jsp_rottbl` init left shared — CPC Mode 2 reuses it, §4) (§4,§5)
+  - [x] Capture a green ZX build + full ZX test pass as the regression baseline (main.tap byte-for-byte identical; 9 test taps green)
 
 - [ ] **Phase 1 — Config header & geometry**
   - [ ] Create `include/jsp_config.h` deriving per-guard constants from the mode (§8)

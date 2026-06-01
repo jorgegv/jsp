@@ -10,7 +10,13 @@ void jsp_sprite_set_color( struct jsp_sprite_s *sp, uint8_t color, uint8_t color
 
 // Write color to attribute memory for all cells at the sprite's current position.
 // Called after each move/draw; also exposed for manual use.
+//
+// ZX-only platform layer (seam, doc/CPC-TARGET-PLAN.md §6): this writes the ZX
+// attribute RAM at 0x5800.  The CPC has no attribute RAM (colour lives in the
+// pixel bits), so on CPC this is a no-op — colour is baked into the sprite/tile
+// pixel data instead.  The symbol stays defined so callers need no guard.
 void jsp_apply_sprite_color( struct jsp_sprite_s *sp ) {
+#ifdef JSP_TARGET_ZX
     uint8_t r, c;
     uint8_t r0, c0;
     volatile uint8_t *attr;
@@ -29,4 +35,7 @@ void jsp_apply_sprite_color( struct jsp_sprite_s *sp ) {
             *attr = ( *attr & sp->color_mask ) | ( sp->color & ~sp->color_mask );
         }
     }
+#else
+    (void) sp;   // CPC: no attribute RAM — colour is in the pixels
+#endif
 }

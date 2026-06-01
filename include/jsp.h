@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+#include "jsp_target.h"
+
 // JSP data block placement (compile-time); the names refer to the Z80's
 // 16K memory slots.  Define JSPDATA_SLOT2 to put the JSP data block in
 // slot 2 (0xA840-0xBFFF), keeping slot 3 (0xC000-0xFFFF) free of JSP

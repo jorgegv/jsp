@@ -4,6 +4,7 @@
 ; sinclair spectrum version
 ; 12.2024 adapted by zxjogv (zx@jogv.es) for JSP
 
+	IFNDEF JSP_TARGET_CPC		; ZX-only platform layer (seam, doc/CPC-TARGET-PLAN.md §5); CPC provides its own
 	section code_compiler
 
 	public _JSP_DRAW_LOAD1NR
@@ -39,3 +40,5 @@ _JSP_DRAW_LOAD1NR:
 	ldi	; why the previous 2 lines?
 
 	ret
+
+	ENDIF			; JSP_TARGET_CPC
