@@ -18,7 +18,7 @@ must produce exactly this layout; the shift/mask unit tests
 |-----------------|---------|---------|--------------|---------------|
 | Mode 2          | 8       | 2       | 7 (xrot 1–7) | **done**      |
 | Mode 1          | 4       | 4       | 3 (xrot 1–3) | TODO (Ph. 6)  |
-| Mode 1 MONO     | 8 (1bpp, = Mode 2) | 2 | 7 (= Mode 2) | TODO (Ph. 6)  |
+| Mode 1 MONO     | 8 (1bpp, = Mode 2) | 2 | TBD (§3.1)    | TODO (Ph. 6)  |
 | Mode 0          | 2       | 16      | 1 (xrot 1)   | TODO (Ph. 7)  |
 | Mode 0/1 FAST   | 2 / 4   | 16 / 4  | 0 (aligned)  | TODO (Ph. 8)  |
 
@@ -233,20 +233,25 @@ emitted encoding changes per mode, not the artwork.
 mask,graph pairs / `LOAD1` graph-only, MSB = leftmost, columns-major, the same
 pre-rows / `(rows+1)` / `cs` = 8 or 16 layout). MONO therefore **reuses the
 Mode-2 assets unchanged** (the very same `tests/test_sprite_mask2.asm` /
-`load1` files) and the **same Mode-2 1bpp shift table** (`jsp_rottbl`, 7 phases,
-`in = src>>i`, `carry = src<<(8-i)`).
+`load1` files) and the same source art — this is settled.
 
-What differs is **only the blitting kernels**: the Mode-1 MONO `jsp_draw_*`
-kernels take the (1bpp) source bytes and **expand them into the Mode-1 planar
-framebuffer at draw time** — each source pixel bit becomes a 2-colour Mode-1
-pixel (pen 1 = set, pen 0 = clear), so one 8-pixel source byte writes two Mode-1
-screen bytes (Mode 1 = 4 px/byte). The 1bpp→Mode-1 conversion lives in the
-kernel, never in the stored asset.
+The **1bpp → Mode-1 planar conversion happens in the Mode-1 MONO blitting
+kernels at draw time** (each source pixel bit becomes a 2-colour Mode-1 pixel,
+pen 1 = set / pen 0 = clear; one 8-pixel source byte writes two Mode-1 screen
+bytes, since Mode 1 = 4 px/byte). The conversion lives in the kernel, never in
+the stored asset.
 
-Consequences: the asset emitter, the `cpc-shift-test-mode1mono` shift check
-(reuses the Mode-2 1bpp shift), and the source art are all the Mode-2 ones; only
-the Mode-1-MONO kernel set is new. (This is distinct from full Mode 1 above,
-whose assets are genuinely 4-colour two-nibble-plane.)
+**OPEN (decide at MONO implementation, Phase 6):** how to split the work between
+the shift table and the blitter. Two plausible designs:
+1. reuse the existing Mode-2 1bpp shift table (`jsp_rottbl`, 7 phases,
+   `in=src>>i`/`carry=src<<(8-i)`) and put all the Mode-1 expansion in a smarter
+   blitter; or
+2. use a smarter (likely larger) MONO shift table that already produces values
+   closer to the Mode-1 layout, with a simpler blitter.
+Pick when the MONO kernels are actually written and measured; update this
+section (and the status-table "shift phases" entry, currently a guess) then.
+(This is distinct from full Mode 1 above, whose assets are genuinely 4-colour
+two-nibble-plane.)
 
 ---
 
