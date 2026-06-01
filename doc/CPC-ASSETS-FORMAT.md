@@ -9,16 +9,17 @@ not the asset *tool*. The converter (`gfxgen.pl`, or a future per-mode emitter)
 must produce exactly this layout; the shift/mask unit tests
 (`make cpc-shift-test-mode<N>`) cross-check the engine's shift tables against it.
 
-> Status: **Mode 2 is implemented and verified.** Mode 1, Mode 0 and the
-> MONO/FAST variants are specified here from the design (doc/CPC-TARGET-PLAN.md
-> §4/§8/§10) but **not yet implemented** — their sections are marked TODO and
-> must be confirmed by their own shift unit test before being relied upon.
+> Status: **Mode 2, Mode 1 and Mode 1 MONO are implemented and verified.**
+> Mode 0 and the FAST variants are specified here from the design
+> (doc/CPC-TARGET-PLAN.md §4/§8/§10) but **not yet implemented** — their sections
+> are marked TODO and must be confirmed by their own shift unit test before being
+> relied upon.
 
 | Mode            | px/byte | colours | shift phases | status        |
 |-----------------|---------|---------|--------------|---------------|
 | Mode 2          | 8       | 2       | 7 (xrot 1–7) | **done**      |
 | Mode 1          | 4       | 4       | 3 (xrot 1–3) | **done**      |
-| Mode 1 MONO     | 8 (1bpp, = Mode 2) | 2 | 3 (xrot 1–3, Mode-1 table) | TODO (Ph. 6.1) |
+| Mode 1 MONO     | 8 (1bpp, = Mode 2) | 2 | 3 (xrot 1–3, Mode-1 table) | **done**      |
 | Mode 0          | 2       | 16      | 1 (xrot 1)   | TODO (Ph. 7)  |
 | Mode 0/1 FAST   | 2 / 4   | 16 / 4  | 0 (aligned)  | TODO (Ph. 8)  |
 
@@ -234,7 +235,7 @@ emitted encoding changes per mode, not the artwork.
   pixel-array shift, plus the emitted bytes) and visually in cap32
   (`make run-cpc-sprite-mode1`).
 
-### 3.1 Mode 1 MONO — TODO (Phase 6.1)
+### 3.1 Mode 1 MONO — IMPLEMENTED
 
 **The asset format is identical to SP1 / CPC Mode 2 — plain 1bpp** (`MASK2`
 mask,graph pairs / `LOAD1` graph-only, MSB = leftmost, columns-major, the same
@@ -269,8 +270,13 @@ a bespoke MONO table.  Concretely:
 - `jsp_frame.asm` widens the MONO footprint to `c1 = c0 + (xrot ? 2*cols : 2*cols-1)`
   (each 1bpp column spans two Mode-1 screen cells); `cols` stays the 1bpp count.
 - Nothing is stored expanded — the conversion is transient, per covered cell.
+- **Scope:** only **sprites** are 1bpp in MONO.  Background/foreground **tiles**
+  blit straight to the screen (the BTT seed + bg path do not expand), so a MONO
+  tile is a normal Mode-1 byte — the memory win is on the sprite sheet, where it
+  matters most.  (Expanding 1bpp tiles too would make one tile span two screen
+  cells, breaking the 1-tile-1-cell model; out of scope here.)
 - Validated by `make cpc-shift-test-mode1-mono` (the expansion + combine vs a
-  true monochrome shift) and visually in cap32.
+  true monochrome shift) and visually in cap32 (`make run-cpc-sprite-mode1-mono`).
 
 (This is distinct from full Mode 1 above, whose assets are genuinely 4-colour
 two-nibble-plane and need no expansion.)
