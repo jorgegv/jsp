@@ -58,12 +58,13 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Regression gate: ZX byte-for-byte identical (`959048ee…`) + 9 taps green; CPC Mode 2 background render green (§12)
 
 - [ ] **Phase 3 — CPC Mode 2 shift + kernels**
-  - [ ] Reuse `jsp_init_rottbl()` for Mode 2 (= ZX linear table) (§4)
-  - [ ] Confirm the M2 `rottbl_msb` formula + 2-page-per-phase / `inc h` carry contract carry over (§4)
-  - [ ] Port the 8 `jsp_draw_*` kernels to CPC Mode 2 (near-verbatim) (§5)
-  - [ ] Wire the covered-cell compositor to the Mode 2 kernels (§5)
-  - [ ] Verify a moving, sub-byte-shifted CPC Mode 2 sprite on emulator (§12)
-  - [ ] Regression gate: ZX green + CPC Mode 2 sprite render green (§12)
+  - [x] Reuse `jsp_init_rottbl()` for Mode 2 (= ZX linear table) (§4) — shared C, `JSP_SHIFT_PHASES=7`
+  - [x] Confirm the M2 `rottbl_msb` formula + 2-page-per-phase / `inc h` carry contract carry over (§4)
+  - [x] Port the 8 `jsp_draw_*` kernels to CPC Mode 2 (near-verbatim) (§5) — `lib/cpc/jsp_draw_*.asm`
+  - [x] Wire the covered-cell compositor to the Mode 2 kernels (§5) — real `lib/cpc/jsp_covered.asm` (+ real `jsp_frame.asm`, `jsp_sprite_defer.asm`)
+  - [x] Verify a moving, sub-byte-shifted CPC Mode 2 sprite on emulator (§12) — `make run-cpc-sprite`, all xrot phases clean (fixed a stack/rottbl 0xBF00 overlap → SP=0x9800)
+  - [x] Regression gate: ZX green + CPC Mode 2 sprite render green (§12) — ZX `959048ee…`, 9 taps, CPC bg+sprite green
+  - [ ] **Remaining:** widen CPC descriptor X to 16-bit (full 640px) + reconcile asm offsets (frame/defer) and public signatures (§3) — rendering uses 8-bit X today (left 32 cells / cap32-visible band)
 
 - [ ] **Phase 4 — CPC Mode 2 asset pipeline + shift unit test**
   - [ ] Define and implement the CPC Mode 2 planar-in-byte pixel+mask asset format (§10)
