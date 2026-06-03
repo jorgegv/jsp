@@ -13,6 +13,9 @@
 
 	section code_compiler
 
+	INCLUDE "jsp_cpc_geom.inc"	; JSP_GEOM_COLBYTES
+	INCLUDE "jsp_cc_store.inc"	; CC_WR — absolute (Model A/M2) or (iy+n) (Model B)
+
 	public _JSP_DRAW_LOAD1LB
 	public _JSP_DRAW_LOAD1LB_ALT
 	public _jsp_draw_load1lb
@@ -20,9 +23,8 @@
 	extern _JSP_DRAW_LOAD1NR
 	extern _jsp_current_rottbl_msb
 	extern _jsp_rottbl
-	extern cc_scratch		; dst is always the JSP compositing buffer,
-					; so dst bytes are written absolutely (13T)
-					; instead of via (ix+d) (19T)
+	extern cc_scratch		; Model A / M2: fixed buffer, absolute (13T).
+					; Model B M1/M0: per-column slot in BC -> IY (19T).
 
 ; void jsp_draw_load1lb( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 _jsp_draw_load1lb:
@@ -50,7 +52,11 @@ _JSP_DRAW_LOAD1LB_ALT:
 
 	;  d = shift table
 	; hl = sprite def (graph only)
-	; dst = cc_scratch (fixed buffer, written absolutely below)
+	; dst = cc_scratch (Model A/M2) or BC->IY per-column slot (Model B)
+	IF JSP_GEOM_COLBYTES > 1
+	push bc				; BC = dst (popped above / from rb) -> IY
+	pop iy
+	ENDIF
 
 _JSPLoad1LBRotate:
 
@@ -59,55 +65,55 @@ _JSPLoad1LBRotate:
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (cc_scratch+0),a
+	CC_WR 0
 
 	; 1
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (cc_scratch+1),a
+	CC_WR 1
 
 	; 2
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (cc_scratch+2),a
+	CC_WR 2
 
 	; 3
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (cc_scratch+3),a
+	CC_WR 3
 
 	; 4
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (cc_scratch+4),a
+	CC_WR 4
 
 	; 5
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (cc_scratch+5),a
+	CC_WR 5
 
 	; 6
 
 	ld e,(hl)
 	inc hl
 	ld a,(de)
-	ld (cc_scratch+6),a
+	CC_WR 6
 
 	; 7
 
 	ld e,(hl)
 	ld a,(de)
-	ld (cc_scratch+7),a
+	CC_WR 7
 
 	ret
 
