@@ -65,4 +65,10 @@
 	defc JSP_GEOM_CELLSHIFT = 0                      ; Model A: cell index == byte offset
 	ENDIF
 	defc JSP_GEOM_COLS      = 80 / JSP_GEOM_COLBYTES
-	defc JSP_GEOM_DTT_BYTES = ( JSP_GEOM_COLS * 25 + 7 ) / 8
+;; DTT is ROW-ALIGNED: each cell row occupies a whole number of DTT bytes
+;; (ceil(COLS/8)).  For COLS multiple of 8 (Model A 80, M1 40, M2 80) this equals
+;; the flat packing; for Model-B Mode 0 (COLS=20) it pads each row to 3 bytes
+;; (24 bits, 4 dead) so row*COLS stays byte-aligned and the constant-mask-per-row
+;; optimisation in jsp_sprite_defer survives.  (plan §4)
+	defc JSP_GEOM_DTT_ROWBYTES = ( JSP_GEOM_COLS + 7 ) / 8     ; 10 / 5 / 3 (M2-A/M1/M0)
+	defc JSP_GEOM_DTT_BYTES    = 25 * JSP_GEOM_DTT_ROWBYTES    ; 250 / 125 / 75

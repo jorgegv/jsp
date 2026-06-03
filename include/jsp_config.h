@@ -104,7 +104,12 @@
 // Derived geometry (target-independent expressions of the above).
 // -------------------------------------------------------------------------
 #define JSP_GRID_CELLS   ( JSP_GRID_COLS * JSP_GRID_ROWS )   // total cells
-#define JSP_DTT_BYTES    ( ( JSP_GRID_CELLS + 7 ) / 8 )      // bit/cell, packed
+// DTT/FTT are ROW-ALIGNED: each cell row takes ceil(COLS/8) bytes. For COLS a
+// multiple of 8 (ZX 32, Model A 80, Model-B M1 40 / M2 80) this equals the flat
+// packing; for Model-B Mode 0 (COLS=20) it pads rows to 3 bytes so a row start
+// stays byte-aligned (keeps the constant-mask-per-row dirty-mark optimisation).
+#define JSP_DTT_ROWBYTES ( ( JSP_GRID_COLS + 7 ) / 8 )
+#define JSP_DTT_BYTES    ( JSP_GRID_ROWS * JSP_DTT_ROWBYTES )
 #define JSP_FTT_BYTES    JSP_DTT_BYTES
 
 // Screen byte-columns spanned by one cell.  Model A: always 1 (cell == byte
