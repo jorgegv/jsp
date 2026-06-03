@@ -64,6 +64,14 @@ static void cpc_setup_mode2( void ) {
 
 void main( void ) {
     uint8_t r, c;
+#ifdef TIME_LIMITED
+    // Performance harness: instead of bouncing forever, run exactly
+    // TIME_LIMITED redraw cycles, then `rst 0`.  cap32's CAP32_WAITBREAK sets a
+    // Z80 breakpoint at address 0, so reaching it lets the headless runner
+    // (limit_speed=0) stop the emulator; the wall-clock time spent is the crude
+    // performance metric.  Build with e.g. -DTIME_LIMITED=1000.
+    uint16_t cycles = 0;
+#endif
 
     cpc_setup_mode2();
     jsp_init( tile_blank, 0 );
@@ -88,5 +96,13 @@ void main( void ) {
             mover[r].y += mover[r].dy;
         }
         jsp_redraw();
+#ifdef TIME_LIMITED
+        if ( ++cycles >= TIME_LIMITED ) {
+            __asm
+            di
+            rst 0
+            __endasm;
+        }
+#endif
     }
 }
