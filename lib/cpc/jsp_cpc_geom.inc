@@ -72,3 +72,9 @@
 ;; optimisation in jsp_sprite_defer survives.  (plan §4)
 	defc JSP_GEOM_DTT_ROWBYTES = ( JSP_GEOM_COLS + 7 ) / 8     ; 10 / 5 / 3 (M2-A/M1/M0)
 	defc JSP_GEOM_DTT_BYTES    = 25 * JSP_GEOM_DTT_ROWBYTES    ; 250 / 125 / 75
+;; ROWPAD = dead DTT bits per row = ROWBYTES*8 - COLS.  0 when COLS is a multiple
+;; of 8 (Model A, M1, M2 — the DTT bit position equals the linear cell index, so
+;; the redraw uses cellbase = g*8).  4 for Model-B Mode 0 (COLS=20): each row's
+;; 3rd DTT byte has 4 dead bits, so the redraw tracks the linear cell base
+;; incrementally (+8 within a row, +COLS-(ROWBYTES-1)*8 at the row wrap).
+	defc JSP_GEOM_DTT_ROWPAD   = JSP_GEOM_DTT_ROWBYTES * 8 - JSP_GEOM_COLS

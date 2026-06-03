@@ -39,6 +39,14 @@ _jsp_redraw:
 
 	xor a
 	ld (rd_g),a			; g = 0
+	IF JSP_GEOM_DTT_ROWPAD > 0
+	;; Model-B Mode 0: the DTT is row-padded, so the bit position != linear cell
+	;; index; track the linear cell base of the current group incrementally.
+	ld hl,0
+	ld (rd_cellbase),hl
+	xor a
+	ld (rd_grpinrow),a
+	ENDIF
 
 ;; ---- per-group loop: 250 groups of 8 cells ----
 rd_group:
@@ -57,13 +65,17 @@ rd_group:
 	ld a,(hl)
 	ld d,a				; D = ftt (rrc per bit -> CY = foreground)
 
-	;; cellbase = g << 3  (HL = cell index, inc per bit)
-	ld a,(rd_g)
+	;; cellbase = first linear cell index of this group (HL, inc per bit)
+	IF JSP_GEOM_DTT_ROWPAD > 0
+	ld hl,(rd_cellbase)		; M0: tracked linear base (DTT row-padded)
+	ELSE
+	ld a,(rd_g)			; COLS multiple of 8: bit position == cell index
 	ld l,a
 	ld h,0
 	add hl,hl
 	add hl,hl
 	add hl,hl			; HL = g*8 = first cell of the group
+	ENDIF
 
 	ld b,8				; B = bit counter
 
@@ -80,10 +92,32 @@ rd_advance:
 	;; fall through
 
 rd_group_next:
+	IF JSP_GEOM_DTT_ROWPAD > 0
+	;; M0: advance the linear cell base — +8 within a row, +(COLS-(ROWBYTES-1)*8)
+	;; at the row wrap (every ROWBYTES groups).  rd_grpinrow counts 0..ROWBYTES-1.
+	ld a,(rd_grpinrow)
+	inc a
+	cp JSP_GEOM_DTT_ROWBYTES
+	jr nz,rgn_samerow
+	xor a				; row wrap
+	ld (rd_grpinrow),a
+	ld hl,(rd_cellbase)
+	ld de,JSP_GEOM_COLS-(JSP_GEOM_DTT_ROWBYTES-1)*8
+	add hl,de
+	ld (rd_cellbase),hl
+	jr rgn_adv_done
+rgn_samerow:
+	ld (rd_grpinrow),a
+	ld hl,(rd_cellbase)
+	ld de,8
+	add hl,de
+	ld (rd_cellbase),hl
+rgn_adv_done:
+	ENDIF
 	ld a,(rd_g)
 	inc a
 	ld (rd_g),a
-	cp JSP_GEOM_DTT_BYTES		; Model A: 250; Model B: 250/125/63 (M2/M1/M0)
+	cp JSP_GEOM_DTT_BYTES		; 250 / 125 / 75 (M2-A / M1 / M0)
 	jp c,rd_group
 
 	;; clear the DTT (JSP_GEOM_DTT_BYTES) for the next frame
@@ -171,5 +205,9 @@ rd_cell:	dw 0
 rd_dtt:		db 0
 rd_ftt:		db 0
 rd_bitc:	db 0
+	IF JSP_GEOM_DTT_ROWPAD > 0
+rd_cellbase:	dw 0		; M0: linear cell index of the current group's first cell
+rd_grpinrow:	db 0		; M0: group position within the row (0..ROWBYTES-1)
+	ENDIF
 
 	ENDIF			; JSP_TARGET_CPC

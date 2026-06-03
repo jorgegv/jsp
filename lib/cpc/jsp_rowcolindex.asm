@@ -59,14 +59,28 @@ jsp_rowcolindex:
 ;; packed DTT (Model A, and Model-B M1/M2) the cell index >> 3 is the byte index.
 jsp_rowcolindex_dtt:
   IFDEF JSP_CELL_MODEL_PIXEL
-	;; Model B (flat DTT): cell_index / 8
-	call jsp_rowcolindex	; HL = row*COLS + col
-	srl h
-	rr l
-	srl h
-	rr l
-	srl h
-	rr l			; HL = cell_index / 8
+	;; Model B (ROW-ALIGNED DTT): byte = row*ROWBYTES + col/8, bit = col&7.
+	;; ROWBYTES = ceil(COLS/8) (5 for M1, 3 for M0).  For COLS a multiple of 8
+	;; (M1) this equals cell_index/8; for M0 (COLS=20, ROWBYTES=3) the row is
+	;; padded to 24 bits so the row start stays byte-aligned.
+	ld a,e
+	srl a
+	srl a
+	srl a			; A = col / 8
+	ld c,a			; C = col/8 (saved across the row-multiply)
+	ld hl,0			; HL = row * ROWBYTES (repeated add; row <= 24)
+	ld a,d
+	or a
+	jr z,rcd_norow
+	ld b,a
+	ld de,JSP_GEOM_DTT_ROWBYTES
+rcd_addrow:
+	add hl,de
+	djnz rcd_addrow
+rcd_norow:
+	ld e,c			; DE = col/8
+	ld d,0
+	add hl,de		; HL = row*ROWBYTES + col/8
 	ret
   ELSE
 	ld a,e
