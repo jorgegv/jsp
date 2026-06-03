@@ -424,7 +424,7 @@ cpc-perf-matrix:
 	@echo "CPC redraw timing — $(CYCLES) cycles/config (wall-clock s, lower is faster)"
 	@for pair in $(CPC_PERF_PAIRS); do \
 		t="$${pair%%:*}"; n="$${pair##*:}"; \
-		$(MAKE) $$t CPC_EXTRA_CFLAGS="-DTIME_LIMITED=$(CYCLES)" >/dev/null 2>&1 || { echo "BUILD FAILED: $$t"; exit 1; }; \
+		$(MAKE) $$t CPC_EXTRA_CFLAGS="-DTIME_LIMITED=$(CYCLES)" >/dev/null || { echo "BUILD FAILED: $$t (stderr above)"; exit 1; }; \
 		printf "%-24s " "$$n"; \
 		./tools/cap32-time.sh $$n.dsk $$n 2>/dev/null || echo "RUN FAILED"; \
 	done

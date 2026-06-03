@@ -22,6 +22,10 @@ decision to "measure, not argue"). This file is the measurement record.
   configs (which differ in sprite count and motion range). Lower = faster.
 - **Caveats:** wall-clock on a loaded host carries ~1–2% noise; timing runs are
   kept **serial** (parallel runs would contend for CPU and corrupt the numbers).
+  The cycle counters are `uint16_t`, so `CYCLES` must be **≤ 65535** (a build-time
+  `#error` guards this). `test_cpc_sprite_demo.c` also honours `TIME_LIMITED` for
+  ad-hoc Mode-2 timing, but it is **not** part of `cpc-perf-matrix` — the 7 matrix
+  configs are all built from the 4 bounded sprite tests via `CPC_MODE`.
 
 ## Baseline — Model A (byte-cell, current), 1000 cycles
 

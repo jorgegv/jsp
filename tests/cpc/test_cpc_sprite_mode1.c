@@ -21,6 +21,9 @@ extern uint8_t test_sprite_mask2_m1_pixels[];
 
 #define NUM_SPRITES 5
 #ifdef TIME_LIMITED
+#if TIME_LIMITED > 65535
+#error "TIME_LIMITED must be <= 65535 (the redraw-cycle counter is uint16_t)"
+#endif
 #define ANIM_FRAMES TIME_LIMITED   // perf harness: run exactly N redraw cycles, then rst 0
 #else
 #define ANIM_FRAMES 240

@@ -70,6 +70,9 @@ void main( void ) {
     // Z80 breakpoint at address 0, so reaching it lets the headless runner
     // (limit_speed=0) stop the emulator; the wall-clock time spent is the crude
     // performance metric.  Build with e.g. -DTIME_LIMITED=1000.
+#if TIME_LIMITED > 65535
+#error "TIME_LIMITED must be <= 65535 (the cycle counter is uint16_t)"
+#endif
     uint16_t cycles = 0;
 #endif
 
