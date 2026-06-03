@@ -44,12 +44,56 @@ Measured 2026-06-03, `make cpc-perf-matrix CYCLES=1000`.
 (Mode 0 uses 4 sprites vs 5 elsewhere — do not read across rows; each row is
 its own model-vs-model baseline.)
 
-## Model B (pixel-cell) — TBD
+## Model B (pixel-cell) — implemented + measured (2026-06-04)
 
-_Pending: develop the pixel-cell model, then re-run `cpc-perf-matrix` and fill a
-matching table here._
+Model B (8×8-pixel cells) was implemented as a compile-time alternative
+(`-DJSP_CELL_MODEL_PIXEL`, Makefile `JSP_CELL_MODEL=pixel`), guarded so Model A
+and ZX stay byte-identical. Phases: config (grid derives from ppb), wide-cell
+addressing, movable-dst rotating kernels (IY), the byte-column covered-cell
+compositor, and Mode-0's row-aligned DTT. All render-verified in cap32
+(Model-B M1/M0 sprites composite cleanly; Model-A M2/M1/M0 unchanged).
 
-## Comparison & decision — TBD
+## Comparison — byte-cell (A) vs pixel-cell (B)
 
-_Pending: side-by-side table; the official-model choice is the user's after
-seeing the comparison._
+To remove the constant CPC boot + one-time background-fill overhead, the redraw
+cost is measured as **t(2000 cycles) − t(1000 cycles)** = wall-clock seconds for
+exactly 1000 `jsp_redraw()` cycles, boot-free. Same sprite count, art and motion
+in both models (Model-A test vs the `*_pixcell` twin); the only difference is the
+cell model. Lower = faster. (Wall-clock-on-host proxy, not T-states — the **ratio**
+is the meaningful figure; ~1–2% run-to-run noise.)
+
+| Mode (5 sprites M1 / 4 M0) | Model A (byte) | Model B (pixel) | Model B speedup |
+|----------------------------|---------------:|----------------:|:---------------:|
+| **Mode 1** (rotating)      | 10.21 s        | 9.52 s          | **≈ 7 % faster** |
+| **Mode 1 FAST** (aligned)  | 8.60 s         | 7.57 s          | **≈ 12 % faster** |
+| **Mode 0** (rotating)      | 13.38 s        | 10.94 s         | **≈ 18 % faster** |
+| **Mode 0 FAST** (aligned)  | 12.27 s        | 9.40 s          | **≈ 23 % faster** |
+| **Mode 2** (any)           | —              | —               | **tie** (identical model) |
+
+Raw wall-clock at 1000 cycles (incl. ~1 s boot), for reference: M1 A 11.24 / B
+10.31; M0 A 14.19 / B 11.55; M1-FAST A 10.01 / B 8.99; M0-FAST A 12.88 / B 10.22.
+
+### Reading the result
+
+Model B (pixel-cell) is **faster in every Mode-0 and Mode-1 configuration**, and
+the win **grows as the cell count drops**: Mode 1 (2× fewer cells than Model A)
+≈ 7–12 %, Mode 0 (4× fewer cells) ≈ 18–23 %. FAST gains a bit more than rotating
+because the cheaper per-byte kernel makes per-cell overhead a larger share — and
+per-cell overhead (DTT walk, coverage test, cell→address, scratch seed) is exactly
+what Model B pays less of. **Mode 2 is identical** in both models (8 px = 1 byte =
+one cell either way), so it is a tie — keep it on the simpler byte-cell path.
+
+This confirms the qualitative prediction in `CPC-TILE-SIZE-ANALYSIS.md`: pixel
+work is constant, so the coarser pixel-cell grid wins purely by paying per-cell
+overhead 2×/4× less in M1/M0.
+
+## Decision — the user's call
+
+Per-mode recommendation from the data: **Mode 0 → pixel-cell** (biggest win),
+**Mode 1 → pixel-cell** (clear win), **Mode 2 → byte-cell** (tie; simplest).
+Awaiting the user's decision on the official model before wiring it as default.
+
+_(Completeness note: text/`jsp_print_string` 1-cell-per-glyph semantics, the
+`tools/cpcgfx.pl` pixel-cell asset emit mode, and Model-B MONO remain unimplemented
+— they are not exercised by the redraw-perf sprite tests and do not affect the
+measurement above.)_
