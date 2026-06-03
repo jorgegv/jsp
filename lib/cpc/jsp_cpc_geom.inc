@@ -47,3 +47,22 @@
 	defc JSP_XROT_MASK = 0
 	defc JSP_MONO_DBL  = 0
 	ENDIF
+
+;; --- Cell-model grid geometry (must mirror include/jsp_config.h) -----------
+;; Model A (byte-cell, default):  COLS = 80, COLBYTES = 1 in every mode.
+;; Model B (pixel-cell, -DJSP_CELL_MODEL_PIXEL): 8x8-pixel cells ->
+;;   COLBYTES = 8 / ppb = 8 >> JSP_PPB_SHIFT   (1/2/4 for M2/M1/M0)
+;;   COLS     = 80 / COLBYTES                  (80/40/20 for M2/M1/M0)
+;; A cell's screen byte-offset = COLBYTES * cell_index (because COLS*COLBYTES=80
+;; always), so the redraw scales the cell index left by log2(COLBYTES) =
+;; 3 - JSP_PPB_SHIFT.  JSP_GEOM_DTT_BYTES = ceil(COLS*25 / 8) is the flat packed
+;; DTT size (Mode 0's row-aligned variant is handled in jsp_sprite_defer/redraw).
+	IFDEF JSP_CELL_MODEL_PIXEL
+	defc JSP_GEOM_COLBYTES  = 8 >> JSP_PPB_SHIFT
+	defc JSP_GEOM_CELLSHIFT = 3 - JSP_PPB_SHIFT     ; log2(COLBYTES): 0/1/2 for M2/M1/M0
+	ELSE
+	defc JSP_GEOM_COLBYTES  = 1
+	defc JSP_GEOM_CELLSHIFT = 0                      ; Model A: cell index == byte offset
+	ENDIF
+	defc JSP_GEOM_COLS      = 80 / JSP_GEOM_COLBYTES
+	defc JSP_GEOM_DTT_BYTES = ( JSP_GEOM_COLS * 25 + 7 ) / 8

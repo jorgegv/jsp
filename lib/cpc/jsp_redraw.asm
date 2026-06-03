@@ -12,6 +12,8 @@
 
 	IFDEF JSP_TARGET_CPC
 
+	INCLUDE "jsp_cpc_geom.inc"	; JSP_GEOM_DTT_BYTES / JSP_GEOM_CELLSHIFT
+
 	section code_compiler
 
 	extern _jsp_redraw_begin
@@ -81,16 +83,16 @@ rd_group_next:
 	ld a,(rd_g)
 	inc a
 	ld (rd_g),a
-	cp 250
+	cp JSP_GEOM_DTT_BYTES		; Model A: 250; Model B: 250/125/63 (M2/M1/M0)
 	jp c,rd_group
 
-	;; clear the DTT (250 bytes) for the next frame
+	;; clear the DTT (JSP_GEOM_DTT_BYTES) for the next frame
 	ld hl,_jsp_dtt
 	ld d,h
 	ld e,l
 	inc de
 	ld (hl),0
-	ld bc,249
+	ld bc,JSP_GEOM_DTT_BYTES-1
 	ldir
 	pop ix
 	ret
@@ -149,6 +151,11 @@ rd_bg_cell:				; HL = cell ; preserve B,C,D across the blit
 	ENDIF
 
 	ld hl,(rd_cell)
+  IFDEF JSP_CELL_MODEL_PIXEL
+	REPT JSP_GEOM_CELLSHIFT
+	add hl,hl			; cell index << log2(COLBYTES) = screen byte offset
+	ENDR
+  ENDIF
 	ld bc,0xC000
 	add hl,bc			; HL = cell line-0 screen address
 	call jsp_draw_screen_tile_saddr	; blit DE -> screen (trashes A,B,D,HL)

@@ -16,8 +16,10 @@ void jsp_init_tile_table( void );
 // Private data
 ///////////////////////////
 
-// blank tile
-uint8_t jsp_blank_tile[ 8 ] = { 0,0,0,0,0,0,0,0 };
+// blank tile — one full cell of zero pixels (JSP_CELL_BYTES: 8 for Model A / M2,
+// 16/32 for the Model-B pixel-cell M1/M0).  The redraw blits JSP_CELL_BYTES from
+// the BTT tile pointer, so the fallback blank must be a whole cell wide.
+uint8_t jsp_blank_tile[ JSP_CELL_BYTES ] = { 0 };
 
 // default background tile after initialization
 uint8_t *jsp_default_bg_tile;

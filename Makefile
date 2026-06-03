@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-perf-matrix cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-perf-matrix cpc-bg-mode1-pixcell run-cpc-bg-mode1-pixcell cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -263,6 +263,22 @@ cpc-bg:
 # Build and screenshot the CPC background test headless in cap32
 run-cpc-bg: cpc-bg
 	./tools/cap32-shot.sh $(CPC_BG_NAME).dsk $(CPC_BG_NAME)
+
+## Model-B (pixel-cell) Phase-1 verification: Mode-1 background, 40x25 grid,
+## 16-byte column-major box tiles tiled edge-to-edge.  Forces the pixel-cell
+## switch in the recipe (not via JSP_CELL_MODEL, so it builds standalone).
+CPC_BGP1_NAME	= CPCBGP1
+cpc-bg-mode1-pixcell: CPC_MODE := 1
+cpc-bg-mode1-pixcell:
+	echo Building CPC Mode 1 PIXEL-CELL background test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -DJSP_CELL_MODEL_PIXEL -Ca-DJSP_CELL_MODEL_PIXEL \
+		-create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_bg_mode1_pixcell.c $(CPC_LIB_SRCS) -o $(CPC_BGP1_NAME) -m
+	echo "Created $(CPC_BGP1_NAME).dsk"
+
+# Build and screenshot the Model-B Mode-1 background test headless in cap32
+run-cpc-bg-mode1-pixcell: cpc-bg-mode1-pixcell
+	./tools/cap32-shot.sh $(CPC_BGP1_NAME).dsk $(CPC_BGP1_NAME)
 
 ## CPC (Phase 3) — masked, sub-byte-shifted Mode 2 sprites over a background.
 ## Same toolchain as cpc-bg; additionally links the (1bpp) mask2 sprite asset
