@@ -241,6 +241,16 @@ CPC_CFLAGS	= -DJSP_TARGET_CPC -Ca-DJSP_TARGET_CPC \
 		  $(CPC_EXTRA_CFLAGS)
 # Appended to CPC_CFLAGS for ad-hoc/perf builds (e.g. CPC_EXTRA_CFLAGS=-DTIME_LIMITED=1000).
 CPC_EXTRA_CFLAGS ?=
+
+# Cell model: "byte" (default, Model A — 8-byte cells, 80x25 every mode) or
+# "pixel" (Model B — 8x8-PIXEL cells: 20/40/80 cols, 32/16/8-byte cells for
+# M0/M1/M2; M2 identical to byte).  Defines the single global JSP_CELL_MODEL_PIXEL
+# switch for both the C compiler and the asm (-Ca).  Used by every CPC build/perf
+# target, e.g.:  make cpc-perf-matrix JSP_CELL_MODEL=pixel
+JSP_CELL_MODEL ?= byte
+ifeq ($(JSP_CELL_MODEL),pixel)
+CPC_CFLAGS += -DJSP_CELL_MODEL_PIXEL -Ca-DJSP_CELL_MODEL_PIXEL
+endif
 CPC_LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) $(wildcard lib/cpc/*.asm)
 
 # Build the CPC Mode 2 background test (.dsk)

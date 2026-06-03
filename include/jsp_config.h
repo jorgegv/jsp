@@ -54,15 +54,13 @@
 #endif // JSP_TARGET_ZX
 
 // -------------------------------------------------------------------------
-// CPC target — per mode.  Grid is Model-A (80x25); see header note.
-// JSP_CELL_BYTES stays 8 under Model A (Model B would set 32/16/8 for M0/M1/M2).
-// CPC has no attribute RAM: JSP_HAS_ATTR = 0 (colour is in the pixels, §6).
+// CPC target — per mode.  CPC has no attribute RAM: JSP_HAS_ATTR = 0 (colour
+// is in the pixels, §6).  ppb (pixels-per-byte) is defined FIRST because the
+// pixel-cell grid below derives from it.
 // -------------------------------------------------------------------------
 #ifdef JSP_TARGET_CPC
 
-  #define JSP_GRID_COLS    80     // Model A: 80 byte-columns (PROVISIONAL for M0/M1)
   #define JSP_GRID_ROWS    25
-  #define JSP_CELL_BYTES   8      // Model A byte-cell
   #define JSP_HAS_ATTR     0
 
   #if defined( CPC_MODE0 )
@@ -85,6 +83,21 @@
     #define JSP_SHIFT_PHASES 0    // 8-px byte-aligned fast path (no shift table)
   #endif
 
+  // Cell model.  Model A (byte-cell, default): 8-line x 1-byte cells, 80x25
+  // grid in EVERY mode (cell pixel-width 2/4/8 px for M0/M1/M2).  Model B
+  // (pixel-cell, -DJSP_CELL_MODEL_PIXEL): 8x8-PIXEL cells, so the grid and cell
+  // byte-size derive from ppb: GRID_COLS = 10*ppb (20/40/80) and CELL_BYTES =
+  // 64/ppb (32/16/8) for M0/M1/M2.  Mode 2 (ppb=8) yields 80 cols / 8 bytes in
+  // BOTH models — identical, as required (M2 is the regression anchor).  The
+  // switch is global: when defined it applies to whichever M0/M1 mode is built.
+  #ifdef JSP_CELL_MODEL_PIXEL
+    #define JSP_GRID_COLS    ( 10 * JSP_PPB )    // 20 / 40 / 80
+    #define JSP_CELL_BYTES   ( 64 / JSP_PPB )    // 32 / 16 / 8
+  #else
+    #define JSP_GRID_COLS    80                  // Model A byte-cell, all modes
+    #define JSP_CELL_BYTES   8
+  #endif
+
 #endif // JSP_TARGET_CPC
 
 // -------------------------------------------------------------------------
@@ -93,6 +106,11 @@
 #define JSP_GRID_CELLS   ( JSP_GRID_COLS * JSP_GRID_ROWS )   // total cells
 #define JSP_DTT_BYTES    ( ( JSP_GRID_CELLS + 7 ) / 8 )      // bit/cell, packed
 #define JSP_FTT_BYTES    JSP_DTT_BYTES
+
+// Screen byte-columns spanned by one cell.  Model A: always 1 (cell == byte
+// column).  Model B (pixel-cell): JSP_CELL_BYTES/8 = 1/2/4 for M2/M1/M0 — the
+// central loop bound for the looped per-byte-column kernel + wide-cell blit.
+#define JSP_CELL_COLBYTES ( JSP_CELL_BYTES / 8 )
 
 // Linear cell index of (row,col).  Used by tile/sprite placement.
 #define JSP_CELL_INDEX( row, col ) ( (uint16_t)( row ) * JSP_GRID_COLS + ( col ) )
