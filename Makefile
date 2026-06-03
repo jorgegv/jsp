@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-perf-matrix cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -237,7 +237,10 @@ CPC_MODE	?= 2
 CPC_CFLAGS	= -DJSP_TARGET_CPC -Ca-DJSP_TARGET_CPC \
 		  -DCPC_MODE$(CPC_MODE) -Ca-DCPC_MODE$(CPC_MODE) \
 		  -pragma-define:REGISTER_SP=0x9800 \
-		  -SO2 --max-allocs-per-node200000 -I$(INCLUDE_DIR)
+		  -SO2 --max-allocs-per-node200000 -I$(INCLUDE_DIR) \
+		  $(CPC_EXTRA_CFLAGS)
+# Appended to CPC_CFLAGS for ad-hoc/perf builds (e.g. CPC_EXTRA_CFLAGS=-DTIME_LIMITED=1000).
+CPC_EXTRA_CFLAGS ?=
 CPC_LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) $(wildcard lib/cpc/*.asm)
 
 # Build the CPC Mode 2 background test (.dsk)
@@ -400,6 +403,31 @@ run-cpc-matrix:
 		cp -f shot.png screenshot_$$t.png; \
 	done
 	echo "CPC run matrix complete; see screenshot_run-cpc-*.png."
+
+## CPC performance harness — wall-clock redraw timing for the tile-size-model
+## study.  Each of the 7 sprite configs is rebuilt with -DTIME_LIMITED=$(CYCLES)
+## (runs exactly CYCLES redraw cycles then `rst 0`) and run headless at unlimited
+## emulator speed via tools/cap32-time.sh, which stops cap32 at the `rst 0` and
+## reports wall-clock launch->exit seconds.  Override CYCLES (default 1000).
+## Format: "<build-target>:<AMSDOS/disk name>"; build pairs map to CPC_SPR_*_NAME.
+CYCLES		?= 1000
+CPC_PERF_PAIRS	= cpc-sprite:$(CPC_SPR_NAME) \
+		  cpc-sprite-mode1:$(CPC_SPR_M1_NAME) \
+		  cpc-sprite-mode1-mono:$(CPC_SPR_M1M_NAME) \
+		  cpc-sprite-mode0:$(CPC_SPR_M0_NAME) \
+		  cpc-sprite-mode2-fast:$(CPC_SPR_M2F_NAME) \
+		  cpc-sprite-mode0-fast:$(CPC_SPR_M0F_NAME) \
+		  cpc-sprite-mode1-fast:$(CPC_SPR_M1F_NAME)
+
+# Time the redraw of every CPC sprite config (TIME_LIMITED=$(CYCLES)); prints a table
+cpc-perf-matrix:
+	@echo "CPC redraw timing — $(CYCLES) cycles/config (wall-clock s, lower is faster)"
+	@for pair in $(CPC_PERF_PAIRS); do \
+		t="$${pair%%:*}"; n="$${pair##*:}"; \
+		$(MAKE) $$t CPC_EXTRA_CFLAGS="-DTIME_LIMITED=$(CYCLES)" >/dev/null 2>&1 || { echo "BUILD FAILED: $$t"; exit 1; }; \
+		printf "%-24s " "$$n"; \
+		./tools/cap32-time.sh $$n.dsk $$n 2>/dev/null || echo "RUN FAILED"; \
+	done
 
 # Build the CPC Mode 2 sprite DEMO (.dsk) — balls bounce continuously (watch live: cap32 -a 'run"CPCSPRD.' CPCSPRD.dsk)
 cpc-sprite-demo-mode2: $(SPRITE_MASK2_ASM)

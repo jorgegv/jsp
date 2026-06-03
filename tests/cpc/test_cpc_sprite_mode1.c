@@ -20,7 +20,11 @@
 extern uint8_t test_sprite_mask2_m1_pixels[];
 
 #define NUM_SPRITES 5
+#ifdef TIME_LIMITED
+#define ANIM_FRAMES TIME_LIMITED   // perf harness: run exactly N redraw cycles, then rst 0
+#else
 #define ANIM_FRAMES 240
+#endif
 
 // 16x16 ball = 4 Mode-1 cols x 2 rows (8 px tall/cell).
 DEFINE_SPRITE( sprite0, 2, 4, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
@@ -110,5 +114,12 @@ void main( void ) {
         jsp_redraw();
     }
 
+#ifdef TIME_LIMITED
+    __asm
+    di
+    rst 0          ; perf harness: cap32 CAP32_WAITBREAK stops the emulator here
+    __endasm;
+#else
     for ( ;; ) ;
+#endif
 }
