@@ -67,16 +67,20 @@ void main( void ) {
 
     // pool-allocated sprites positioned to STRADDLE the foreground bars, so
     // each ball is clipped where it overlaps a bar (sprite passes behind).
+    // NOTE: jsp_sprite_alloc() resets sp->pixels = 0, so the graphic MUST be set
+    // AFTER alloc (before the draw) — not on the pool slots beforehand.
     jsp_sprite_pool_init( pool, POOL_SIZE );
-    for ( i = 0; i < POOL_SIZE; i++ )
-        pool[i].pixels = test_sprite_mask2_pixels;   // ensure a graphic is set
+    (void)i;
 
     // ball 0 straddles the horizontal band (row 11 -> y ~88)
-    sp = jsp_sprite_alloc( 2, 2 ); if ( sp ) jsp_draw_sprite_mask2( sp, 120, 84 );
+    sp = jsp_sprite_alloc( 2, 2 );
+    if ( sp ) { sp->pixels = test_sprite_mask2_pixels; jsp_draw_sprite_mask2( sp, 120, 84 ); }
     // ball 1 straddles the left vertical bar (col 24 -> x ~192)
-    sp = jsp_sprite_alloc( 2, 2 ); if ( sp ) jsp_draw_sprite_mask2( sp, 188, 40 );
+    sp = jsp_sprite_alloc( 2, 2 );
+    if ( sp ) { sp->pixels = test_sprite_mask2_pixels; jsp_draw_sprite_mask2( sp, 188, 40 ); }
     // ball 2 straddles the crossing of band + right vertical bar (col 48,row11)
-    sp = jsp_sprite_alloc( 2, 2 ); if ( sp ) jsp_draw_sprite_mask2( sp, 380, 84 );
+    sp = jsp_sprite_alloc( 2, 2 );
+    if ( sp ) { sp->pixels = test_sprite_mask2_pixels; jsp_draw_sprite_mask2( sp, 380, 84 ); }
 
     jsp_redraw();
 #ifdef TIME_LIMITED
