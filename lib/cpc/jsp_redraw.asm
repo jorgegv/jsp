@@ -23,6 +23,8 @@
 	extern _jsp_btt
 	extern _jsp_redraw_covered_cell
 	extern cc_cell
+	extern cc_row			; row/col passed to the covered-cell compositor
+	extern cc_col			; (tracked lazily here -> no divide-by-COLS there)
 	extern jsp_draw_screen_tile_saddr
 
 	IFDEF CPC_MODE1_MONO			; MONO tiles are 1bpp -> expand at blit
@@ -39,6 +41,13 @@ _jsp_redraw:
 
 	xor a
 	ld (rd_g),a			; g = 0
+	;; lazy (row,rowstart) tracking — cells are walked monotonically, so the
+	;; covered path can derive (row,col) by catch-up instead of dividing by COLS.
+	ld (rd_row),a			; row = 0
+	ld hl,0
+	ld (rd_rowstart),hl		; rowstart = row*COLS = 0
+	ld hl,JSP_GEOM_COLS
+	ld (rd_rownext),hl		; rownext = (row+1)*COLS
 	IF JSP_GEOM_DTT_ROWPAD > 0
 	;; Model-B Mode 0: the DTT is row-padded, so the bit position != linear cell
 	;; index; track the linear cell base of the current group incrementally.
@@ -143,12 +152,46 @@ rd_dirty:
 	;; covered by a sprite (Phase 3). Spill loop state, composite, reload.
 	ld (rd_cell),hl
 	ld (cc_cell),hl
-	ld a,c
+	ld a,c				; spill B,C,D FIRST (the lazy block below uses DE)
 	ld (rd_dtt),a
 	ld a,d
 	ld (rd_ftt),a
 	ld a,b
 	ld (rd_bitc),a
+
+	;; ---- lazy (row,col) -> cc_row/cc_col (HL = cell, walked monotonically) ----
+	;; Catch up rowstart/rownext to this cell, then col = cell - rowstart.  This
+	;; replaces the divide-by-COLS the covered compositor used to do per cell.
+rd_rowcatch:
+	ld de,(rd_rownext)
+	ld a,l
+	sub e
+	ld a,h
+	sbc a,d
+	jr c,rd_rowfound		; cell < rownext -> row is current
+	ld a,(rd_row)
+	inc a
+	ld (rd_row),a
+	ld de,JSP_GEOM_COLS
+	ld hl,(rd_rowstart)
+	add hl,de
+	ld (rd_rowstart),hl
+	ld hl,(rd_rownext)
+	add hl,de
+	ld (rd_rownext),hl
+	ld hl,(rd_cell)			; reload cell (clobbered above)
+	jr rd_rowcatch
+rd_rowfound:
+	ld a,(rd_row)
+	ld (cc_row),a
+	ld hl,(rd_cell)
+	ld de,(rd_rowstart)
+	or a
+	sbc hl,de			; HL = cell - rowstart = col
+	ld a,l
+	ld (cc_col),a
+	ld hl,(rd_cell)			; HL = cell for the call
+
 	call _jsp_redraw_covered_cell	; HL still = cell (__z88dk_fastcall)
 	ld a,(rd_bitc)
 	ld b,a
@@ -217,6 +260,9 @@ rd_cell:	dw 0
 rd_dtt:		db 0
 rd_ftt:		db 0
 rd_bitc:	db 0
+rd_row:		db 0		; lazy row tracking for covered-cell (row,col) passing
+rd_rowstart:	dw 0		; first cell index of the current row (row*COLS)
+rd_rownext:	dw 0		; first cell index of the next row ((row+1)*COLS)
 	IF JSP_GEOM_DTT_ROWPAD > 0
 rd_cellbase:	dw 0		; M0: linear cell index of the current group's first cell
 rd_grpinrow:	db 0		; M0: group position within the row (0..ROWBYTES-1)
