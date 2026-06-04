@@ -52,6 +52,8 @@
 	public _jsp_redraw_covered_cell
 	public _jsp_cc_row_active_row
 	public cc_cell			; cell-index input, written by jsp_redraw
+	public cc_row			; (row,col) also supplied by jsp_redraw (lazy
+	public cc_col			; tracking), so no divide-by-COLS needed here
 	public cc_scratch		; compositing buffer; the jsp_draw_* kernels
 					; address it absolutely (see those files)
 
@@ -60,29 +62,8 @@
 ;; before the call.  We derive (row,col) from it here.  (Internal helper —
 ;; only jsp_redraw calls it.)
 _jsp_redraw_covered_cell:
-	;; derive (row,col) from cc_cell:  cell = row*COLS + col
-	;; (COLS = 80 Model A; 40/20 for Model B M1/M0)
-	ld hl,(cc_cell)
-	ld de,JSP_GEOM_COLS
-	ld b,0				; B = row quotient
-cc_divrow:
-	ld a,h
-	or a
-	jr nz,cc_divsub			; HL >= 256 > COLS -> subtract
-	ld a,l
-	cp JSP_GEOM_COLS
-	jr c,cc_divend			; HL < COLS -> remainder = col
-cc_divsub:
-	or a				; clear carry
-	sbc hl,de			; HL -= 80
-	inc b
-	jr cc_divrow
-cc_divend:
-	ld a,b
-	ld (cc_row),a
-	ld a,l
-	ld (cc_col),a
-
+	;; (cc_row, cc_col) are set by jsp_redraw before the call (it tracks the
+	;; row lazily across its monotonic cell walk), so no divide-by-COLS here.
 	xor a
 	ld (cc_covered),a
 
@@ -203,6 +184,21 @@ cb_seeded:
 	sub (ix+0)
 	ld (cc_i),a
 
+	;; base_i = base + i*cs — constant across the cell's byte-columns, so hoist
+	;; it out of cb_kloop (only pdc*rowstride varies per column).
+	ld l,(ix+10)
+	ld h,(ix+11)			; HL = base
+	or a				; A = i
+	jr z,cb_basei_done
+	ld b,a
+	ld d,0
+	ld e,(ix+4)			; DE = cs
+cb_basei_add:
+	add hl,de
+	djnz cb_basei_add
+cb_basei_done:
+	ld (cc_basei),hl
+
 	xor a				; k = 0
 	ld (cc_k),a
 cb_kloop:
@@ -227,9 +223,8 @@ cb_kin:
 	ld a,(ix+7)
 	dec a
 cb_pdc_done:
-	;; graph = base + pdc*rowstride + i*cs
-	ld l,(ix+10)
-	ld h,(ix+11)			; base
+	;; graph = base_i + pdc*rowstride   (base_i = base + i*cs, hoisted above)
+	ld hl,(cc_basei)
 	ld e,(ix+12)
 	ld d,(ix+13)			; rowstride
 	or a				; A = pdc
@@ -239,16 +234,6 @@ cb_pdc_add:
 	add hl,de
 	djnz cb_pdc_add
 cb_no_pdc:
-	ld a,(cc_i)
-	or a
-	jr z,cb_no_i
-	ld b,a
-	ld d,0
-	ld e,(ix+4)			; cs
-cb_i_add:
-	add hl,de
-	djnz cb_i_add
-cb_no_i:
 	ld (cc_graph),hl
 
 	;; dst = cc_scratch + k*8
@@ -591,6 +576,7 @@ cc_covered:		db 0
 cc_i:			db 0
 cc_j:			db 0
 cc_graph:		dw 0
+cc_basei:		dw 0		; base + i*cs, hoisted out of the byte-column loop
 cc_loop_n:		db 0
 cc_slot:		dw 0
 cc_row_active_n:	db 0

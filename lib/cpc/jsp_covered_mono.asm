@@ -45,33 +45,15 @@
 	public _jsp_redraw_covered_cell
 	public _jsp_cc_row_active_row
 	public cc_cell
+	public cc_row			; (row,col) supplied by jsp_redraw (lazy
+	public cc_col			; tracking), so no divide-by-COLS needed here
 	public cc_scratch
 	public mono_tile_expand		; also used by the MONO bg path in jsp_redraw.asm
 
 ;; void jsp_redraw_covered_cell( uint16_t cell ) __z88dk_fastcall;
 _jsp_redraw_covered_cell:
-	;; derive (row,col) from cc_cell:  cell = row*COLS + col
-	ld hl,(cc_cell)
-	ld de,JSP_GEOM_COLS
-	ld b,0				; B = row quotient
-cc_divrow:
-	ld a,h
-	or a
-	jr nz,cc_divsub
-	ld a,l
-	cp JSP_GEOM_COLS
-	jr c,cc_divend
-cc_divsub:
-	or a
-	sbc hl,de
-	inc b
-	jr cc_divrow
-cc_divend:
-	ld a,b
-	ld (cc_row),a
-	ld a,l
-	ld (cc_col),a
-
+	;; (cc_row, cc_col) are set by jsp_redraw before the call, so no
+	;; divide-by-COLS here.
 	xor a
 	ld (cc_covered),a
 
