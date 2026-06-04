@@ -37,7 +37,7 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
 - [x] **Phase 1 — Config header & geometry**
   - [x] Create `include/jsp_config.h` deriving per-guard constants from the mode (§8)
   - [x] Define `ppb`, shift-phase count, grid cols/rows/cellcount, cell size, rottbl phases, colour mode (`JSP_HAS_ATTR`) per guard (§8)
-  - [x] Expose `JSP_CELL_BYTES`/`JSP_GRID_COLS`/`JSP_GRID_ROWS` as macros to keep byte-cell vs pixel-cell open (CPC-TILE-SIZE-ANALYSIS.md, §2)
+  - [x] Expose `JSP_CELL_BYTES`/`JSP_GRID_COLS`/`JSP_GRID_ROWS` as macros to keep byte-cell vs pixel-cell open (CPC-TILE-SIZE-DESIGN.md, §2)
   - [x] Add a compile error when zero or >1 mode guard is defined (§8)
   - [x] Replace hard-coded `768`/`32`/`24`/`96`/`7` literals in the C engine with config symbols (asm grid math deferred to its Phase-2 CPC variants) (§2)
   - [x] Decide descriptor X/Y width (per-target `jsp_coord_t`, ZX=uint8_t byte-for-byte; 16-bit CPC X applied with the asm/API in Phase 3) (§3)
@@ -108,8 +108,8 @@ This is the last checkbox of each phase; do not tick the phase until it passes.
   - [x] Regression gate: ZX byte-for-byte (`959048ee…`) + 9 taps + CPC Mode 2 + Mode 1 + Mode 1 MONO green (§12)
 
 - [x] **Phase 7 — CPC Mode 0 (+ cell-model decision)**
-  - [x] Cell-model decision: **DECIDED Model A (byte-cell)** for the whole port — context changed (M2+M1 already verified in A; no CPC profiler to measure B's claimed win; B would mean redoing verified Mode 1 + the 20-col DTT wrinkle). Recorded in `CPC-TILE-SIZE-ANALYSIS.md`; §2/§9 already match (no prototype-both-ways needed)
-  - [x] Pick the cell model, record the outcome in CPC-TILE-SIZE-ANALYSIS.md, reconcile §2/§9 + Mode 1 (Model A → Mode 1 unchanged)
+  - [x] Cell-model decision: **DECIDED Model A (byte-cell)** for the whole port — context changed (M2+M1 already verified in A; no CPC profiler to measure B's claimed win; B would mean redoing verified Mode 1 + the 20-col DTT wrinkle). Recorded in `CPC-TILE-SIZE-DESIGN.md`; §2/§9 already match (no prototype-both-ways needed)
+  - [x] Pick the cell model, record the outcome in CPC-TILE-SIZE-DESIGN.md, reconcile §2/§9 + Mode 1 (Model A → Mode 1 unchanged)
   - [x] Add the Mode 0 odd/even interleave shift table (single phase) (§4) — `JSP_ROTTBL_IN/CARRY` Mode-0 macros in `jsp_rottbl_formula.h` (`in=(v&0xAA)>>1`, `carry=(v&0x55)<<1`); `jsp_init_rottbl` reused (1 phase, 512B)
   - [x] Define the Mode 0 `rottbl_msb` / single-phase table addressing (xrot 0/1) (§4) — same `2*xrot-2` stride; xrot 0 → NR, xrot 1 → base page; X-split `JSP_PPB_SHIFT=1`/`XROT_MASK=1`
   - [x] Write the Mode 0 `jsp_draw_*` kernels (§5) — table-driven `lib/cpc/jsp_draw_*` reused verbatim (same as M1/M2)

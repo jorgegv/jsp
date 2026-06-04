@@ -311,7 +311,7 @@ two-nibble-plane and need no expansion.)
   the 512-byte table unchanged; `rottbl_msb` keeps the `2*xrot-2` stride.  The
   kernels are the **same** table-driven `lib/cpc/jsp_draw_*` files as M1/M2.
 - **Cell model:** Model A (byte-cell), decided in Phase 7 — see
-  `doc/CPC-TILE-SIZE-ANALYSIS.md`.  Grid 80×25, cell = 1 byte = 2 px wide.
+  `doc/CPC-TILE-SIZE-DESIGN.md`.  Grid 80×25, cell = 1 byte = 2 px wide.
 - **Asset:** emitted by `tools/cpcgfx.pl --mode 0`; mask transparent pixel sets
   all four planes (so the AND keeps the background).
 - Validated by `make cpc-shift-test-mode0` (exhaustive combine + emitted bytes

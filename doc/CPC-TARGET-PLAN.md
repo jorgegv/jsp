@@ -13,7 +13,7 @@ tables/kernels, pixel encoding, screen addressing, mask/composite) is swapped.
 strategic context and the per-mode shift mechanics, §4, §8, §11.1) and
 `doc/ENGINE.md` (the ZX engine this plan ports). The cell/tile-size model
 (byte-cell vs pixel-cell, §2) is an open, deferred decision analysed separately
-in `doc/CPC-TILE-SIZE-ANALYSIS.md`.
+in `doc/CPC-TILE-SIZE-DESIGN.md`.
 
 ---
 
@@ -135,7 +135,7 @@ bring-up; the Mode-0/1 cell model is an OPEN, deferred decision.**
 There are two viable cell models, and they are **identical in Mode 2** (8 px =
 8 bytes = a 1-byte cell either way), so the choice only affects Mode 0/1 and need
 not be made until then. They are analysed in full in
-**`doc/CPC-TILE-SIZE-ANALYSIS.md`**:
+**`doc/CPC-TILE-SIZE-DESIGN.md`**:
 
 - **Model A — "byte-cell"** (this section's working assumption): cell = 8 bytes
   always; grid 80×25 in every mode; cell pixel-width = 2/4/8 px (M0/M1/M2).
@@ -152,7 +152,7 @@ not be made until then. They are analysed in full in
 
 **Decision is deferred** and will be made for Mode 0/1 by prototyping the Mode-0
 compositor **both ways** and measuring (T-states, code size, RAM, tile/text
-complexity) — see `CPC-TILE-SIZE-ANALYSIS.md` "Decision process". To keep both
+complexity) — see `CPC-TILE-SIZE-DESIGN.md` "Decision process". To keep both
 open, the engine is **parameterized** (Phase 1): `JSP_CELL_BYTES`,
 `JSP_GRID_COLS`, `JSP_GRID_ROWS` (and the derived cell count) are config macros,
 not hard-coded. The rest of this section describes **Model A**, the Mode-2
@@ -174,7 +174,7 @@ Under Model A:
   (Model B: `cols` is 8-px tiles, exactly as ZX).
 
 **Consequences to carry through the plan (Model A figures; Model B differs per
-`CPC-TILE-SIZE-ANALYSIS.md`):**
+`CPC-TILE-SIZE-DESIGN.md`):**
 
 - **Cell-indexed** tables scale from 768 → 2000 cells (§9 memory budget):
   BTT 4000 B, DTT 250 B, FTT 250 B, BAT dropped (§6). The **registry-sized**
@@ -455,7 +455,7 @@ selectable slot2/slot3.
 **CPC:** screen occupies `0xC000-0xFFFF`. JSP tables must sit **below** the
 screen. The cell-table sizes below are for the **Model-A** 2000-cell grid (§2);
 under Model B the cell count is 500/1000/2000 for M0/M1/M2 so BTT/DTT/FTT shrink
-accordingly in M0/M1 (`CPC-TILE-SIZE-ANALYSIS.md`). Size the block from the
+accordingly in M0/M1 (`CPC-TILE-SIZE-DESIGN.md`). Size the block from the
 config macros (`JSP_GRID_COLS × JSP_GRID_ROWS`), not the constant 2000:
 
 | Table           | ZX (768 cells) | CPC Model A (2000 cells)     |
@@ -612,7 +612,7 @@ must replace and gives a green baseline to regress against.
 count), **cell byte size (`JSP_CELL_BYTES`) + grid dims (`JSP_GRID_COLS`,
 `JSP_GRID_ROWS`)**, rottbl size, colour mode. Exposing cell size/grid dims as
 macros (not hard-coded) keeps the byte-cell vs pixel-cell choice
-(`CPC-TILE-SIZE-ANALYSIS.md`, §2) open for M0/M1 — M2 values are identical either
+(`CPC-TILE-SIZE-DESIGN.md`, §2) open for M0/M1 — M2 values are identical either
 way. Mutually-exclusive-mode compile error. Decide descriptor X/Y width strategy
 (§3) and apply under guard. Replace hard-coded `768`/`32`/`24`/`96`/`8` literals
 across the engine with the config symbols (ZX values unchanged).
@@ -667,7 +667,7 @@ decision (§8) and add it. Test pass under `CPC_MODE1` / `CPC_MODE1_MONO`.
 
 **Phase 7 — CPC Mode 0 (+ cell-model decision).**
 Mode 0 is the extreme 4×-cell case, so this is where the **byte-cell vs
-pixel-cell decision** (`CPC-TILE-SIZE-ANALYSIS.md`, §2) is settled: prototype the
+pixel-cell decision** (`CPC-TILE-SIZE-DESIGN.md`, §2) is settled: prototype the
 Mode-0 covered-cell compositor **both ways** and measure (redraw T-states under a
 representative sprite load, code size, table RAM, tile/text complexity), then pick
 and record the outcome in the analysis doc. Then: Mode-0 interleave shift (§4) +
