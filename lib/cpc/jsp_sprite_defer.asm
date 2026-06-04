@@ -193,7 +193,8 @@ mrc_noadv:
 ;;                                   struct jsp_rect *clip ) {
 ;;     uint8_t r0 = sp->ypos >> 3;
 ;;     uint8_t c0 = sp->xpos >> 3;
-;;     uint8_t r1 = r0 + sp->rows;
+;;     uint8_t yrot = sp->ypos & 7, xrot = sp->xpos & 7;
+;;     uint8_t r1 = r0 + ( yrot ? sp->rows : sp->rows - 1 );  // no extra row when aligned
 ;;     uint8_t c1 = c0 + sp->cols;
 ;;
 ;;     if ( clip ) {
@@ -218,7 +219,17 @@ mark_footprint:
 	rrca
 	and 0x1F
 	ld (mr_r0),a
-	add a,(ix+0)			; r1 = r0 + rows
+	;; r1 = r0 + (yrot ? rows : rows-1) — match the frame's vertical footprint
+	;; (no extra bottom row when cell-aligned, see lib/cpc/jsp_frame.asm), so
+	;; render-cells and dirtied-cells agree and the aligned case marks no spurious row.
+	ld c,(ix+0)			; C = rows
+	ld a,(ix+4)			; yrot = ypos & 7
+	and 7
+	jr nz,mf_vr1
+	dec c				; aligned (yrot==0): rows-1
+mf_vr1:
+	ld a,(mr_r0)
+	add a,c
 	ld (mr_r1),a
 	ld l,(ix+2)			; c0 = xpos >> JSP_PPB_SHIFT (xpos @ +2..+3, 16-bit)
 	ld h,(ix+3)

@@ -36,8 +36,10 @@ CPC framebuffer is always **80 bytes/line × 200 lines = 16000 bytes** at
 
 Two facts frame the whole decision:
 
-1. **Mode 2 is identical in both models** — 8 px = 8 bytes = a 1-byte cell,
-   80×25, either way. The choice only affects **Mode 0 and Mode 1**.
+1. **Mode 2 is geometrically identical in both models** — 8 px = 8 bytes = a
+   1-byte cell, 80×25, either way. (Output is identical; but the *compositor
+   speed* is not a tie — pixel M2 is ~7 % slower, see §3/§4.) The choice
+   materially affects **Mode 0 and Mode 1**.
 2. **Total pixel work is constant** — the screen is always 16000 bytes and each
    dirty pixel is written once. So this is *not* a "cheap walk vs expensive
    blit" trade; the blit pixel-work is equal. What varies is **per-cell
@@ -135,56 +137,89 @@ measurement below, but a Model B used for a text/tilemap game would need them:
   kept serial (parallel runs contend for CPU and corrupt the numbers).
 - **Driver:** `make cpc-perf-matrix [CYCLES=N] [JSP_CELL_MODEL=...]`.
 
+> **Re-measured 2026-06-04** after the bottom-line-artifact fix (`yrot==0`
+> `r1` over-render) and the covered-cell perf round (per-cell divide removed).
+> Both models got faster; the byte-vs-pixel **ratios** shifted, and Mode 2 is
+> **no longer a tie** — see the per-mode summary below.
+
 ### Model-A baseline (byte-cell), 1000 cycles, full matrix
 
 | Config | Disk | Sprites | Elapsed (s) |
 |--------|------|--------:|------------:|
-| Mode 2 | CPCSPR | 5 | 7.77 |
-| Mode 1 | CPCSPR1 | 5 | 11.24 |
-| Mode 1 MONO | CPCSPRM | 5 | 16.12 |
-| Mode 0 | CPCSPR0 | 4 | 14.29 |
-| Mode 2 FAST | CPCSPR2F | 5 | 6.74 |
-| Mode 0 FAST | CPCSPR0F | 4 | 12.87 |
-| Mode 1 FAST | CPCSPR1F | 5 | 10.02 |
+| Mode 2 | CPCSPR2 | 5 | 6.94 |
+| Mode 1 | CPCSPR1 | 5 | 9.81 |
+| Mode 1 MONO | CPCSPR1M | 5 | 14.52 |
+| Mode 0 | CPCSPR0 | 4 | 11.86 |
+| Mode 2 FAST | CPCSPR2F | 5 | 5.93 |
+| Mode 0 FAST | CPCSPR0F | 4 | 10.84 |
+| Mode 1 FAST | CPCSPR1F | 5 | 8.38 |
 
 (Raw wall-clock incl. boot; each row is its own model-vs-model baseline — sprite
 counts/motion differ, so do not read *across* rows.)
 
-### Comparison — byte-cell (A) vs pixel-cell (B)
+### Comparison — byte-cell (A) vs pixel-cell (B), all modes
 
-Boot-free redraw cost, same sprite count/art/motion in both models (the Model-A
-test source built with `JSP_CELL_MODEL=byte` vs `=pixel`); only the cell model
-differs. Lower = faster.
+Boot-free redraw cost (t2000−t1000 = 1000 redraw cycles), same sprite
+count/art/motion in both models (same test source built `JSP_CELL_MODEL=byte`
+vs `=pixel`); only the cell model differs. Lower = faster; ~1–2 % wall-clock noise.
 
-| Mode (5 sprites M1 / 4 M0) | Model A (byte) | Model B (pixel) | Model B speedup |
-|----------------------------|---------------:|----------------:|:---------------:|
-| **Mode 1** (rotating)      | 10.21 s        | 9.52 s          | **≈ 7 % faster** |
-| **Mode 1 FAST** (aligned)  | 8.60 s         | 7.57 s          | **≈ 12 % faster** |
-| **Mode 0** (rotating)      | 13.38 s        | 10.94 s         | **≈ 18 % faster** |
-| **Mode 0 FAST** (aligned)  | 12.27 s        | 9.40 s          | **≈ 23 % faster** |
-| **Mode 2** (any)           | —              | —               | **tie** (identical model) |
+| Config | Model A (byte) | Model B (pixel) | Faster model |
+|--------|---------------:|----------------:|:-------------|
+| **Mode 2**        | 5.93 s  | 6.35 s  | **byte** (pixel ≈ 7 % slower) |
+| **Mode 2 FAST**   | 5.12 s  | 5.53 s  | **byte** (pixel ≈ 8 % slower) |
+| **Mode 1**        | 8.79 s  | 8.19 s  | **pixel** ≈ 7 % faster |
+| **Mode 1 MONO**   | 13.89 s | 12.88 s | **pixel** ≈ 7 % faster |
+| **Mode 1 FAST**   | 7.76 s  | 6.94 s  | **pixel** ≈ 11 % faster |
+| **Mode 0**        | 11.21 s | 9.61 s  | **pixel** ≈ 14 % faster |
+| **Mode 0 FAST**   | 10.01 s | 8.19 s  | **pixel** ≈ 18 % faster |
 
-Raw wall-clock at 1000 cycles (incl. ~1 s boot), for reference: M1 A 11.24 / B
-10.31; M0 A 14.19 / B 11.55; M1-FAST A 10.01 / B 8.99; M0-FAST A 12.88 / B 10.22.
+### Which model is faster in which mode (summary)
+
+| Mode | Faster model | Margin | Why |
+|------|--------------|--------|-----|
+| **Mode 0** (incl. FAST) | **pixel (B)** | 14–18 % faster | 4× fewer cells → 4× less per-cell overhead |
+| **Mode 1** (incl. MONO, FAST) | **pixel (B)** | 7–11 % faster | 2× fewer cells → 2× less per-cell overhead |
+| **Mode 2** (incl. FAST) | **byte (A)** | pixel ≈ 7–8 % slower | same 8 px = 1 byte = 1 cell geometry, but the pixel compositor still runs its per-byte-column dispatch loop (once, at COLBYTES==1) — pure overhead the byte single-column core avoids |
 
 ### Reading the result
 
 Model B is **faster in every Mode-0/Mode-1 configuration**, and the win **grows
-as the cell count drops**: Mode 1 (2× fewer cells) ≈ 7–12 %, Mode 0 (4× fewer
-cells) ≈ 18–23 %. FAST gains a bit more than rotating because the cheaper
+as the cell count drops**: Mode 1 (2× fewer cells) ≈ 7–11 %, Mode 0 (4× fewer
+cells) ≈ 14–18 %. FAST gains a bit more than rotating because the cheaper
 per-byte kernel makes per-cell overhead a larger share — and per-cell overhead
 (DTT walk, coverage test, cell→address, scratch seed) is exactly what Model B
-pays less of. Mode 2 is identical (8 px = 1 byte = one cell), so it is a tie.
-This confirms the §1 prediction: constant pixel work, so the coarser grid wins
-purely by paying per-cell overhead 2×/4× less.
+pays less of. This confirms the §1 prediction: constant pixel work, so the
+coarser grid wins purely by paying per-cell overhead 2×/4× less.
+
+**Mode 2 is the exception.** Geometrically it is identical in both models (8 px =
+1 byte = one cell), so the *kernels* are the same fast absolute-addressing path.
+But the pixel compositor dispatches through its per-byte-column loop
+(`cb_kloop`, in `lib/cpc/jsp_covered.asm`) even at COLBYTES==1, where the loop
+runs exactly once — pure dispatch overhead the byte single-column core skips.
+Net: pixel Mode 2 is ≈ 7–8 % slower than byte. (This was masked in the original
+study by the dominant per-cell divide; removing that divide exposed it.) Routing
+pixel M2 through the byte core would erase the gap, but is deliberately **not**
+done — see Decision.
 
 ---
 
 ## 4. Decision
 
-**Pixel-cell (Model B) is the default for all CPC modes.** It is faster in
-Mode 0 (≈18–23 %) and Mode 1 (≈7–12 %), a tie in Mode 2, and more faithful to
-the tilemap/text semantics (1 cell = 8×8 px = one tile/char, like ZX). Byte-cell
-(Model A) remains available via `JSP_CELL_MODEL=byte` for comparison or fallback.
-Mode 2's pixel-cell build uses the same 8-byte cell and (via the `COLBYTES==1`
-guard) the same fast absolute kernels as byte-cell, so nothing is lost there.
+**Pixel-cell (Model B) is the default for all CPC modes.** Per the summary above:
+
+- **Mode 0:** pixel ≈ 14–18 % faster → pixel.
+- **Mode 1 (incl. MONO/FAST):** pixel ≈ 7–11 % faster → pixel.
+- **Mode 2 (incl. FAST):** byte ≈ 7–8 % faster, but pixel is kept the default
+  anyway, for **consistency** (one model across all modes) and tilemap/text
+  **fidelity** (1 cell = 8×8 px = one tile/char, like ZX). The ~7 % is a small,
+  deliberate cost.
+
+**If you want the extra ~7 % in Mode 2, build it under the byte model:**
+
+```sh
+make <cpc-mode2-target> JSP_CELL_MODEL=byte    # e.g. cpc-sprite, cpc-sprite-mode2-fast
+```
+
+Output is pixel-identical between the two models in Mode 2 (only the compositor
+path — and thus speed — differs), so byte is a drop-in faster choice there.
+Byte-cell also remains available in every mode via `JSP_CELL_MODEL=byte`.
