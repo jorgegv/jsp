@@ -55,12 +55,21 @@ static uint8_t palette_inks[16] = {
     0x45, 0x4D, 0x56, 0x46, 0x57, 0x5E, 0x40, 0x4E
 };
 
-// Wireframe tiles per pen, built at run time: a vertical line (left pixel),
-// a horizontal line (top scanline), and the corner (both).  Plus a black cell.
+#ifdef JSP_CELL_MODEL_PIXEL
+// Pixel-cell: 8x8-px cells (20x25 grid).  One 32-byte COLUMN-MAJOR box tile
+// (4 byte-cols x 8 lines): pen-2 top edge across all 4 byte-cols, left edge
+// down byte-col 0.  Built at run time via m0_cell().
+static uint8_t tile_box[32];
+static uint8_t tile_blank[32] = { 0 };
+#else
+// Byte-cell: 2-px cells (80x25 grid).  Wireframe tiles per pen, built at run
+// time: a vertical line (left pixel), a horizontal line (top scanline), and the
+// corner (both).  Plus a black cell.
 static uint8_t vline_tile[16][8];
 static uint8_t hline_tile[16][8];
 static uint8_t corner_tile[16][8];
 static uint8_t tile_black[8] = { 0,0,0,0,0,0,0,0 };
+#endif
 
 // Mode-0 byte with pixel 0 = pen p0, pixel 1 = pen p1.  Plane q of cell-pixel cp
 // sits at bit (7-cp) - 2q: px0 -> bits 7,5,3,1 ; px1 -> bits 6,4,2,0.
@@ -101,6 +110,22 @@ void main( void ) {
 
     cpc_setup_mode0();
 
+#ifdef JSP_CELL_MODEL_PIXEL
+    (void)p;
+    // Build the 32-byte column-major box tile: pen-2 top edge across all 4
+    // byte-columns (line 0 full), pen-2 left edge down byte-column 0.
+    {
+        uint8_t full = m0_cell( 2, 2 );     // both pixels pen 2
+        uint8_t left = m0_cell( 2, 0 );     // left pixel pen 2
+        for ( c = 0; c < 4; c++ )           // 4 byte-columns
+            for ( i = 0; i < 8; i++ )       // 8 lines
+                tile_box[ c * 8 + i ] = ( i == 0 ) ? full : ( c == 0 ? left : 0 );
+    }
+    jsp_init( tile_blank, 0 );
+    for ( r = 0; r < JSP_GRID_ROWS; r++ )       // 25
+        for ( c = 0; c < JSP_GRID_COLS; c++ )   // 20 (pixel-cell M0)
+            jsp_draw_background_tile( r, c, tile_box );
+#else
     // build the per-pen wireframe tiles.  Thicker lines: the vertical line fills
     // the whole 2-px cell (2x the 1-px line), the horizontal line is 3 scanlines
     // tall (3x), and an intersection is a solid cell.
@@ -128,6 +153,7 @@ void main( void ) {
             else if ( hl )  t = hline_tile[ pen ];
             jsp_draw_background_tile( r, c, t );
         }
+#endif
 
     for ( f = 0; f < ANIM_FRAMES; f++ ) {
         for ( r = 0; r < NUM_SPRITES; r++ ) {

@@ -10,6 +10,8 @@ main
 
 # CPC build + emulator screenshot artifacts
 *.dsk
+# ...but DO keep the committed per-cell-model test archive (make cell-model-archive)
+!cell-model/**/*.dsk
 *.cdt
 CPCBG
 CPCSPR

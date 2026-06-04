@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-perf-matrix cpc-bg-mode1-pixcell run-cpc-bg-mode1-pixcell cpc-sprite-mode1-pixcell run-cpc-sprite-mode1-pixcell cpc-sprite-mode0-pixcell run-cpc-sprite-mode0-pixcell cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-perf-matrix cell-model-archive cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -272,54 +272,6 @@ cpc-bg:
 run-cpc-bg: cpc-bg
 	./tools/cap32-shot.sh $(CPC_BG_NAME).dsk $(CPC_BG_NAME)
 
-## Model-B (pixel-cell) Phase-1 verification: Mode-1 background, 40x25 grid,
-## 16-byte column-major box tiles tiled edge-to-edge.  Forces the pixel-cell
-## switch in the recipe (not via JSP_CELL_MODEL, so it builds standalone).
-CPC_BGP1_NAME	= CPCBGP1
-cpc-bg-mode1-pixcell: CPC_MODE := 1
-cpc-bg-mode1-pixcell:
-	echo Building CPC Mode 1 PIXEL-CELL background test...
-	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -DJSP_CELL_MODEL_PIXEL -Ca-DJSP_CELL_MODEL_PIXEL \
-		-create-app -subtype=dsk \
-		$(CPCTEST_DIR)/test_cpc_bg_mode1_pixcell.c $(CPC_LIB_SRCS) -o $(CPC_BGP1_NAME) -m
-	echo "Created $(CPC_BGP1_NAME).dsk"
-
-# Build and screenshot the Model-B Mode-1 background test headless in cap32
-run-cpc-bg-mode1-pixcell: cpc-bg-mode1-pixcell
-	./tools/cap32-shot.sh $(CPC_BGP1_NAME).dsk $(CPC_BGP1_NAME)
-
-## Model-B (pixel-cell) Mode-1 SPRITE test — MASK2 balls over graph paper on the
-## 40x25 pixel-cell grid; same art/motion as the Model-A M1 test for comparison.
-CPC_SPRP1_NAME	= CPCSPP1
-cpc-sprite-mode1-pixcell: CPC_MODE := 1
-cpc-sprite-mode1-pixcell: $(SPRITE_MASK2_M1_ASM)
-	echo Building CPC Mode 1 PIXEL-CELL sprite test...
-	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -DJSP_CELL_MODEL_PIXEL -Ca-DJSP_CELL_MODEL_PIXEL \
-		-create-app -subtype=dsk \
-		$(CPCTEST_DIR)/test_cpc_sprite_mode1_pixcell.c $(SPRITE_MASK2_M1_ASM) $(CPC_LIB_SRCS) \
-		-o $(CPC_SPRP1_NAME) -m
-	echo "Created $(CPC_SPRP1_NAME).dsk"
-
-# Build and screenshot the Model-B Mode-1 sprite test headless in cap32
-run-cpc-sprite-mode1-pixcell: cpc-sprite-mode1-pixcell
-	./tools/cap32-shot.sh $(CPC_SPRP1_NAME).dsk $(CPC_SPRP1_NAME)
-
-## Model-B (pixel-cell) Mode-0 SPRITE test — the extreme 20x25 grid (32-byte
-## cells, row-aligned DTT).  Same art/motion as the Model-A M0 test.
-CPC_SPRP0_NAME	= CPCSPP0
-cpc-sprite-mode0-pixcell: CPC_MODE := 0
-cpc-sprite-mode0-pixcell: $(SPRITE_MASK2_M0_ASM)
-	echo Building CPC Mode 0 PIXEL-CELL sprite test...
-	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -DJSP_CELL_MODEL_PIXEL -Ca-DJSP_CELL_MODEL_PIXEL \
-		-create-app -subtype=dsk \
-		$(CPCTEST_DIR)/test_cpc_sprite_mode0_pixcell.c $(SPRITE_MASK2_M0_ASM) $(CPC_LIB_SRCS) \
-		-o $(CPC_SPRP0_NAME) -m
-	echo "Created $(CPC_SPRP0_NAME).dsk"
-
-# Build and screenshot the Model-B Mode-0 sprite test headless in cap32
-run-cpc-sprite-mode0-pixcell: cpc-sprite-mode0-pixcell
-	./tools/cap32-shot.sh $(CPC_SPRP0_NAME).dsk $(CPC_SPRP0_NAME)
-
 ## CPC (Phase 3) — masked, sub-byte-shifted Mode 2 sprites over a background.
 ## Same toolchain as cpc-bg; additionally links the (1bpp) mask2 sprite asset
 ## and exercises the lib/cpc kernels + covered-cell compositor.
@@ -469,6 +421,21 @@ run-cpc-matrix:
 		cp -f shot.png screenshot_$$t.png; \
 	done
 	echo "CPC run matrix complete; see screenshot_run-cpc-*.png."
+
+## Build every CPC test (the 7-config sprite matrix + the Mode-2 bg/foreground/
+## btt-redraw utility tests) in BOTH cell models, archiving the .dsk into
+## cell-model/byte/ and cell-model/pixel/ for reference + commit.
+CPC_ALL_TESTS = $(CPC_BUILD_TARGETS) cpc-bg cpc-foreground cpc-btt-redraw
+cell-model-archive:
+	for m in byte pixel; do \
+		mkdir -p cell-model/$$m; \
+		rm -f *.dsk; \
+		for t in $(CPC_ALL_TESTS); do \
+			$(MAKE) $$t JSP_CELL_MODEL=$$m >/dev/null || { echo "FAILED: $$t ($$m)"; exit 1; }; \
+		done; \
+		cp -f *.dsk cell-model/$$m/; \
+		echo "cell-model/$$m: $$(ls cell-model/$$m/*.dsk | wc -l) .dsk built"; \
+	done
 
 ## CPC performance harness — wall-clock redraw timing for the tile-size-model
 ## study.  Each of the 7 sprite configs is rebuilt with -DTIME_LIMITED=$(CYCLES)

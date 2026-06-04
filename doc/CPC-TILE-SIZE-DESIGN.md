@@ -153,7 +153,8 @@ counts/motion differ, so do not read *across* rows.)
 ### Comparison — byte-cell (A) vs pixel-cell (B)
 
 Boot-free redraw cost, same sprite count/art/motion in both models (the Model-A
-test vs its `*_pixcell` twin); only the cell model differs. Lower = faster.
+test source built with `JSP_CELL_MODEL=byte` vs `=pixel`); only the cell model
+differs. Lower = faster.
 
 | Mode (5 sprites M1 / 4 M0) | Model A (byte) | Model B (pixel) | Model B speedup |
 |----------------------------|---------------:|----------------:|:---------------:|
