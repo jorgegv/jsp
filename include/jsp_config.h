@@ -17,12 +17,10 @@
 // unchanged.
 //
 // NOTE on the CPC grid: the cell/tile-size model (byte-cell vs pixel-cell) is
-// an OPEN, deferred decision (doc/CPC-TILE-SIZE-ANALYSIS.md, plan §2).  The CPC
-// values here are the "Model A" (byte-cell, 80x25) figures, which are CORRECT
-// for Mode 2 (identical in both models) and PROVISIONAL for Mode 0/1 — the
-// final M0/M1 grid is settled in Phase 7 by measurement.  Because everything
-// reads these macros, switching a mode to Model B later is a one-line change
-// here plus the per-mode kernel/compositor work, not an engine-wide edit.
+// DECIDED — pixel-cell (Model B) is the measured-faster default; byte-cell
+// (Model A) stays available (doc/CPC-TILE-SIZE-DESIGN.md).  Both are selectable
+// here; everything reads these macros, so the grid/cell size follow the chosen
+// model with no engine-wide edit.  Mode 2 is identical in both models.
 //
 ///////////////////////////////////////////////////////
 

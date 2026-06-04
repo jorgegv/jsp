@@ -62,7 +62,7 @@
 ;; only supplies the default for a bare assembler invocation.
 	IFNDEF JSP_CELL_MODEL_BYTE
 	IFNDEF JSP_CELL_MODEL_PIXEL
-	defc JSP_CELL_MODEL_PIXEL = 1
+	defc JSP_CELL_MODEL_PIXEL = 1	; a defc symbol satisfies the IFDEF below
 	ENDIF
 	ENDIF
 
