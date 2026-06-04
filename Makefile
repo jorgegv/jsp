@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-perf-matrix cell-model-archive cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw cpc-artifact-mode2 cpc-artifact-mode1 cpc-artifact-mode0 cpc-artifact-mode1-mono cpc-artifact-check
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-perf-matrix cpc-cell-model-archive cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw cpc-artifact-mode2 cpc-artifact-mode1 cpc-artifact-mode0 cpc-artifact-mode1-mono cpc-artifact-check
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -486,17 +486,17 @@ run-cpc-matrix:
 
 ## Build every CPC test (the 7-config sprite matrix + the Mode-2 bg/foreground/
 ## btt-redraw utility tests) in BOTH cell models, archiving the .dsk into
-## cell-model/byte/ and cell-model/pixel/ for reference + commit.
+## cpc-cell-model/byte/ and cpc-cell-model/pixel/ for reference + commit.
 CPC_ALL_TESTS = $(CPC_BUILD_TARGETS) cpc-bg cpc-foreground cpc-btt-redraw
-cell-model-archive:
+cpc-cell-model-archive:
 	for m in byte pixel; do \
-		mkdir -p cell-model/$$m; \
+		mkdir -p cpc-cell-model/$$m; \
 		rm -f *.dsk; \
 		for t in $(CPC_ALL_TESTS); do \
 			$(MAKE) $$t JSP_CELL_MODEL=$$m >/dev/null || { echo "FAILED: $$t ($$m)"; exit 1; }; \
 		done; \
-		cp -f *.dsk cell-model/$$m/; \
-		echo "cell-model/$$m: $$(ls cell-model/$$m/*.dsk | wc -l) .dsk built"; \
+		cp -f *.dsk cpc-cell-model/$$m/; \
+		echo "cpc-cell-model/$$m: $$(ls cpc-cell-model/$$m/*.dsk | wc -l) .dsk built"; \
 	done
 
 ## CPC performance harness — wall-clock redraw timing for the tile-size-model

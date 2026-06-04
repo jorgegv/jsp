@@ -10,11 +10,11 @@ main
 
 # CPC build + emulator screenshot artifacts
 *.dsk
-# ...but DO keep the committed per-cell-model test archive (make cell-model-archive)
-!cell-model/**/*.dsk
+# ...but DO keep the committed per-cell-model test archive (make cpc-cell-model-archive)
+!cpc-cell-model/**/*.dsk
 *.cdt
 CPCBG
-CPCSPR
+CPCSPR2
 CPCSPRD
 CPCFG
 CPCTILE
@@ -24,9 +24,13 @@ tests/cpc/shift_test_mode2
 CPCSPR1
 tests/cpc/shift_test_mode1
 tests/cpc/shift_test_mode1_mono
-CPCSPRM
+CPCSPR1M
 tests/cpc/shift_test_mode0
 CPCSPR0
 CPCSPR2F
 CPCSPR0F
 CPCSPR1F
+CPCART
+CPCART1
+CPCART0
+CPCARTM
