@@ -1,4 +1,7 @@
+# z88dk per-source intermediates — kept beside their sources (see CLAUDE.md),
+# not routed into build/.
 *.lis
+*.lst
 *.bin
 *.tap
 *.map
@@ -6,31 +9,8 @@
 *.dep
 *.sym
 *.c.asm
-main
 
-# CPC build + emulator screenshot artifacts
-*.dsk
-# ...but DO keep the committed per-cell-model test archive (make cpc-cell-model-archive)
-!cpc-cell-model/**/*.dsk
-*.cdt
-CPCBG
-CPCSPR2
-CPCSPRD
-CPCFG
-CPCTILE
-shot.png
-screenshot_*.png
-tests/cpc/shift_test_mode2
-CPCSPR1
-tests/cpc/shift_test_mode1
-tests/cpc/shift_test_mode1_mono
-CPCSPR1M
-tests/cpc/shift_test_mode0
-CPCSPR0
-CPCSPR2F
-CPCSPR0F
-CPCSPR1F
-CPCART
-CPCART1
-CPCART0
-CPCARTM
+# All final build artifacts (ZX main + main.tap, CPC .dsk + named binaries, test
+# taps, host unit-test binaries, emulator screenshots) are emitted here.
+# `make clean` removes it wholesale (rm -rf build/).
+build/

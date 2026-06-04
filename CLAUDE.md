@@ -12,7 +12,7 @@ The Makefile is self-documenting: `make` with no target prints the list of
 available targets and what each does.
 
 ```bash
-make build   # Clean rebuild → produces main.tap
+make build   # Clean rebuild → produces build/main.tap
 make run     # Build and launch in FUSE emulator
 make clean   # Remove all build artifacts
 ```
@@ -32,9 +32,12 @@ automated test runner. Test programs are split by platform, mirroring `lib/`:
 shared generated sprite assets live in `tests/` (like `lib/*.asm`), ZX test
 programs in `tests/zx/`, CPC test programs in `tests/cpc/`.
 
+All build artifacts (taps, dsks, named binaries, screenshots) are emitted into
+the `build/` directory; `make clean` is just `rm -rf build/`.
+
 ```bash
-make tests                        # Build all ZX test taps (tests/zx/)
-make tests/zx/test_NAME.tap       # Build a single ZX test
+make tests                        # Build all ZX test taps (build/)
+make build/test_NAME.tap          # Build a single ZX test
 make run-test TEST=test_NAME      # Build and launch a single ZX test in FUSE
 ```
 
@@ -46,7 +49,7 @@ CPC tests (`zcc +cpc`, headless cap32 screenshot via the `caprice-testing` skill
 make run-cpc-bg                   # Mode 2 background-tile test
 make run-cpc-sprite               # Mode 2 sprite test (settles for screenshot)
 make cpc-sprite-demo-mode2        # Mode 2 sprite demo (bounces continuously);
-                                  #   watch: cap32 -a 'run"CPCSPRD.' CPCSPRD.dsk
+                                  #   watch: cap32 -a 'run"CPCSPRD.' build/CPCSPRD.dsk
 ```
 
 ## Code Structure

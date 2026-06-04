@@ -26,7 +26,9 @@ else
 fi
 # Default RUNNAME to the .dsk basename, uppercased and truncated to AMSDOS's 8 chars.
 RUNNAME="${2:-$(basename "$DISK" .dsk | tr 'a-z' 'A-Z' | cut -c1-8)}"
-ROOT_SHOT="$PWD/shot.png"
+# Output PNG path: defaults to ./shot.png; the Makefile exports CAP32_SHOT_OUT to
+# route it into the build/ directory (cleaner-build layout).
+ROOT_SHOT="${CAP32_SHOT_OUT:-$PWD/shot.png}"
 LOG=/tmp/cap32-run.log
 # cap32's F3 dump lands here (its own clean framebuffer = the FULL CPC raster
 # incl. the border in all directions, 768x540 — no Xvfb window/letterbox/scaling
