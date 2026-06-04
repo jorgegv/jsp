@@ -75,8 +75,11 @@ DISPLAY="$DISP" SDL_VIDEODRIVER=x11 WAYLAND_DISPLAY= \
   "$CAP32_BIN" -c "$CAP32_CFG" -a "run\"$RUNNAME." "$DISK" >"$LOG" 2>&1 &
 CAP_PID=$!
 
-# --- 5. Give it time to boot + load (CPC6128 boot is a few seconds).
-sleep 8
+# --- 5. Give it time to boot + load (CPC6128 boot is a few seconds).  Override
+#        with CAP32_SHOT_WAIT for animated tests that settle at a fixed frame:
+#        the two cell models run at different speeds, so the grab must wait until
+#        BOTH have reached the frozen final frame for a reproducible comparison.
+sleep "${CAP32_SHOT_WAIT:-8}"
 if ! kill -0 "$CAP_PID" 2>/dev/null; then
   echo "cap32 exited early. Log:"; cat "$LOG"; exit 1
 fi

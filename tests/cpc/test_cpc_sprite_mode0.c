@@ -55,16 +55,17 @@ static uint8_t palette_inks[16] = {
     0x45, 0x4D, 0x56, 0x46, 0x57, 0x5E, 0x40, 0x4E
 };
 
+// Wireframe tiles per pen, built at run time: a vertical line (left edge), a
+// horizontal line (top scanlines), and the corner (both).  Plus a black cell.
+// Same multicolour 16x16-px grid in both models; the cell byte-size differs:
+// byte-cell = 2-px cells (80x25, 8-byte tiles); pixel-cell = 8-px cells (20x25,
+// 32-byte COLUMN-MAJOR tiles = 4 byte-cols x 8 lines).
 #ifdef JSP_CELL_MODEL_PIXEL
-// Pixel-cell: 8x8-px cells (20x25 grid).  One 32-byte COLUMN-MAJOR box tile
-// (4 byte-cols x 8 lines): pen-2 top edge across all 4 byte-cols, left edge
-// down byte-col 0.  Built at run time via m0_cell().
-static uint8_t tile_box[32];
-static uint8_t tile_blank[32] = { 0 };
+static uint8_t vline_tile[16][32];
+static uint8_t hline_tile[16][32];
+static uint8_t corner_tile[16][32];
+static uint8_t tile_black[32] = { 0 };
 #else
-// Byte-cell: 2-px cells (80x25 grid).  Wireframe tiles per pen, built at run
-// time: a vertical line (left pixel), a horizontal line (top scanline), and the
-// corner (both).  Plus a black cell.
 static uint8_t vline_tile[16][8];
 static uint8_t hline_tile[16][8];
 static uint8_t corner_tile[16][8];
@@ -111,20 +112,36 @@ void main( void ) {
     cpc_setup_mode0();
 
 #ifdef JSP_CELL_MODEL_PIXEL
-    (void)p;
-    // Build the 32-byte column-major box tile: pen-2 top edge across all 4
-    // byte-columns (line 0 full), pen-2 left edge down byte-column 0.
-    {
-        uint8_t full = m0_cell( 2, 2 );     // both pixels pen 2
-        uint8_t left = m0_cell( 2, 0 );     // left pixel pen 2
-        for ( c = 0; c < 4; c++ )           // 4 byte-columns
-            for ( i = 0; i < 8; i++ )       // 8 lines
-                tile_box[ c * 8 + i ] = ( i == 0 ) ? full : ( c == 0 ? left : 0 );
+    // Pixel-cell wireframe tiles (32-byte COLUMN-MAJOR, 4 byte-cols x 8 lines).
+    // Same 16x16-px grid as byte-cell, drawn pixel-identically: a vertical line is
+    // the left 2-px byte-column (full height); a horizontal line is the top 3
+    // scanlines across all 4 byte-cols; the corner is both.
+    for ( p = 0; p < 16; p++ ) {
+        uint8_t full = m0_cell( p, p );     // full 2-px byte-column = pen p
+        for ( c = 0; c < 4; c++ )           // byte-column 0..3
+            for ( i = 0; i < 8; i++ ) {     // line 0..7
+                uint8_t idx = c * 8 + i;
+                vline_tile[ p ][ idx ]  = ( c == 0 )           ? full : 0;
+                hline_tile[ p ][ idx ]  = ( i < 3 )            ? full : 0;
+                corner_tile[ p ][ idx ] = ( c == 0 || i < 3 )  ? full : 0;
+            }
     }
-    jsp_init( tile_blank, 0 );
-    for ( r = 0; r < JSP_GRID_ROWS; r++ )       // 25
-        for ( c = 0; c < JSP_GRID_COLS; c++ )   // 20 (pixel-cell M0)
-            jsp_draw_background_tile( r, c, tile_box );
+
+    jsp_init( tile_black, 0 );
+
+    // 16x16-px wireframe grid: vertical line every 2 cells (16 px), horizontal
+    // every 2 rows; each 16x16 square (gx=col/2, gy=row/2) cycles pen 2..15.
+    for ( r = 0; r < JSP_GRID_ROWS; r++ )           // 25
+        for ( c = 0; c < JSP_GRID_COLS; c++ ) {     // 20 (pixel-cell M0)
+            uint8_t pen = 2 + ( ( ( c >> 1 ) + ( r >> 1 ) ) % 14 );
+            uint8_t vl  = ( ( c & 1 ) == 0 );
+            uint8_t hl  = ( ( r & 1 ) == 0 );
+            uint8_t *t  = tile_black;
+            if ( vl && hl ) t = corner_tile[ pen ];
+            else if ( vl )  t = vline_tile[ pen ];
+            else if ( hl )  t = hline_tile[ pen ];
+            jsp_draw_background_tile( r, c, t );
+        }
 #else
     // build the per-pen wireframe tiles.  Thicker lines: the vertical line fills
     // the whole 2-px cell (2x the 1-px line), the horizontal line is 3 scanlines
