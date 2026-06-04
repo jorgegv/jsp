@@ -46,7 +46,7 @@ BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
 .SILENT:
 MAKEFLAGS 	+= --no-print-directory -j4
 
-.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-perf-matrix cell-model-archive cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
+.PHONY: help default build clean run run-jnext profile tests run-test bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests cpc-bg run-cpc-bg cpc-sprite run-cpc-sprite cpc-sprite-demo-mode2 cpc-shift-test-mode2 cpc-shift-test-mode1 cpc-shift-test-mode1-mono cpc-shift-test-mode0 cpc-sprite-mode1 run-cpc-sprite-mode1 cpc-sprite-mode1-mono run-cpc-sprite-mode1-mono cpc-sprite-mode0 run-cpc-sprite-mode0 cpc-sprite-mode2-fast run-cpc-sprite-mode2-fast cpc-sprite-mode0-fast run-cpc-sprite-mode0-fast cpc-sprite-mode1-fast run-cpc-sprite-mode1-fast cpc-matrix run-cpc-matrix cpc-perf-matrix cell-model-archive cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw cpc-artifact-mode2 cpc-artifact-mode1 cpc-artifact-mode0 cpc-artifact-mode1-mono cpc-artifact-check
 
 ## Self-documenting help — `make` with no target lists every target that has
 ## a `#` comment on the line immediately above it (names print in bold red).
@@ -95,7 +95,8 @@ clean: clean-tests
 	-rm -f *.dsk shot.png screenshot_*.png 2>/dev/null
 	-rm -f $(CPC_BG_NAME) $(CPC_FG_NAME) $(CPC_TILE_NAME) $(CPC_SPR_NAME) $(CPC_SPRD_NAME) \
 	       $(CPC_SPR_M1_NAME) $(CPC_SPR_M1M_NAME) $(CPC_SPR_M0_NAME) \
-	       $(CPC_SPR_M2F_NAME) $(CPC_SPR_M0F_NAME) $(CPC_SPR_M1F_NAME) 2>/dev/null
+	       $(CPC_SPR_M2F_NAME) $(CPC_SPR_M0F_NAME) $(CPC_SPR_M1F_NAME) \
+	       $(CPC_ART_NAME) $(CPC_ART_M1_NAME) $(CPC_ART_M0_NAME) $(CPC_ART_M1M_NAME) 2>/dev/null
 
 ## binary
 $(BIN): $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS)
@@ -176,6 +177,7 @@ $(ZXTEST_DIR)/test_sprite_move.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
 $(ZXTEST_DIR)/test_pool_and_colour.tap: $(SPRITE_MASK2_ASM)
 $(ZXTEST_DIR)/test_foreground_tiles.tap: $(SPRITE_MASK2_ASM)
 $(ZXTEST_DIR)/test_redraw_bench.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
+$(ZXTEST_DIR)/test_artifact.tap: $(SPRITE_LOAD1_ASM)		# bottom-line artifact regression
 
 # Build and launch one test in FUSE (usage: make run-test TEST=test_dtt)
 run-test: $(ZXTEST_DIR)/$(TEST).tap
@@ -402,6 +404,60 @@ cpc-sprite-mode1-fast: $(SPRITE_MASK2_M1_ASM)
 # Build and screenshot the CPC Mode 1 FAST sprite test headless in cap32
 run-cpc-sprite-mode1-fast: cpc-sprite-mode1-fast
 	./tools/cap32-shot.sh $(CPC_SPR_M1F_NAME).dsk $(CPC_SPR_M1F_NAME)
+
+## --- Bottom-line artifact regression (Task 2) -----------------------------
+## Guards the "yrot==0 spurious bottom cell-row" bug (lib/cpc/jsp_frame.asm
+## r1/yrot).  Parks LOAD1 sprites cell-aligned vertically over a fully-lit
+## background: the pre-fix over-render erased a whole cell-row below each sprite
+## (a black gap); a correct frame keeps the lit bg intact.  LOAD (not MASK) makes
+## the diff large and deterministic.  Refs: tests/refs/cpc/artifact/<NAME>.png.
+ARTIFACT_SRC	 = $(CPCTEST_DIR)/test_cpc_artifact.c
+CPC_ART_NAME	 = CPCART
+CPC_ART_M1_NAME	 = CPCART1
+CPC_ART_M0_NAME	 = CPCART0
+CPC_ART_M1M_NAME = CPCARTM
+
+# Build the CPC Mode 2 bottom-line artifact regression disk (LOAD sprites)
+cpc-artifact-mode2: $(SPRITE_LOAD1_ASM)
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(ARTIFACT_SRC) $(SPRITE_LOAD1_ASM) $(CPC_LIB_SRCS) -o $(CPC_ART_NAME) -m
+
+# Build the CPC Mode 1 bottom-line artifact regression disk (LOAD sprites)
+cpc-artifact-mode1: CPC_MODE := 1
+cpc-artifact-mode1: $(SPRITE_LOAD1_M1_ASM)
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(ARTIFACT_SRC) $(SPRITE_LOAD1_M1_ASM) $(CPC_LIB_SRCS) -o $(CPC_ART_M1_NAME) -m
+
+# Build the CPC Mode 0 bottom-line artifact regression disk (LOAD sprites)
+cpc-artifact-mode0: CPC_MODE := 0
+cpc-artifact-mode0: $(SPRITE_LOAD1_M0_ASM)
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(ARTIFACT_SRC) $(SPRITE_LOAD1_M0_ASM) $(CPC_LIB_SRCS) -o $(CPC_ART_M0_NAME) -m
+
+# Build the CPC Mode 1 MONO bottom-line artifact regression disk (LOAD sprites)
+cpc-artifact-mode1-mono: CPC_MODE := 1_MONO
+cpc-artifact-mode1-mono: $(SPRITE_LOAD1_ASM)
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(ARTIFACT_SRC) $(SPRITE_LOAD1_ASM) $(CPC_LIB_SRCS) -o $(CPC_ART_M1M_NAME) -m
+
+# Build all 4 CPC artifact disks, screenshot headless, and compare to the committed
+# refs (tests/refs/cpc/artifact); prints AE per mode (0 = pass).  Needs ImageMagick.
+CPC_ARTIFACT_PAIRS = cpc-artifact-mode2:$(CPC_ART_NAME) \
+		     cpc-artifact-mode1:$(CPC_ART_M1_NAME) \
+		     cpc-artifact-mode0:$(CPC_ART_M0_NAME) \
+		     cpc-artifact-mode1-mono:$(CPC_ART_M1M_NAME)
+cpc-artifact-check:
+	@echo "CPC bottom-line artifact regression (AE vs tests/refs/cpc/artifact; 0 = pass)"
+	@for pair in $(CPC_ARTIFACT_PAIRS); do \
+		t="$${pair%%:*}"; n="$${pair##*:}"; \
+		$(MAKE) $$t JSP_CELL_MODEL=$(JSP_CELL_MODEL) >/dev/null 2>&1 || { echo "$$n BUILD-FAIL"; continue; }; \
+		CAP32_SHOT_OPTS='-O system.limit_speed=0' CAP32_SHOT_WAIT=6 \
+			./tools/cap32-shot.sh $$n.dsk $$n >/dev/null 2>&1; \
+		ref="tests/refs/cpc/artifact/$$n.png"; \
+		if [ -f shot.png ] && [ -f "$$ref" ]; then \
+			printf "%-10s AE=%s\n" "$$n" "$$(magick compare -metric AE "$$ref" shot.png null: 2>&1)"; \
+		else echo "$$n MISSING (shot or ref)"; fi; \
+	done
 
 ## CPC (Phase 9) — the full build matrix.  The eight JSP_CPC_MODE configs
 ## (Mode 2/1/0 + Mode 1 MONO + Mode 2/0/1 FAST) over the one engine.  Each is

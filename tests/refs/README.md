@@ -6,9 +6,10 @@ reproducible.
 
 ## Layout
 
-- `cpc/byte/`  — CPC tests, byte-cell model (`JSP_CELL_MODEL=byte`)
-- `cpc/pixel/` — CPC tests, pixel-cell model (the default), `JSP_CELL_MODEL=pixel`
-- `zx/`        — ZX Spectrum tests (48K)
+- `cpc/byte/`     — CPC tests, byte-cell model (`JSP_CELL_MODEL=byte`)
+- `cpc/pixel/`    — CPC tests, pixel-cell model (the default), `JSP_CELL_MODEL=pixel`
+- `cpc/artifact/` — CPC bottom-line artifact regression (CPCART/1/0/M, see below)
+- `zx/`           — ZX Spectrum tests (48K), incl. `test_artifact.png`
 
 The CPC `byte/` and `pixel/` images are **pixel-identical per test** (the cell
 model is internal) — both are kept to document that parity. CPC files are named
@@ -43,3 +44,31 @@ make tests/zx/<test>.tap
   --delayed-screenshot tests/refs/zx/<test>.png --delayed-screenshot-frames 300 \
   --delayed-automatic-exit 10
 ```
+
+## Bottom-line artifact regression (`yrot==0`)
+
+`cpc/artifact/` and `zx/test_artifact.png` guard the *"spurious bottom cell-row
+when a sprite is cell-aligned vertically"* bug (`lib/{zx,cpc}/jsp_frame.asm`,
+`r1 = r0 + (yrot ? rows : rows-1)`). They park **LOAD1** sprites at `ypos % 8 == 0`
+over a fully-lit background: pre-fix, the over-render erased a whole cell-row of
+background one cell below each sprite (a black gap); a correct frame keeps the
+background intact below every sprite.
+
+LOAD (not MASK) sprites are used deliberately — the MASK artifact is only the
+single overflow scanline (sub-pixel, position/background/link-order dependent,
+*not* a reliable regression), whereas a LOAD sprite's blank pad erases a whole
+cell-row, giving a large deterministic diff in every mode.
+
+Regenerate / check (CPC, all 4 modes — `make cpc-artifact-check` prints AE per
+mode, 0 = pass):
+
+```sh
+make cpc-artifact-mode2          # then screenshot CPCART.dsk -> cpc/artifact/CPCART.png
+make cpc-artifact-mode1          #                 CPCART1.dsk -> CPCART1.png
+make cpc-artifact-mode0          #                 CPCART0.dsk -> CPCART0.png
+make cpc-artifact-mode1-mono     #                 CPCARTM.dsk -> CPCARTM.png
+make cpc-artifact-check          # build all + screenshot + compare to refs
+```
+
+ZX: `make tests/zx/test_artifact.tap` then the JNEXT capture above into
+`zx/test_artifact.png`.
