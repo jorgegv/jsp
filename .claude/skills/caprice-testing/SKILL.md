@@ -115,6 +115,69 @@ run** (or crashed back to firmware). To bisect a crash, build staged versions
 that end in `__asm di __endasm; for(;;){}` after each call and check whether the
 screen shows your output (ran) vs the banner (crashed/never ran).
 
+## Profiling / timing: `tools/cap32-time.sh`
+
+cap32 has **no T-state profiler** like JNEXT's magic-port/heatmap, but it *can*
+be turned into a **wall-clock redraw timer**, headless. The companion to
+`cap32-shot.sh` is `tools/cap32-time.sh`:
+
+```bash
+cd <dir with the .dsk>
+/path/to/jsp/tools/cap32-time.sh [DISKFILE] [CPC_RUN_NAME]
+#   -> prints "ELAPSED <seconds>" (launch -> program reached rst 0)
+#   CAP32DIR / CAP32_TIME_TIMEOUT (default 120s) honoured as env overrides
+```
+
+**The pattern has two halves — the build, and the runner:**
+
+1. **Time-limited build.** The test is compiled with `-DTIME_LIMITED=N`, which
+   makes it run **exactly N redraw cycles** and then execute, instead of the
+   normal `for(;;)` freeze:
+
+   ```c
+   #ifdef TIME_LIMITED
+       __asm
+       di
+       rst 0          ; perf harness: cap32 CAP32_WAITBREAK stops the emulator here
+       __endasm;
+   #else
+       for ( ;; ) ;
+   #endif
+   ```
+
+   `N` is the redraw-cycle count (a `uint16_t`, so **`TIME_LIMITED` must be
+   ≤ 65535**). Build via the Makefile: `CPC_EXTRA_CFLAGS=-DTIME_LIMITED=N` is
+   appended to `CPC_CFLAGS` for an ad-hoc perf build.
+
+2. **The runner drives cap32 with virtual events** (caprice32 autocmd events,
+   see `src/cap32.cpp`):
+
+   - `run"NAME.`        — start the program
+   - `CAP32_WAITBREAK`  — set a **Z80 breakpoint at address 0** and pause further
+     virtual events until it is hit (i.e. until the program's `rst 0`)
+   - `CAP32_EXIT`       — quit the emulator (fires once the breakpoint is reached)
+
+   Crucially it passes **`-O system.limit_speed=0`** (unlimited emulator speed),
+   so the wall-clock seconds the runner measures are **proportional to the
+   emulated CPU work**, not pinned to the 50 fps CPC frame rate. The script times
+   launch→exit and prints `ELAPSED <seconds>`; a hard `CAP32_TIME_TIMEOUT` guard
+   prevents a crash/hang (program never reaches `rst 0`) from wedging it.
+
+**The whole matrix at once:** `make cpc-perf-matrix [CYCLES=N]` (default
+`CYCLES=1000`) rebuilds each sprite config with `-DTIME_LIMITED=$(CYCLES)`, runs
+each headless via `cap32-time.sh`, and prints a table of wall-clock seconds
+(lower = faster).
+
+**Boot-free metric.** The raw `ELAPSED` includes a fixed boot+load+setup
+overhead. To isolate just the redraw cost, subtract two runs:
+**`t(2000) − t(1000)`** cancels the constant overhead and leaves the time for
+1000 redraw cycles.
+
+**GOTCHA — never screenshot a `TIME_LIMITED` build.** `rst 0` is the CPC
+**firmware reset**: it blanks the screen. A time-limited build is for *timing
+only*. To eyeball-verify output, screenshot the normal `for(;;)`-freeze build
+(see `cap32-shot.sh`); use the `TIME_LIMITED` build only with `cap32-time.sh`.
+
 ## A JSP CPC test must set mode + palette before it renders
 
 The CPC has **no attribute RAM** — colour is in the pixel bits, interpreted
@@ -136,6 +199,8 @@ direct gate-array `out`; keep it in the test harness, not the library.)
 - The mode-2 (1 bpp) screen is the closest to the ZX reference, so a ZX vs CPC
   side-by-side of the same test is the most direct correctness check for the
   first phases.
-- There is **no headless T-state profiler** for CPC equivalent to the JNEXT
-  magic-port/heatmap path — performance is eyeballed / wall-clock-timed until a
-  CPC profiling path exists (`doc/CPC-TARGET-PLAN.md` §11, risk 5).
+- There is **no per-routine T-state profiler** for CPC equivalent to the JNEXT
+  magic-port/heatmap path. Whole-program redraw performance is instead
+  **wall-clock-timed** via the `-DTIME_LIMITED=N` + `tools/cap32-time.sh`
+  harness (see *Profiling / timing* above) and `make cpc-perf-matrix`
+  (`doc/CPC-TARGET-PLAN.md` §11, risk 5).
