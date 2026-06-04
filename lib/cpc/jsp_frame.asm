@@ -64,11 +64,12 @@
 ;;
 ;;         fs->r0 = sp->ypos >> 3;
 ;;         fs->c0 = sp->xpos >> 3;
-;;         fs->r1 = fs->r0 + sp->rows;
 ;;
 ;;         xrot = sp->xpos & 0x07;
 ;;         yrot = sp->ypos & 0x07;
-;;         // footprint is cols+1 wide when pixel-shifted, cols wide when aligned
+;;         // footprint is rows+1 / cols+1 when pixel-shifted, rows / cols when
+;;         // aligned (the +1 covers the sub-cell shift spill into the next cell)
+;;         fs->r1 = fs->r0 + ( yrot ? sp->rows : (uint8_t)( sp->rows - 1 ) );
 ;;         fs->c1 = fs->c0 + ( xrot ? sp->cols : (uint8_t)( sp->cols - 1 ) );
 ;;
 ;;         fs->ismask2 = ( sp->type_ptr == JSP_TYPE_MASK2 );
@@ -171,8 +172,22 @@ rb_setmask:
 	ld a,(rb_c0)			; +1 c0
 	ld (hl),a
 	inc hl
-	ld a,(rb_r0)			; +2 r1 = r0 + rows
-	add a,(ix+0)
+	;; +2 r1 = r0 + (yrot ? rows : rows-1).  Vertical analog of the c1/xrot
+	;; rule below: when yrot==0 the sprite is cell-aligned and spans exactly
+	;; `rows` cell-rows, so the extra bottom row must NOT be composited — doing
+	;; so renders a spurious row whose line 7 reads past the column's 7-line
+	;; trailing pad (stale-pixel artifact one cell below the sprite).
+	ld a,(ix+0)			; rows
+	ld c,a
+	ld a,(rb_yrot)
+	or a
+	ld a,c				; A = rows (ld a,c does not affect flags)
+	jr nz,rb_r1
+	dec a				; aligned (yrot==0): rows-1
+rb_r1:
+	ld c,a
+	ld a,(rb_r0)
+	add a,c
 	ld (hl),a
 	inc hl
 	;; +3 c1 = c0 + (xrot ? W : W-1).  W = cols normally; in MONO each 1bpp
