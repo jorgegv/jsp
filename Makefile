@@ -55,13 +55,16 @@ MAKEFLAGS 	+= --no-print-directory -j4
 # Show this help
 help:
 	@if [ -t 1 ] && [ -z "$$NO_COLOR" ]; then c='\033[1;31m'; r='\033[0m'; else c=; r=; fi; \
-	awk -v c="$$c" -v r="$$r" 'BEGIN { FS = ":" } \
+	awk -v c="$$c" -v r="$$r" 'BEGIN { FS = ":"; n = 0; w = 0 } \
 		/^# / { desc = substr($$0, 3); next } \
 		/^[a-zA-Z0-9][a-zA-Z0-9_.-]*:($$|[^=])/ { \
-			if (desc != "") { printf "  %s%-18s%s %s\n", c, $$1, r, desc; desc = "" } \
+			if (desc != "") { name[n] = $$1; text[n] = desc; \
+				if (length($$1) > w) w = length($$1); n++; desc = "" } \
 			next \
 		} \
-		{ desc = "" }' $(MAKEFILE_LIST)
+		{ desc = "" } \
+		END { for (i = 0; i < n; i++) \
+			printf "  %s%-*s%s  %s\n", c, w, name[i], r, text[i] }' $(MAKEFILE_LIST)
 
 ## generic rules
 %.o: %.c
