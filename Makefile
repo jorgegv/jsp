@@ -90,6 +90,12 @@ clean: clean-tests
 	-rm -f $(BIN) $(TAP) *.{map,lst,o,lis,sym,bin} 2>/dev/null
 	-rm -f lib/*.{map,lst,o,lis,sym,bin} 2>/dev/null
 	-rm -f lib/zx/*.{map,lst,o,lis,sym,bin} lib/cpc/*.{map,lst,o,lis,sym,bin} 2>/dev/null
+	# CPC disk images, emulator screenshots, and the named CPC test binaries left
+	# in the repo root by the cpc-* / run-cpc-* targets (also gitignored).
+	-rm -f *.dsk shot.png screenshot_*.png 2>/dev/null
+	-rm -f $(CPC_BG_NAME) $(CPC_FG_NAME) $(CPC_TILE_NAME) $(CPC_SPR_NAME) $(CPC_SPRD_NAME) \
+	       $(CPC_SPR_M1_NAME) $(CPC_SPR_M1M_NAME) $(CPC_SPR_M0_NAME) \
+	       $(CPC_SPR_M2F_NAME) $(CPC_SPR_M0F_NAME) $(CPC_SPR_M1F_NAME) 2>/dev/null
 
 ## binary
 $(BIN): $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS)

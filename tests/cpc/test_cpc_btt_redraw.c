@@ -51,5 +51,12 @@ void main( void ) {
             jsp_delete_background_tile( r, c );
     jsp_redraw();
 
+#ifdef TIME_LIMITED
+    __asm
+    di
+    rst 0          ; harness: deterministic stop for reproducible screenshots
+    __endasm;
+#else
     for ( ;; ) ;
+#endif
 }

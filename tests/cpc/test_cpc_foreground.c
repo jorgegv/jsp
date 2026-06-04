@@ -79,5 +79,12 @@ void main( void ) {
     sp = jsp_sprite_alloc( 2, 2 ); if ( sp ) jsp_draw_sprite_mask2( sp, 380, 84 );
 
     jsp_redraw();
+#ifdef TIME_LIMITED
+    __asm
+    di
+    rst 0          ; harness: deterministic stop for reproducible screenshots
+    __endasm;
+#else
     for ( ;; ) ;
+#endif
 }
