@@ -18,14 +18,19 @@ Mode-2 background / foreground / btt-redraw utilities).
 
 ## Regenerating
 
-**CPC** (768×540 cap32 framebuffer dump, captured at the `rst 0` breakpoint of a
-`TIME_LIMITED` build — both models stop at the identical frame regardless of
-speed):
+**CPC** (768×540 — cap32's own F3 framebuffer dump = the full CPC raster
+*including the border in all directions*, no Xvfb window/letterbox/scaling).
+Build the **default** (non-`TIME_LIMITED`) test — it ends in `for(;;)`, a tight
+spin that *holds* the rendered frame — and run cap32 at **unlimited speed** so the
+slower cell model also reaches the frozen final frame (240 for the animated tests)
+within the wait. (Do NOT use a `TIME_LIMITED` build for screenshots: its `rst 0`
+is the CPC firmware reset, which blanks the screen to blue.)
 
 ```sh
-make <cpc-target> JSP_CELL_MODEL=<byte|pixel> CPC_EXTRA_CFLAGS=-DTIME_LIMITED=<N>
-tools/cap32-shot-break.sh <NAME>.dsk <NAME> tests/refs/cpc/<model>/<NAME>.png
-#   animated sprite tests: N=240 ; static bg/foreground/btt tests: N=1
+make <cpc-target> JSP_CELL_MODEL=<byte|pixel>
+CAP32_SHOT_OPTS='-O system.limit_speed=0' CAP32_SHOT_WAIT=10 \
+  tools/cap32-shot.sh <NAME>.dsk <NAME>          # shot.png = the F3 dump
+cp shot.png tests/refs/cpc/<model>/<NAME>.png
 ```
 
 **ZX** (640×512 JNEXT headless dump at frame 300):
