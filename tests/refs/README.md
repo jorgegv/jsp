@@ -13,7 +13,7 @@ reproducible.
 
 The CPC `byte/` and `pixel/` images are **pixel-identical per test** (the cell
 model is internal) — both are kept to document that parity. CPC files are named
-after the AMSDOS run name (CPCSPR = Mode 2 sprite, CPCSPR1 = Mode 1, CPCSPRM =
+after the AMSDOS run name (CPCSPR2 = Mode 2 sprite, CPCSPR1 = Mode 1, CPCSPR1M =
 Mode 1 MONO, CPCSPR0 = Mode 0, CPCSPR2F/0F/1F = FAST, CPCBG/CPCFG/CPCTILE = the
 Mode-2 background / foreground / btt-redraw utilities).
 

@@ -283,7 +283,7 @@ run-cpc-bg: cpc-bg
 ## CPC (Phase 3) — masked, sub-byte-shifted Mode 2 sprites over a background.
 ## Same toolchain as cpc-bg; additionally links the (1bpp) mask2 sprite asset
 ## and exercises the lib/cpc kernels + covered-cell compositor.
-CPC_SPR_NAME	= CPCSPR
+CPC_SPR_NAME	= CPCSPR2
 CPC_SPRD_NAME	= CPCSPRD
 
 # Build the CPC Mode 2 sprite test (.dsk) — settles to a still frame
@@ -320,7 +320,7 @@ run-cpc-sprite-mode1: cpc-sprite-mode1
 ## screen, expanded to Mode-1 in the covered-cell compositor (jsp_covered_mono).
 ## Links the UNCHANGED 1bpp ball asset (cols=2); builds with CPC_MODE=1_MONO ->
 ## -DCPC_MODE1_MONO to C + asm.
-CPC_SPR_M1M_NAME = CPCSPRM
+CPC_SPR_M1M_NAME = CPCSPR1M
 
 # Build the CPC Mode 1 MONO sprite test (.dsk) — settles to a still frame
 cpc-sprite-mode1-mono: CPC_MODE := 1_MONO

@@ -139,9 +139,9 @@ measurement below, but a Model B used for a text/tilemap game would need them:
 
 | Config | Disk | Sprites | Elapsed (s) |
 |--------|------|--------:|------------:|
-| Mode 2 | CPCSPR | 5 | 7.77 |
+| Mode 2 | CPCSPR2 | 5 | 7.77 |
 | Mode 1 | CPCSPR1 | 5 | 11.24 |
-| Mode 1 MONO | CPCSPRM | 5 | 16.12 |
+| Mode 1 MONO | CPCSPR1M | 5 | 16.12 |
 | Mode 0 | CPCSPR0 | 4 | 14.29 |
 | Mode 2 FAST | CPCSPR2F | 5 | 6.74 |
 | Mode 0 FAST | CPCSPR0F | 4 | 12.87 |
