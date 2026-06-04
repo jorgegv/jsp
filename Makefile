@@ -242,14 +242,19 @@ CPC_CFLAGS	= -DJSP_TARGET_CPC -Ca-DJSP_TARGET_CPC \
 # Appended to CPC_CFLAGS for ad-hoc/perf builds (e.g. CPC_EXTRA_CFLAGS=-DTIME_LIMITED=1000).
 CPC_EXTRA_CFLAGS ?=
 
-# Cell model: "byte" (default, Model A — 8-byte cells, 80x25 every mode) or
-# "pixel" (Model B — 8x8-PIXEL cells: 20/40/80 cols, 32/16/8-byte cells for
-# M0/M1/M2; M2 identical to byte).  Defines the single global JSP_CELL_MODEL_PIXEL
-# switch for both the C compiler and the asm (-Ca).  Used by every CPC build/perf
-# target, e.g.:  make cpc-perf-matrix JSP_CELL_MODEL=pixel
-JSP_CELL_MODEL ?= byte
+# Cell model (CPC): "pixel" (DEFAULT, Model B — 8x8-PIXEL cells: 20/40/80 cols,
+# 32/16/8-byte cells for M0/M1/M2; the measured-faster model, see
+# doc/CPC-TILE-SIZE-DESIGN.md) or "byte" (Model A — 8-byte cells, 80x25 every
+# mode).  Mode 2 is identical in both.  Passes the matching JSP_CELL_MODEL_*
+# define to both the C compiler and the asm (-Ca) for every CPC build/perf
+# target, e.g.:  make cpc-matrix JSP_CELL_MODEL=byte
+JSP_CELL_MODEL ?= pixel
 ifeq ($(JSP_CELL_MODEL),pixel)
 CPC_CFLAGS += -DJSP_CELL_MODEL_PIXEL -Ca-DJSP_CELL_MODEL_PIXEL
+else ifeq ($(JSP_CELL_MODEL),byte)
+CPC_CFLAGS += -DJSP_CELL_MODEL_BYTE -Ca-DJSP_CELL_MODEL_BYTE
+else
+$(error JSP_CELL_MODEL must be 'pixel' or 'byte' (got '$(JSP_CELL_MODEL)'))
 endif
 CPC_LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) $(wildcard lib/cpc/*.asm)
 

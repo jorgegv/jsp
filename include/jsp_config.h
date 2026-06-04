@@ -37,6 +37,18 @@
         defined( CPC_MODE1_FAST ) + defined( CPC_MODE2_FAST ) ) != 1
     #error "JSP CPC build: define exactly ONE CPC mode (CPC_MODE0, CPC_MODE1, CPC_MODE2, CPC_MODE1_MONO, CPC_MODE0_FAST, CPC_MODE1_FAST or CPC_MODE2_FAST)"
   #endif
+
+  // ---- CPC cell model: byte-cell (Model A) vs pixel-cell (Model B) ----
+  // Select with -DJSP_CELL_MODEL_BYTE or -DJSP_CELL_MODEL_PIXEL.  The DEFAULT is
+  // PIXEL-cell: the measured-faster model for Modes 0/1 (Mode 2 is identical in
+  // both).  Full rationale + the performance comparison: doc/CPC-TILE-SIZE-DESIGN.md.
+  // (ZX always uses its native 8x8 layout and ignores these defines.)
+  #if defined( JSP_CELL_MODEL_BYTE ) && defined( JSP_CELL_MODEL_PIXEL )
+    #error "JSP: define at most ONE of JSP_CELL_MODEL_BYTE / JSP_CELL_MODEL_PIXEL"
+  #endif
+  #if !defined( JSP_CELL_MODEL_BYTE ) && !defined( JSP_CELL_MODEL_PIXEL )
+    #define JSP_CELL_MODEL_PIXEL          // default
+  #endif
 #endif
 
 // -------------------------------------------------------------------------
@@ -83,9 +95,9 @@
     #define JSP_SHIFT_PHASES 0    // 8-px byte-aligned fast path (no shift table)
   #endif
 
-  // Cell model.  Model A (byte-cell, default): 8-line x 1-byte cells, 80x25
-  // grid in EVERY mode (cell pixel-width 2/4/8 px for M0/M1/M2).  Model B
-  // (pixel-cell, -DJSP_CELL_MODEL_PIXEL): 8x8-PIXEL cells, so the grid and cell
+  // Cell model.  Model A (byte-cell, -DJSP_CELL_MODEL_BYTE): 8-line x 1-byte
+  // cells, 80x25 grid in EVERY mode (cell pixel-width 2/4/8 px for M0/M1/M2).
+  // Model B (pixel-cell, the DEFAULT): 8x8-PIXEL cells, so the grid and cell
   // byte-size derive from ppb: GRID_COLS = 10*ppb (20/40/80) and CELL_BYTES =
   // 64/ppb (32/16/8) for M0/M1/M2.  Mode 2 (ppb=8) yields 80 cols / 8 bytes in
   // BOTH models — identical, as required (M2 is the regression anchor).  The

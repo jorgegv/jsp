@@ -57,6 +57,15 @@
 ;; always), so the redraw scales the cell index left by log2(COLBYTES) =
 ;; 3 - JSP_PPB_SHIFT.  JSP_GEOM_DTT_BYTES = ceil(COLS*25 / 8) is the flat packed
 ;; DTT size (Mode 0's row-aligned variant is handled in jsp_sprite_defer/redraw).
+;; Cell model default (mirror include/jsp_config.h): pixel-cell unless the build
+;; explicitly asked for byte-cell.  The Makefile passes the matching -Ca-D...; this
+;; only supplies the default for a bare assembler invocation.
+	IFNDEF JSP_CELL_MODEL_BYTE
+	IFNDEF JSP_CELL_MODEL_PIXEL
+	defc JSP_CELL_MODEL_PIXEL = 1
+	ENDIF
+	ENDIF
+
 	IFDEF JSP_CELL_MODEL_PIXEL
 	defc JSP_GEOM_COLBYTES  = 8 >> JSP_PPB_SHIFT
 	defc JSP_GEOM_CELLSHIFT = 3 - JSP_PPB_SHIFT     ; log2(COLBYTES): 0/1/2 for M2/M1/M0
