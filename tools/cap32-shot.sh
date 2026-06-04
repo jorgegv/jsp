@@ -14,7 +14,7 @@
 set -euo pipefail
 
 DISP=:99
-RES=1024x768x24
+RES="${CAP32_SHOT_RES:-1024x768x24}"
 
 # Default DISK to the single *.dsk in the current dir when not given explicitly.
 if [ "${1:-}" ]; then
@@ -28,6 +28,11 @@ fi
 RUNNAME="${2:-$(basename "$DISK" .dsk | tr 'a-z' 'A-Z' | cut -c1-8)}"
 ROOT_SHOT="$PWD/shot.png"
 LOG=/tmp/cap32-run.log
+# cap32's F3 dump lands here (its own clean framebuffer = the FULL CPC raster
+# incl. the border in all directions, 768x540 — no Xvfb window/letterbox/scaling
+# ambiguity).  This is the artifact we prefer for shot.png; the root grab is a
+# fallback if F3 produced nothing.
+SDUMP="$(mktemp -d)"
 
 # --- cap32 lives outside PATH and the interactive `cap32` is a shell function
 #     ("$CAP32DIR/cap32" -c "$CAP32DIR/cap32.cfg" "$@"). Replicate that here so
@@ -43,7 +48,7 @@ for bin in Xvfb xdotool import; do
   command -v "$bin" >/dev/null || { echo "MISSING tool: $bin"; exit 1; }
 done
 
-cleanup() { kill "${CAP_PID:-}" "${XVFB_PID:-}" 2>/dev/null || true; }
+cleanup() { kill "${CAP_PID:-}" "${XVFB_PID:-}" 2>/dev/null || true; rm -rf "$SDUMP"; }
 trap cleanup EXIT
 
 # --- 1. Clear any stale server/lock on this display from a previous run.
@@ -71,31 +76,42 @@ done
 # NOTE the trailing '.' after the name: z88dk writes the AMSDOS file with an
 # EMPTY extension, so `RUN"NAME` (which AMSDOS expands to NAME.BAS/NAME.BIN)
 # finds nothing — `RUN"NAME.` selects the empty-extension file explicitly.
+# CAP32_SHOT_OPTS lets callers pass extra cap32 flags, e.g.
+# CAP32_SHOT_OPTS='-O system.limit_speed=0' to run unlimited-speed — used when
+# screenshotting a settling test (for(;;) freeze) so the slower cell model still
+# reaches the frozen final frame within CAP32_SHOT_WAIT.
 DISPLAY="$DISP" SDL_VIDEODRIVER=x11 WAYLAND_DISPLAY= \
-  "$CAP32_BIN" -c "$CAP32_CFG" -a "run\"$RUNNAME." "$DISK" >"$LOG" 2>&1 &
+  "$CAP32_BIN" -c "$CAP32_CFG" -O file.sdump_dir="$SDUMP" ${CAP32_SHOT_OPTS:-} \
+    -a "run\"$RUNNAME." "$DISK" >"$LOG" 2>&1 &
 CAP_PID=$!
 
-# --- 5. Give it time to boot + load (CPC6128 boot is a few seconds).
-sleep 8
+# --- 5. Give it time to boot + load (CPC6128 boot is a few seconds).  Override
+#        with CAP32_SHOT_WAIT for animated tests that settle at a fixed frame:
+#        the two cell models run at different speeds, so the grab must wait until
+#        BOTH have reached the frozen final frame for a reproducible comparison.
+sleep "${CAP32_SHOT_WAIT:-8}"
 if ! kill -0 "$CAP_PID" 2>/dev/null; then
   echo "cap32 exited early. Log:"; cat "$LOG"; exit 1
 fi
 
-# --- 6a. PRIMARY: grab the virtual root window directly.
-DISPLAY="$DISP" import -window root "$ROOT_SHOT"
-echo "Wrote $ROOT_SHOT"
-
-# --- 6b. SECONDARY (optional): trigger cap32's own F3 clean-framebuffer dump.
-#         It lands in the cfg's `sdump_dir` (see cap32.cfg), NOT $PWD — the
-#         primary `import` grab above is the artifact this script relies on.
-#         XSendEvent is ignored by SDL, so focus then send via XTEST.
+# --- 6a. Trigger cap32's F3 clean-framebuffer dump — the FULL CPC raster incl.
+#         border (768x540), into our $SDUMP.  XSendEvent is ignored by SDL, so
+#         focus the window then send F3 via XTEST.
 WID=$(DISPLAY="$DISP" xdotool search --name Caprice 2>/dev/null | head -n1 || true)
 if [ -n "${WID:-}" ]; then
   DISPLAY="$DISP" xdotool windowactivate --sync "$WID" 2>/dev/null || \
     DISPLAY="$DISP" xdotool windowfocus "$WID" 2>/dev/null || true
   DISPLAY="$DISP" xdotool key --clearmodifiers F3
   sleep 1
-  echo "F3 sent; clean dump should be in cap32 sdump_dir (see cap32.cfg)."
+fi
+
+# --- 6b. Prefer the F3 dump (clean full-screen framebuffer); fall back to a root
+#         grab only if F3 produced nothing.
+F3="$(ls -t "$SDUMP"/screenshot_*.png 2>/dev/null | head -n1 || true)"
+if [ -n "$F3" ]; then
+  cp -f "$F3" "$ROOT_SHOT"
+  echo "Wrote $ROOT_SHOT (cap32 F3 framebuffer dump, full screen + border)"
 else
-  echo "No 'Caprice' window found (root grab above is still valid)."
+  DISPLAY="$DISP" import -window root "$ROOT_SHOT"
+  echo "Wrote $ROOT_SHOT (root grab fallback — F3 dump not found)"
 fi

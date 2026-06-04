@@ -20,7 +20,14 @@
 extern uint8_t test_sprite_mask2_m1_pixels[];
 
 #define NUM_SPRITES 5
+#ifdef TIME_LIMITED
+#if TIME_LIMITED > 65535
+#error "TIME_LIMITED must be <= 65535 (the redraw-cycle counter is uint16_t)"
+#endif
+#define ANIM_FRAMES TIME_LIMITED   // perf harness: run exactly N redraw cycles, then rst 0
+#else
 #define ANIM_FRAMES 240
+#endif
 
 // 16x16 ball = 4 Mode-1 cols x 2 rows (8 px tall/cell).
 DEFINE_SPRITE( sprite0, 2, 4, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
@@ -42,17 +49,25 @@ struct {
     { 295,  70,  1,  4, &sprite4 },
 };
 
-// Crossbar / graph-paper grid in cyan (pen2) on black (pen0).  Mode-1 cells are
-// only 4 px wide, so two tiles alternate per column to space the vertical lines
-// every 8 px (every other cell): tile_grid_a carries the vertical line, _b only
-// the shared horizontal top line.  Mode-1 pen2 = binary 10 -> plane-1 bit only:
-//   top row, 4 px pen2 = low nibble all set = 0x0F
-//   left px pen2       = plane-1 bit (3-0) = 0x08
-// Calmer under motion than the old per-pixel 4-colour bars, and still shows a
-// Mode-1-only colour (cyan) the ball/Mode-2 cannot.
+// Cyan (pen2) crossbar / graph-paper grid on black (pen0).  Mode-1 pen2 = binary
+// 10 -> plane-1 bit only: a full 4-px row = low nibble set = 0x0F; the single
+// leftmost pixel = plane-1 bit (3-0) = 0x08.
+#ifdef JSP_CELL_MODEL_PIXEL
+// Pixel-cell: 8x8-px cells (40x25 grid).  One 16-byte COLUMN-MAJOR box tile per
+// cell: top edge across both byte-columns, left edge down byte-column 0.
+static uint8_t tile_grid[16] = {
+    0x0F, 0x08,0x08,0x08,0x08,0x08,0x08,0x08,   // col 0 (left screen byte)
+    0x0F, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,   // col 1 (right screen byte)
+};
+static uint8_t tile_blank[16] = { 0 };
+#else
+// Byte-cell: 4-px cells (80x25 grid), so two 8-byte tiles alternate per column to
+// space the vertical lines every 8 px: tile_grid_a carries the vertical line,
+// tile_grid_b only the shared horizontal top line.
 static uint8_t tile_grid_a[8] = { 0x0F, 0x08,0x08,0x08,0x08,0x08,0x08,0x08 };
 static uint8_t tile_grid_b[8] = { 0x0F, 0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
 static uint8_t tile_blank[8]  = { 0,0,0,0,0,0,0,0 };
+#endif
 
 // Set Mode 1 + a 4-pen palette; both ROMs off (0x8D = RMR mode 1, ROMs off) so
 // 0x0000-0xBFFF is RAM (code at 0x1200 stays visible).
@@ -88,10 +103,14 @@ void main( void ) {
     cpc_setup_mode1();
     jsp_init( tile_blank, 0 );
 
-    // cyan crossbar grid across the full 80x25 grid (vertical line every 8 px)
-    for ( r = 0; r < 25; r++ )
-        for ( c = 0; c < 80; c++ )
+    // cyan crossbar grid across the full grid (vertical line every 8 px)
+    for ( r = 0; r < JSP_GRID_ROWS; r++ )
+        for ( c = 0; c < JSP_GRID_COLS; c++ )
+#ifdef JSP_CELL_MODEL_PIXEL
+            jsp_draw_background_tile( r, c, tile_grid );
+#else
             jsp_draw_background_tile( r, c, ( c & 1 ) ? tile_grid_b : tile_grid_a );
+#endif
 
     // animate for a fixed number of frames, bouncing across the 320px screen,
     // then settle into a clean final frame.
@@ -110,5 +129,12 @@ void main( void ) {
         jsp_redraw();
     }
 
+#ifdef TIME_LIMITED
+    __asm
+    di
+    rst 0          ; perf harness: cap32 CAP32_WAITBREAK stops the emulator here
+    __endasm;
+#else
     for ( ;; ) ;
+#endif
 }

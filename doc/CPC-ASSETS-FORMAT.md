@@ -22,19 +22,57 @@ must produce exactly this layout; the shift/mask unit tests
 
 ---
 
+## 0. Cell model — affects the TILE format (sprites are model-agnostic)
+
+JSP-CPC has two cell models (see `doc/CPC-TILE-SIZE-DESIGN.md`):
+
+- **pixel-cell (Model B) — THE DEFAULT.** A cell is **8×8 pixels** in every mode,
+  so it is `8/ppb` screen bytes wide: **2 bytes (Mode 1), 4 bytes (Mode 0),
+  1 byte (Mode 2)**. Grid 20×25 (M0) / 40×25 (M1) / 80×25 (M2). Selected by the
+  default, or explicitly `-DJSP_CELL_MODEL_PIXEL` (`make … JSP_CELL_MODEL=pixel`).
+- **byte-cell (Model A).** A cell is **8 lines × 1 byte** in every mode (pixel
+  width 2/4/8 px for M0/M1/M2), grid 80×25 always. Opt in with
+  `-DJSP_CELL_MODEL_BYTE` (`make … JSP_CELL_MODEL=byte`).
+
+**Mode 2 is identical in both models** (8 px = 1 byte = an 8×8-px cell either way).
+
+What the model changes:
+
+| Asset | Depends on cell model? | Format |
+|-------|------------------------|--------|
+| **Sprites** (`LOAD1`/`MASK2`) | **No — model-agnostic** | Always columns-major byte-columns (§1). A 16-px sprite is the same bytes and the same `cols` (byte-columns: 2/4/8 for M2/M1/M0) in both models — the compositor decomposes per byte-column regardless. |
+| **Tiles** (background/foreground) | **Yes** | One **cell**: byte-cell = **8 bytes** (1 byte/line); **pixel-cell (default) = `(8/ppb)` byte-columns × 8 lines = `8/16/32` bytes (M2/M1/M0), COLUMN-MAJOR** (col 0's 8 bytes, then col 1's, …). |
+
+So: **the default asset format is the pixel-cell format** — tiles are
+**16-byte (Mode 1) / 32-byte (Mode 0) / 8-byte (Mode 2) column-major** cells, and
+sprites are the same byte-column format as always. The byte-cell tile (a flat
+8-byte cell) is only used when building `JSP_CELL_MODEL=byte`. Generate pixel-cell
+tiles with `tools/cpcgfx.pl --gfx-type tile` (§6); sprites with
+`--gfx-type sprite_mask|sprite_load` (unchanged, both models).
+
+The per-mode pixel encoding (below) is the same in both models — only the cell's
+*byte width / grouping* differs. The sub-sections §2–§4 describe the byte-cell
+(8-byte) tile for clarity; the pixel-cell tile is that same per-line encoding,
+`8/ppb` bytes per line × 8 lines, stored column-major.
+
+---
+
 ## 1. Conventions common to all modes
 
 These hold for every mode; only the per-byte *pixel encoding* and the *shift
 arithmetic* change between modes.
 
-- **Cell = 8 scan-lines.** A screen cell is 8 pixels tall and one byte wide on
-  screen (Model A: cell == byte column). A tile or one cell of a sprite is
-  therefore **8 lines**, one (or more, see below) bytes per line.
+- **Cell = 8 scan-lines.** A screen cell is 8 pixels tall. Its on-screen width is
+  `8/ppb` bytes in the default pixel-cell model (2/4/1 for M1/M0/M2) and exactly
+  1 byte in the byte-cell model (§0). A tile or one cell of a sprite is therefore
+  **8 lines**, one (or more) bytes per line.
 - **Pixel/bit order.** Within a byte the **most-significant bit is the leftmost
   pixel** (CPC convention). For multi-bit-per-pixel modes the bits of each pixel
   are interleaved across the byte (see each mode).
-- **Tiles are 8 bytes** (Mode 2): one byte per scan-line, blitted to
-  `0xC000 + cell` stepping `+0x800` per line. Foreground tiles use the identical
+- **Tiles** are one cell: byte-cell = 8 bytes (one byte/line); pixel-cell
+  (default) = `8/ppb` byte-columns × 8 lines, column-major (§0). Blitted to the
+  cell's screen address stepping `+0x800` per line; a pixel-cell's `8/ppb`
+  byte-columns go to adjacent screen bytes. Foreground tiles use the identical
   byte format — the only difference is the FTT flag, which makes `jsp_redraw`
   paint them from the BTT and never composite a sprite over them.
 - **Sprites are stored columns-major**, one byte-column at a time, top-to-bottom
@@ -310,8 +348,11 @@ two-nibble-plane and need no expansion.)
   `include/jsp_rottbl_formula.h` (guard `CPC_MODE0`).  `jsp_init_rottbl` builds
   the 512-byte table unchanged; `rottbl_msb` keeps the `2*xrot-2` stride.  The
   kernels are the **same** table-driven `lib/cpc/jsp_draw_*` files as M1/M2.
-- **Cell model:** Model A (byte-cell), decided in Phase 7 — see
-  `doc/CPC-TILE-SIZE-ANALYSIS.md`.  Grid 80×25, cell = 1 byte = 2 px wide.
+- **Cell model:** pixel-cell (Model B) is the **default** — grid 20×25, cell =
+  8×8 px = 4 bytes wide (32-byte column-major tile); byte-cell (Model A) is
+  available (`JSP_CELL_MODEL=byte`, grid 80×25, 1-byte/2-px cell). See §0 and
+  `doc/CPC-TILE-SIZE-DESIGN.md`.  Mode 0 is the extreme case (4× fewer cells in
+  pixel-cell) and the biggest pixel-cell performance win.
 - **Asset:** emitted by `tools/cpcgfx.pl --mode 0`; mask transparent pixel sets
   all four planes (so the AND keeps the background).
 - Validated by `make cpc-shift-test-mode0` (exhaustive combine + emitted bytes
@@ -366,6 +407,26 @@ redirect prologue, no `graph_left`).  Verified: the FAST maps contain only the
 No shift unit test is needed (no shift); the no-rotate render is confirmed by
 `make run-cpc-sprite-mode{2,0,1}-fast` (masked balls byte-aligned over the
 per-mode grid, verified in cap32).
+
+---
+
+## 6. Generating tiles (`tools/cpcgfx.pl --gfx-type tile`)
+
+The default (pixel-cell) background/foreground tile is a single 8×8-px cell:
+`8/ppb` byte-columns × 8 lines, **column-major** (col 0's 8 bytes, then col 1's),
+graph-only. `tools/cpcgfx.pl --gfx-type tile` emits exactly this:
+
+```sh
+# Mode 1 (16-byte cell = 2 byte-cols × 8 lines), pen 0/1 art:
+tools/cpcgfx.pl -i tile.png -x 0 -y 0 --width 8 --height 8 -s my_tile -g tile --mode 1
+# Mode 0 -> 32-byte cell (4 byte-cols × 8 lines):  --mode 0
+```
+
+Store the symbol with `jsp_draw_background_tile(row,col, my_tile)` /
+`jsp_draw_foreground_tile(...)`. Sprites are emitted as before with
+`-g sprite_mask|sprite_load` (model-agnostic). The byte-cell tile (a flat 8-byte
+cell, `JSP_CELL_MODEL=byte`) has no dedicated emitter — its 8 bytes are the §2–§4
+per-line encoding written directly.
 
 ---
 

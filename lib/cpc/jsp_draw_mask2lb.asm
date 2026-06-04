@@ -13,6 +13,9 @@
 
 	section code_compiler
 
+	INCLUDE "jsp_cpc_geom.inc"	; JSP_GEOM_COLBYTES
+	INCLUDE "jsp_cc_store.inc"	; CC_RD16/CC_WR — absolute (Model A/M2) or (iy+n) (Model B)
+
 	public _JSP_DRAW_MASK2LB
 	public _JSP_DRAW_MASK2LB_ALT
 	public _jsp_draw_mask2lb
@@ -20,9 +23,9 @@
 	extern _JSP_DRAW_MASK2NR
 	extern _jsp_rottbl
 	extern _jsp_current_rottbl_msb
-	extern cc_scratch		; dst is always the JSP compositing buffer,
-					; so dst bytes are addressed absolutely:
-					; the two-byte reads fold into ld bc,(nn)
+	extern cc_scratch		; Model A / M2: fixed buffer, absolute (the
+					; two-byte reads fold into ld bc,(nn)).
+					; Model B M1/M0: per-column slot in BC -> IY.
 
 ;; void jsp_draw_mask2lb( uint8_t *dst, uint8_t *graph ) __smallc __z88dk_callee;
 ;; trashes BC' !!
@@ -52,7 +55,11 @@ _JSP_DRAW_MASK2LB_ALT:
 
 	;  d = shift table
 	; hl = sprite def (mask,graph) pairs
-	; dst = cc_scratch (fixed buffer, addressed absolutely below)
+	; dst = cc_scratch (Model A/M2) or BC->IY per-column slot (Model B)
+	IF JSP_GEOM_COLBYTES > 1
+	push bc				; BC = dst (popped above / from rb) -> IY
+	pop iy
+	ENDIF
 
 	ld e,$ff
 	ld a,(de)
@@ -65,7 +72,7 @@ _JSPMask2LBRotate:
 
 	; 0
 
-	ld bc,(cc_scratch+0)		; C = dst[0], B = dst[1]
+	CC_RD16 0		; C = dst[0], B = dst[1]
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -78,7 +85,7 @@ _JSPMask2LBRotate:
 	inc hl
 	ld a,(de)
 	or c
-	ld (cc_scratch+0),a
+	CC_WR 0
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -91,11 +98,11 @@ _JSPMask2LBRotate:
 	inc hl
 	ld a,(de)
 	or b
-	ld (cc_scratch+1),a
+	CC_WR 1
 
 	; 1
 
-	ld bc,(cc_scratch+2)		; C = dst[2], B = dst[3]
+	CC_RD16 2		; C = dst[2], B = dst[3]
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -108,7 +115,7 @@ _JSPMask2LBRotate:
 	inc hl
 	ld a,(de)
 	or c
-	ld (cc_scratch+2),a
+	CC_WR 2
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -121,11 +128,11 @@ _JSPMask2LBRotate:
 	inc hl
 	ld a,(de)
 	or b
-	ld (cc_scratch+3),a
+	CC_WR 3
 
 	; 2
 
-	ld bc,(cc_scratch+4)		; C = dst[4], B = dst[5]
+	CC_RD16 4		; C = dst[4], B = dst[5]
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -138,7 +145,7 @@ _JSPMask2LBRotate:
 	inc hl
 	ld a,(de)
 	or c
-	ld (cc_scratch+4),a
+	CC_WR 4
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -151,11 +158,11 @@ _JSPMask2LBRotate:
 	inc hl
 	ld a,(de)
 	or b
-	ld (cc_scratch+5),a
+	CC_WR 5
 
 	; 3
 
-	ld bc,(cc_scratch+6)		; C = dst[6], B = dst[7]
+	CC_RD16 6		; C = dst[6], B = dst[7]
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -168,7 +175,7 @@ _JSPMask2LBRotate:
 	inc hl
 	ld a,(de)
 	or c
-	ld (cc_scratch+6),a
+	CC_WR 6
 	ld e,(hl)
 	inc hl
 	ld a,(de)
@@ -180,7 +187,7 @@ _JSPMask2LBRotate:
 	ld e,(hl)
 	ld a,(de)
 	or b
-	ld (cc_scratch+7),a
+	CC_WR 7
 
 	ret
 

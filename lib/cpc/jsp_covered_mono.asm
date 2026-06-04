@@ -32,6 +32,8 @@
 
 	section code_compiler
 
+	INCLUDE "jsp_cpc_geom.inc"	; JSP_GEOM_COLS / COLBYTES / CELLSHIFT
+
 	extern _jsp_frame_count
 	extern _jsp_frame_sprites
 	extern _jsp_btt
@@ -48,16 +50,16 @@
 
 ;; void jsp_redraw_covered_cell( uint16_t cell ) __z88dk_fastcall;
 _jsp_redraw_covered_cell:
-	;; derive (row,col) from cc_cell:  cell = row*80 + col  (Model A)
+	;; derive (row,col) from cc_cell:  cell = row*COLS + col
 	ld hl,(cc_cell)
-	ld de,80
+	ld de,JSP_GEOM_COLS
 	ld b,0				; B = row quotient
 cc_divrow:
 	ld a,h
 	or a
 	jr nz,cc_divsub
 	ld a,l
-	cp 80
+	cp JSP_GEOM_COLS
 	jr c,cc_divend
 cc_divsub:
 	or a
@@ -130,6 +132,22 @@ cc_comp_loop:
 	push de
 	pop ix				; IX = frame sprite
 
+  IFDEF JSP_CELL_MODEL_PIXEL
+	;; pixel: the cell spans Mode-1 byte-cols [B0..B0+COLBYTES-1] (B0 =
+	;; cc_col<<CELLSHIFT); the sprite spans M1-byte [c0..c1].  Overlap test.
+	ld a,(cc_col)
+	REPT JSP_GEOM_CELLSHIFT
+	add a,a
+	ENDR
+	ld (mono_bcol),a		; B0
+	cp (ix+3)			; B0 vs c1
+	jp z,cc_col_ok
+	jp nc,cc_comp_next		; B0 > c1
+	ld a,(mono_bcol)
+	add a,JSP_GEOM_COLBYTES-1	; B1
+	cp (ix+1)			; B1 vs c0
+	jp c,cc_comp_next		; B1 < c0
+  ELSE
 	;; col >= c0 ?  col <= c1 ?
 	ld a,(cc_col)
 	cp (ix+1)			; CF if col < c0
@@ -137,6 +155,7 @@ cc_comp_loop:
 	cp (ix+3)			; col vs c1: CF if col<c1, Z if ==
 	jp c,cc_col_ok
 	jp nz,cc_comp_next		; col > c1
+  ENDIF
 cc_col_ok:
 
 	;; clip rectangle test (if fs->clip != NULL)
@@ -163,24 +182,35 @@ cc_clip_ok:
 	ld e,(hl)
 	inc hl
 	ld d,(hl)			; DE = jsp_btt[cell] 1bpp tile ptr
+  IFDEF JSP_CELL_MODEL_PIXEL
+	;; pixel: the 8-px cell is 2 Mode-1 byte-columns = the source byte's high
+	;; nibble (col 0) + low nibble (col 1); expand both into cc_scratch.
+	ld (mono_savetile),de
+	ex de,hl			; HL = tile
+	xor a				; parity 0 (high 4 px) -> cc_scratch[0..7]
+	ld de,cc_scratch
+	call mono_tile_expand
+	ld hl,(mono_savetile)
+	ld a,1				; parity 1 (low 4 px)  -> cc_scratch[8..15]
+	ld de,cc_scratch+8
+	call mono_tile_expand
+  ELSE
 	ex de,hl			; HL = tile
 	ld a,(cc_col)
 	and 1				; parity = col & 1
 	ld de,cc_scratch
 	call mono_tile_expand		; cc_scratch <- expanded Mode-1 background
+  ENDIF
 cc_seeded:
 
 ;; ==== MONO compositing slice ========================================
 	ld a,(ix+6)			; rottbl_msb (Mode-1 table)
 	ld (_jsp_current_rottbl_msb),a
 
-	;; i = row - r0 ; j = col - c0 (screen col within footprint, 0..2*cols)
+	;; i = row - r0  (constant across the cell's Mode-1 byte-columns)
 	ld a,(cc_row)
 	sub (ix+0)
 	ld (cc_i),a
-	ld a,(cc_col)
-	sub (ix+1)
-	ld (cc_j),a
 
 	;; base_i = base + i*cs  (line offset, source column 0)
 	ld l,(ix+10)
@@ -197,6 +227,58 @@ mono_i_add:
 mono_no_i:
 	ld (mono_basei),hl
 
+  IFDEF JSP_CELL_MODEL_PIXEL
+	;; pixel: the cell is COLBYTES Mode-1 byte-cols [B0..B0+COLBYTES-1]
+	;; (B0 = mono_bcol, set by the outer overlap test).  Composite each byte-col
+	;; the sprite (M1-byte span [c0..c1]) covers into scratch slot k*8 — j =
+	;; (B0+k)-c0 is the Model-A MONO screen-col index, so mono_slice_body reused.
+	xor a
+	ld (mono_k),a
+mono_kloop:
+	ld a,(mono_k)			; dst = cc_scratch + k*8
+	add a,a
+	add a,a
+	add a,a
+	ld e,a
+	ld d,0
+	ld hl,cc_scratch
+	add hl,de
+	ld (mono_dst),hl
+	ld hl,mono_k
+	ld a,(mono_bcol)
+	add a,(hl)			; bc = B0 + k
+	cp (ix+1)			; bc vs c0
+	jp c,mono_knext			; bc < c0 -> not covered
+	cp (ix+3)			; bc vs c1
+	jp z,mono_kin
+	jp nc,mono_knext		; bc > c1 -> not covered
+mono_kin:
+	sub (ix+1)			; cc_j = bc - c0
+	ld (cc_j),a
+	call mono_slice_body
+mono_knext:
+	ld hl,mono_k
+	inc (hl)
+	ld a,(hl)
+	cp JSP_GEOM_COLBYTES
+	jp c,mono_kloop
+	jp cc_comp_next
+  ELSE
+	ld a,(cc_col)			; j = col - c0
+	sub (ix+1)
+	ld (cc_j),a
+	ld hl,cc_scratch
+	ld (mono_dst),hl
+	call mono_slice_body
+	jp cc_comp_next
+  ENDIF
+
+;; ---- mono_slice_body --------------------------------------------------
+;; Composite one Mode-1 byte-column: inputs cc_j (screen-col index = bc-c0),
+;; cc_i / mono_basei, mono_dst (scratch slot), IX = frame sprite.  Expands the
+;; "this" + "left" 1bpp nibbles to Mode-1 and calls the middle kernel.
+;; call/ret; the kernels preserve IX.
+mono_slice_body:
 	;; ---- THIS cell: src_col = j>>1, parity = j&1 ----
 	ld a,(cc_j)
 	and 1
@@ -209,8 +291,7 @@ mono_no_i:
 	call mono_fill_transparent
 	jr mono_this_done
 mono_this_real:
-	;; HL = base_i + src_col*rowstride   (A = src_col)
-	ld hl,(mono_basei)
+	ld hl,(mono_basei)		; HL = base_i + src_col*rowstride
 	or a
 	jr z,mono_this_noadd
 	ld b,a
@@ -254,8 +335,8 @@ mono_left_zero:
 	call mono_fill_transparent
 mono_left_done:
 
-	;; call the middle kernel: (dst=cc_scratch, graph=mono_this, graph_left=mono_left)
-	ld de,cc_scratch
+	;; call the middle kernel: (dst=mono_dst, graph=mono_this, graph_left=mono_left)
+	ld de,(mono_dst)
 	push de
 	ld de,mono_this
 	push de
@@ -265,10 +346,10 @@ mono_left_done:
 	or a
 	jr nz,cc_mono_mask
 	call _jsp_draw_load1
-	jp cc_comp_next
+	ret
 cc_mono_mask:
 	call _jsp_draw_mask2
-;; ==== end MONO slice =================================================
+	ret
 
 cc_comp_next:
 	ld hl,cc_loop_n
@@ -290,14 +371,30 @@ cc_draw:
 	ld e,(hl)
 	inc hl
 	ld d,(hl)			; DE = jsp_btt[cell] 1bpp tile ptr
+  IFDEF JSP_CELL_MODEL_PIXEL
+	;; pixel: expand BOTH nibbles into the cell's 2 byte-cols (else col1 is stale)
+	ld (mono_savetile),de
+	ex de,hl
+	xor a
+	ld de,cc_scratch
+	call mono_tile_expand
+	ld hl,(mono_savetile)
+	ld a,1
+	ld de,cc_scratch+8
+	call mono_tile_expand
+  ELSE
 	ex de,hl			; HL = tile
 	ld a,(cc_col)
 	and 1
 	ld de,cc_scratch
 	call mono_tile_expand
+  ENDIF
 cc_do_draw:
 	ld de,cc_scratch		; blit cc_scratch (composited or expanded)
 	ld hl,(cc_cell)
+	REPT JSP_GEOM_CELLSHIFT
+	add hl,hl			; cell << log2(COLBYTES) = screen byte offset
+	ENDR
 	ld bc,0xC000
 	add hl,bc
 	call jsp_draw_screen_tile_saddr
@@ -493,9 +590,13 @@ cc_j:			db 0
 cc_loop_n:		db 0
 cc_slot:		dw 0
 cc_row_active_n:	db 0
-cc_scratch:		ds 8
+cc_scratch:		ds JSP_GEOM_COLBYTES*8	; 8 (byte/M2) or 16 (pixel M1)
 
 mono_basei:		dw 0
+mono_bcol:		db 0		; pixel: B0 = first M1 byte-col of the cell
+mono_k:			db 0		; pixel: byte-col loop index 0..COLBYTES-1
+mono_dst:		dw 0		; kernel dst slot (cc_scratch[+k*8] in pixel)
+mono_savetile:		dw 0		; pixel: BTT tile ptr saved across the 2-nibble seed
 mono_par:		db 0
 mono_savepar:		db 0
 mono_this:		ds 16		; expanded Mode-1 "this" cell (cs<=16)

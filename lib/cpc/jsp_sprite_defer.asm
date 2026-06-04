@@ -35,6 +35,9 @@
 
 	extern _jsp_dtt
 	extern _jsp_register_sprite
+	IFDEF JSP_CELL_MODEL_PIXEL
+	extern jsp_rowcolindex_dtt	; row-aligned DTT byte index (Model B mark)
+	ENDIF
 
 	public _jsp_dtt_mark_rect
 	public _jsp_move_sprite
@@ -98,10 +101,10 @@ mark_rect_core:
 	ld a,24
 	ld (mr_r1),a
 mrc_r1ok:
-	ld a,(mr_c1)			; if ( c1 > 79 ) c1 = 79;
-	cp 80
+	ld a,(mr_c1)			; if ( c1 > COLS-1 ) c1 = COLS-1;
+	cp JSP_GEOM_COLS
 	jr c,mrc_c1ok
-	ld a,79
+	ld a,JSP_GEOM_COLS-1
 	ld (mr_c1),a
 mrc_c1ok:
 	ld a,(mr_c1)			; inner count = c1 - c0 + 1
@@ -128,6 +131,17 @@ mrc_mskt:
 	djnz mrc_mskl
 	ld a,c
 	ld (mr_mask0),a
+	IFDEF JSP_CELL_MODEL_PIXEL
+	;; Model B: rowptr = jsp_dtt + row-aligned DTT byte index of (r0, c0_cell)
+	ld a,(mr_r0)
+	ld d,a
+	ld a,(mr_c0)
+	ld e,a
+	call jsp_rowcolindex_dtt		; HL = DTT byte index (per-model)
+	ld de,_jsp_dtt
+	add hl,de
+	ld (mr_rowptr),hl
+	ELSE
 	ld a,(mr_c0)			; rowptr = jsp_dtt + r0*10 + (c0>>3)
 	rrca
 	rrca
@@ -146,6 +160,7 @@ mrc_mskt:
 	ld de,_jsp_dtt
 	add hl,de
 	ld (mr_rowptr),hl
+	ENDIF
 mrc_row:
 	ld hl,(mr_rowptr)
 	ld a,(mr_mask0)
@@ -162,7 +177,7 @@ mrc_inner:
 mrc_noadv:
 	djnz mrc_inner
 	ld hl,(mr_rowptr)
-	ld de,10			; next char row = +10 DTT bytes (80 cols/8)
+	ld de,JSP_GEOM_DTT_ROWBYTES	; next cell row = +ROWBYTES DTT bytes (COLS/8)
 	add hl,de
 	ld (mr_rowptr),hl
 	ld hl,mr_rowcount
@@ -224,6 +239,22 @@ mark_footprint:
 	ld a,(mr_c0)
 	add a,c
 	ld (mr_c1),a
+	IFDEF JSP_CELL_MODEL_PIXEL
+	;; Model B: mr_c0/mr_c1 are BYTE columns; convert to CELL columns
+	;; (cell = COLBYTES bytes) so the DTT marks cells, matching the compositor's
+	;; cell coverage (floor(c0/COLBYTES) .. floor(c1/COLBYTES)).  Over-marking by
+	;; at most one cell (the +1 shift-spill column) is safe — it just repaints bg.
+	ld a,(mr_c0)
+	REPT JSP_GEOM_CELLSHIFT
+	srl a
+	ENDR
+	ld (mr_c0),a
+	ld a,(mr_c1)
+	REPT JSP_GEOM_CELLSHIFT
+	srl a
+	ENDR
+	ld (mr_c1),a
+	ENDIF
 	ld a,d				; clip == NULL ?
 	or e
 	jp z,mark_rect_core		; no clip -> mark straight away

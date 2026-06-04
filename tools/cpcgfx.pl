@@ -63,7 +63,7 @@ GetOptions(
 
 defined($opt_input) && defined($opt_width) && defined($opt_height) &&
     defined($opt_symbol_name) && defined($opt_gfx_type)
-    or die "usage: cpcgfx.pl -i PNG -x X -y Y --width W --height H -s SYM -g sprite_mask|sprite_load [--mode 1] [--extra-bottom-row] [--extra-top-rows] [-m/-f/-b RRGGBB]\n";
+    or die "usage: cpcgfx.pl -i PNG -x X -y Y --width W --height H -s SYM -g sprite_mask|sprite_load|tile [--mode 0|1] [--extra-bottom-row] [--extra-top-rows] [-m/-f/-b RRGGBB]\n";
 
 $opt_xpos       //= 0;
 $opt_ypos       //= 0;
@@ -78,9 +78,10 @@ $opt_background = uc($opt_background);
 ( $opt_mode == 1 || $opt_mode == 0 )
     or die "cpcgfx.pl: --mode must be 0 or 1\n";
 $opt_gfx_type = 'sprite_mask' if $opt_gfx_type eq 'sprite';
-$opt_gfx_type =~ /^sprite_(mask|load)$/
-    or die "--gfx-type must be sprite_mask or sprite_load\n";
+$opt_gfx_type =~ /^(sprite_(mask|load)|tile)$/
+    or die "--gfx-type must be sprite_mask, sprite_load or tile\n";
 my $is_mask = ($opt_gfx_type eq 'sprite_mask');
+my $is_tile = ($opt_gfx_type eq 'tile');
 
 # ---- per-mode geometry -----------------------------------------------------
 # Each 8-px ZX source column splits into $subcols Mode-N cells of $ppc pixels:
@@ -169,25 +170,50 @@ sub emit_blank_lines {
 
 # ---- output ----------------------------------------------------------------
 print "\tsection data_compiler\n\n";
-printf ";; CPC Mode %d sprite '%s' (%s)\n", $opt_mode, $opt_symbol_name, $opt_gfx_type;
-printf ";; source %s region (%d,%d) %dx%d px -> %d Mode-%d cols x %d rows%s\n",
-    $opt_input, $opt_xpos, $opt_ypos, $opt_width, $opt_height,
-    $ncols, $opt_mode, $hcells, ($bottom ? " (+extra bottom row)" : "");
-printf ";; %s: %d body bytes (cs=%d, %d px/cell)\n", $opt_symbol_name, $body_bytes, $cs, $ppc;
 
-if ($opt_extra_top_rows) {
-    print "\t;; 7 transparent pre-rows before label (safe sub-cell Y)\n";
-    emit_blank_lines(7);
-}
-printf "PUBLIC %s\n%s:\n", $opt_symbol_name, $opt_symbol_name;
-
-foreach my $mc (0 .. $ncols - 1) {
-    my $col = int($mc / $subcols);  # original 8-px source column
-    my $sub = $mc % $subcols;       # which $ppc-px slice of it (left -> right)
-    printf "\t;; Mode-%d col %d (src col %d, slice %d)\n", $opt_mode, $mc, $col, $sub;
+if ($is_tile) {
+    # PIXEL-CELL TILE (Model B): each 8x8 source cell -> one pixel-cell =
+    # $subcols byte-columns x 8 lines, COLUMN-MAJOR (col0's 8 bytes, then col1's,
+    # ...), graph-only, NO sub-cell padding (tiles sit on cell boundaries).  This
+    # is exactly the JSP_CELL_BYTES (16 for M1, 32 for M0) layout the pixel-cell
+    # wide-cell blit / BTT expects; pass the symbol to jsp_draw_background_tile.
+    my $cellbytes = $subcols * 8;
+    printf ";; CPC Mode %d pixel-cell TILE '%s'\n", $opt_mode, $opt_symbol_name;
+    printf ";; source %s region (%d,%d) %dx%d px -> %d x %d cells, %d bytes/cell\n",
+        $opt_input, $opt_xpos, $opt_ypos, $opt_width, $opt_height,
+        $hcells, $wcells, $cellbytes;
+    printf "PUBLIC %s\n%s:\n", $opt_symbol_name, $opt_symbol_name;
     foreach my $row (0 .. $hcells - 1) {
-        emit_cell($col, $row, $sub);
+        foreach my $col (0 .. $wcells - 1) {
+            printf "\t;; tile cell (row %d, col %d) -> %d-byte pixel-cell (column-major)\n",
+                $row, $col, $cellbytes;
+            foreach my $sub (0 .. $subcols - 1) {   # byte-columns, left -> right
+                emit_cell($col, $row, $sub);        # 8 graph lines (is_mask=0)
+            }
+        }
     }
-    emit_blank_lines(7 * $bottom);  # 7-line bottom/inter-column gap (see header)
+    print ";;;;;;\n";
+} else {
+    printf ";; CPC Mode %d sprite '%s' (%s)\n", $opt_mode, $opt_symbol_name, $opt_gfx_type;
+    printf ";; source %s region (%d,%d) %dx%d px -> %d Mode-%d cols x %d rows%s\n",
+        $opt_input, $opt_xpos, $opt_ypos, $opt_width, $opt_height,
+        $ncols, $opt_mode, $hcells, ($bottom ? " (+extra bottom row)" : "");
+    printf ";; %s: %d body bytes (cs=%d, %d px/cell)\n", $opt_symbol_name, $body_bytes, $cs, $ppc;
+
+    if ($opt_extra_top_rows) {
+        print "\t;; 7 transparent pre-rows before label (safe sub-cell Y)\n";
+        emit_blank_lines(7);
+    }
+    printf "PUBLIC %s\n%s:\n", $opt_symbol_name, $opt_symbol_name;
+
+    foreach my $mc (0 .. $ncols - 1) {
+        my $col = int($mc / $subcols);  # original 8-px source column
+        my $sub = $mc % $subcols;       # which $ppc-px slice of it (left -> right)
+        printf "\t;; Mode-%d col %d (src col %d, slice %d)\n", $opt_mode, $mc, $col, $sub;
+        foreach my $row (0 .. $hcells - 1) {
+            emit_cell($col, $row, $sub);
+        }
+        emit_blank_lines(7 * $bottom);  # 7-line bottom/inter-column gap (see header)
+    }
+    print ";;;;;;\n";
 }
-print ";;;;;;\n";

@@ -17,12 +17,10 @@
 // unchanged.
 //
 // NOTE on the CPC grid: the cell/tile-size model (byte-cell vs pixel-cell) is
-// an OPEN, deferred decision (doc/CPC-TILE-SIZE-ANALYSIS.md, plan §2).  The CPC
-// values here are the "Model A" (byte-cell, 80x25) figures, which are CORRECT
-// for Mode 2 (identical in both models) and PROVISIONAL for Mode 0/1 — the
-// final M0/M1 grid is settled in Phase 7 by measurement.  Because everything
-// reads these macros, switching a mode to Model B later is a one-line change
-// here plus the per-mode kernel/compositor work, not an engine-wide edit.
+// DECIDED — pixel-cell (Model B) is the measured-faster default; byte-cell
+// (Model A) stays available (doc/CPC-TILE-SIZE-DESIGN.md).  Both are selectable
+// here; everything reads these macros, so the grid/cell size follow the chosen
+// model with no engine-wide edit.  Mode 2 is identical in both models.
 //
 ///////////////////////////////////////////////////////
 
@@ -36,6 +34,18 @@
         defined( CPC_MODE1_MONO ) + defined( CPC_MODE0_FAST ) + \
         defined( CPC_MODE1_FAST ) + defined( CPC_MODE2_FAST ) ) != 1
     #error "JSP CPC build: define exactly ONE CPC mode (CPC_MODE0, CPC_MODE1, CPC_MODE2, CPC_MODE1_MONO, CPC_MODE0_FAST, CPC_MODE1_FAST or CPC_MODE2_FAST)"
+  #endif
+
+  // ---- CPC cell model: byte-cell (Model A) vs pixel-cell (Model B) ----
+  // Select with -DJSP_CELL_MODEL_BYTE or -DJSP_CELL_MODEL_PIXEL.  The DEFAULT is
+  // PIXEL-cell: the measured-faster model for Modes 0/1 (Mode 2 is identical in
+  // both).  Full rationale + the performance comparison: doc/CPC-TILE-SIZE-DESIGN.md.
+  // (ZX always uses its native 8x8 layout and ignores these defines.)
+  #if defined( JSP_CELL_MODEL_BYTE ) && defined( JSP_CELL_MODEL_PIXEL )
+    #error "JSP: define at most ONE of JSP_CELL_MODEL_BYTE / JSP_CELL_MODEL_PIXEL"
+  #endif
+  #if !defined( JSP_CELL_MODEL_BYTE ) && !defined( JSP_CELL_MODEL_PIXEL )
+    #define JSP_CELL_MODEL_PIXEL          // default
   #endif
 #endif
 
@@ -54,15 +64,13 @@
 #endif // JSP_TARGET_ZX
 
 // -------------------------------------------------------------------------
-// CPC target — per mode.  Grid is Model-A (80x25); see header note.
-// JSP_CELL_BYTES stays 8 under Model A (Model B would set 32/16/8 for M0/M1/M2).
-// CPC has no attribute RAM: JSP_HAS_ATTR = 0 (colour is in the pixels, §6).
+// CPC target — per mode.  CPC has no attribute RAM: JSP_HAS_ATTR = 0 (colour
+// is in the pixels, §6).  ppb (pixels-per-byte) is defined FIRST because the
+// pixel-cell grid below derives from it.
 // -------------------------------------------------------------------------
 #ifdef JSP_TARGET_CPC
 
-  #define JSP_GRID_COLS    80     // Model A: 80 byte-columns (PROVISIONAL for M0/M1)
   #define JSP_GRID_ROWS    25
-  #define JSP_CELL_BYTES   8      // Model A byte-cell
   #define JSP_HAS_ATTR     0
 
   #if defined( CPC_MODE0 )
@@ -85,14 +93,39 @@
     #define JSP_SHIFT_PHASES 0    // 8-px byte-aligned fast path (no shift table)
   #endif
 
+  // Cell model.  Model A (byte-cell, -DJSP_CELL_MODEL_BYTE): 8-line x 1-byte
+  // cells, 80x25 grid in EVERY mode (cell pixel-width 2/4/8 px for M0/M1/M2).
+  // Model B (pixel-cell, the DEFAULT): 8x8-PIXEL cells, so the grid and cell
+  // byte-size derive from ppb: GRID_COLS = 10*ppb (20/40/80) and CELL_BYTES =
+  // 64/ppb (32/16/8) for M0/M1/M2.  Mode 2 (ppb=8) yields 80 cols / 8 bytes in
+  // BOTH models — identical, as required (M2 is the regression anchor).  The
+  // switch is global: when defined it applies to whichever M0/M1 mode is built.
+  #ifdef JSP_CELL_MODEL_PIXEL
+    #define JSP_GRID_COLS    ( 10 * JSP_PPB )    // 20 / 40 / 80
+    #define JSP_CELL_BYTES   ( 64 / JSP_PPB )    // 32 / 16 / 8
+  #else
+    #define JSP_GRID_COLS    80                  // Model A byte-cell, all modes
+    #define JSP_CELL_BYTES   8
+  #endif
+
 #endif // JSP_TARGET_CPC
 
 // -------------------------------------------------------------------------
 // Derived geometry (target-independent expressions of the above).
 // -------------------------------------------------------------------------
 #define JSP_GRID_CELLS   ( JSP_GRID_COLS * JSP_GRID_ROWS )   // total cells
-#define JSP_DTT_BYTES    ( ( JSP_GRID_CELLS + 7 ) / 8 )      // bit/cell, packed
+// DTT/FTT are ROW-ALIGNED: each cell row takes ceil(COLS/8) bytes. For COLS a
+// multiple of 8 (ZX 32, Model A 80, Model-B M1 40 / M2 80) this equals the flat
+// packing; for Model-B Mode 0 (COLS=20) it pads rows to 3 bytes so a row start
+// stays byte-aligned (keeps the constant-mask-per-row dirty-mark optimisation).
+#define JSP_DTT_ROWBYTES ( ( JSP_GRID_COLS + 7 ) / 8 )
+#define JSP_DTT_BYTES    ( JSP_GRID_ROWS * JSP_DTT_ROWBYTES )
 #define JSP_FTT_BYTES    JSP_DTT_BYTES
+
+// Screen byte-columns spanned by one cell.  Model A: always 1 (cell == byte
+// column).  Model B (pixel-cell): JSP_CELL_BYTES/8 = 1/2/4 for M2/M1/M0 — the
+// central loop bound for the looped per-byte-column kernel + wide-cell blit.
+#define JSP_CELL_COLBYTES ( JSP_CELL_BYTES / 8 )
 
 // Linear cell index of (row,col).  Used by tile/sprite placement.
 #define JSP_CELL_INDEX( row, col ) ( (uint16_t)( row ) * JSP_GRID_COLS + ( col ) )

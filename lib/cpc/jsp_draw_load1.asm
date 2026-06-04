@@ -13,15 +13,18 @@
 
 	section code_compiler
 
+	INCLUDE "jsp_cpc_geom.inc"	; JSP_GEOM_COLBYTES
+	INCLUDE "jsp_cc_store.inc"	; CC_WR — absolute (Model A/M2) or (iy+n) (Model B)
+
 	public _JSP_DRAW_LOAD1
 	public _jsp_draw_load1
 
 	extern _JSP_DRAW_LOAD1NR
 	extern _jsp_current_rottbl_msb
 	extern _jsp_rottbl
-	extern cc_scratch		; dst is always the JSP compositing buffer,
-					; so dst bytes are written absolutely (13T)
-					; instead of via (iy+d) (19T)
+	extern cc_scratch		; Model A / M2: dst is the fixed 8-byte buffer,
+					; written absolutely (13T).  Model B M1/M0: dst is
+					; a per-byte-column slot passed in BC -> IY (19T).
 
 ; void jsp_draw_load1( uint8_t *dst, uint8_t *graph, uint8_t *graph_left ) __smallc __z88dk_callee;
 ; Trashes DE'!
@@ -62,7 +65,11 @@ _JSP_DRAW_LOAD1:
 	;  h = shift table
 	; de = sprite def (graph only)
 	; ix = left sprite def
-	; dst = cc_scratch (fixed buffer, written absolutely below)
+	; dst = cc_scratch (Model A/M2) or BC->IY per-column slot (Model B)
+	IF JSP_GEOM_COLBYTES > 1
+	push bc				; BC = dst (popped above) -> IY for (iy+n) writes
+	pop iy
+	ENDIF
 
 _JSPLoad1Rotate:
 
@@ -75,7 +82,7 @@ _JSPLoad1Rotate:
 	inc h
 	ld l,(ix+0)
 	or (hl)
-	ld (cc_scratch+0),a
+	CC_WR 0
 	ld l,(ix+1)
 	ld b,(hl)
 	dec h
@@ -84,7 +91,7 @@ _JSPLoad1Rotate:
 	ld l,a
 	ld a,b
 	or (hl)
-	ld (cc_scratch+1),a
+	CC_WR 1
 
 	; 1
 
@@ -95,7 +102,7 @@ _JSPLoad1Rotate:
 	inc h
 	ld l,(ix+2)
 	or (hl)
-	ld (cc_scratch+2),a
+	CC_WR 2
 	ld l,(ix+3)
 	ld b,(hl)
 	dec h
@@ -104,7 +111,7 @@ _JSPLoad1Rotate:
 	ld l,a
 	ld a,b
 	or (hl)
-	ld (cc_scratch+3),a
+	CC_WR 3
 
 	; 2
 
@@ -115,7 +122,7 @@ _JSPLoad1Rotate:
 	inc h
 	ld l,(ix+4)
 	or (hl)
-	ld (cc_scratch+4),a
+	CC_WR 4
 	ld l,(ix+5)
 	ld b,(hl)
 	dec h
@@ -124,7 +131,7 @@ _JSPLoad1Rotate:
 	ld l,a
 	ld a,b
 	or (hl)
-	ld (cc_scratch+5),a
+	CC_WR 5
 
 	; 3
 
@@ -135,7 +142,7 @@ _JSPLoad1Rotate:
 	inc h
 	ld l,(ix+6)
 	or (hl)
-	ld (cc_scratch+6),a
+	CC_WR 6
 	ld l,(ix+7)
 	ld b,(hl)
 	dec h
@@ -143,7 +150,7 @@ _JSPLoad1Rotate:
 	ld l,a
 	ld a,b
 	or (hl)
-	ld (cc_scratch+7),a
+	CC_WR 7
 
 	pop ix	; restore
 	ret

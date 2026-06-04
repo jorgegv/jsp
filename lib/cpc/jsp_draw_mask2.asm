@@ -13,15 +13,17 @@
 
 	section code_compiler
 
+	INCLUDE "jsp_cpc_geom.inc"	; JSP_GEOM_COLBYTES
+	INCLUDE "jsp_cc_store.inc"	; CC_RD/CC_WR — absolute (Model A/M2) or (iy+n) (Model B)
+
 	public _JSP_DRAW_MASK2
 	public _jsp_draw_mask2
 
 	extern _JSP_DRAW_MASK2NR
 	extern _jsp_rottbl
 	extern _jsp_current_rottbl_msb
-	extern cc_scratch		; dst is always the JSP compositing buffer,
-					; so the 8 dst bytes are addressed absolutely
-					; (13T) instead of via (iy+d) (19T)
+	extern cc_scratch		; Model A / M2: fixed buffer, absolute (13T).
+					; Model B M1/M0: per-column slot in BC -> IY (19T).
 
 ;; void jsp_draw_mask2( uint8_t *dst, uint8_t *graph, uint8_t *graph_left ) __smallc __z88dk_callee;
 ;; Trashes DE' !!!
@@ -61,7 +63,11 @@ _JSP_DRAW_MASK2:
 	;  h = shift table
 	; de = sprite def (mask,graph) pairs
 	; ix = left sprite def
-	; dst = cc_scratch (fixed buffer, addressed absolutely below)
+	; dst = cc_scratch (Model A/M2) or BC->IY per-column slot (Model B)
+	IF JSP_GEOM_COLBYTES > 1
+	push bc				; BC = dst (popped above) -> IY for (iy+n) access
+	pop iy
+	ENDIF
 
 _JSPMask2Rotate:
 
@@ -81,11 +87,11 @@ _JSPMask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(cc_scratch+0) ; get background graphic
+	CC_RD 0		; get background graphic
 	and b                   ; mask it
 	or c                    ; or graph rotated from left
 	or (hl)                 ; or spr graph rotated right
-	ld (cc_scratch+0),a ; store to current background
+	CC_WR 0		; store to current background
 
 	; 1
 
@@ -103,11 +109,11 @@ _JSPMask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(cc_scratch+1)
+	CC_RD 1
 	and b
 	or c
 	or (hl)
-	ld (cc_scratch+1),a
+	CC_WR 1
 
 	; 2
 
@@ -125,11 +131,11 @@ _JSPMask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(cc_scratch+2)
+	CC_RD 2
 	and b
 	or c
 	or (hl)
-	ld (cc_scratch+2),a
+	CC_WR 2
 
 	; 3
 
@@ -147,11 +153,11 @@ _JSPMask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(cc_scratch+3)
+	CC_RD 3
 	and b
 	or c
 	or (hl)
-	ld (cc_scratch+3),a
+	CC_WR 3
 
 	; 4
 
@@ -169,11 +175,11 @@ _JSPMask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(cc_scratch+4)
+	CC_RD 4
 	and b
 	or c
 	or (hl)
-	ld (cc_scratch+4),a
+	CC_WR 4
 
 	; 5
 
@@ -191,11 +197,11 @@ _JSPMask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(cc_scratch+5)
+	CC_RD 5
 	and b
 	or c
 	or (hl)
-	ld (cc_scratch+5),a
+	CC_WR 5
 
 	; 6
 
@@ -213,11 +219,11 @@ _JSPMask2Rotate:
 	ld a,(de)
 	inc de
 	ld l,a
-	ld a,(cc_scratch+6)
+	CC_RD 6
 	and b
 	or c
 	or (hl)
-	ld (cc_scratch+6),a
+	CC_WR 6
 
 	; 7
 
@@ -234,11 +240,11 @@ _JSPMask2Rotate:
 	dec h
 	ld a,(de)
 	ld l,a
-	ld a,(cc_scratch+7)
+	CC_RD 7
 	and b
 	or c
 	or (hl)
-	ld (cc_scratch+7),a
+	CC_WR 7
 
 	pop ix	; restore
 	ret

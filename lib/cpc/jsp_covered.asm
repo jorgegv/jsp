@@ -28,6 +28,8 @@
 
 	section code_compiler
 
+	INCLUDE "jsp_cpc_geom.inc"	; JSP_GEOM_COLS / COLBYTES / CELLSHIFT
+
 	extern _jsp_frame_count
 	extern _jsp_frame_sprites
 	extern _jsp_btt
@@ -58,17 +60,18 @@
 ;; before the call.  We derive (row,col) from it here.  (Internal helper —
 ;; only jsp_redraw calls it.)
 _jsp_redraw_covered_cell:
-	;; derive (row,col) from cc_cell:  cell = row*80 + col  (Model A)
+	;; derive (row,col) from cc_cell:  cell = row*COLS + col
+	;; (COLS = 80 Model A; 40/20 for Model B M1/M0)
 	ld hl,(cc_cell)
-	ld de,80
+	ld de,JSP_GEOM_COLS
 	ld b,0				; B = row quotient
 cc_divrow:
 	ld a,h
 	or a
-	jr nz,cc_divsub			; HL >= 256 > 80 -> subtract
+	jr nz,cc_divsub			; HL >= 256 > COLS -> subtract
 	ld a,l
-	cp 80
-	jr c,cc_divend			; HL < 80 -> remainder = col
+	cp JSP_GEOM_COLS
+	jr c,cc_divend			; HL < COLS -> remainder = col
 cc_divsub:
 	or a				; clear carry
 	sbc hl,de			; HL -= 80
@@ -140,6 +143,202 @@ cc_comp_loop:
 	push de
 	pop ix				; IX = frame sprite
 
+	IFDEF JSP_CELL_MODEL_PIXEL
+;; ============================================================
+;; Model B (pixel-cell): the cell spans COLBYTES screen byte-columns
+;; [B0 .. B0+COLBYTES-1], B0 = cc_col << CELLSHIFT.  The sprite covers screen
+;; byte-columns [c0..c1] (c0/c1 are BYTE columns from jsp_frame, unchanged).
+;; For every cell byte-column the sprite covers, composite source byte-column
+;; (bc-c0) into wide-scratch slot (bc-B0)*8, reusing the Model-A graph math.
+;; ============================================================
+	ld a,(cc_col)			; B0 = cc_col << CELLSHIFT
+	REPT JSP_GEOM_CELLSHIFT
+	add a,a
+	ENDR
+	ld (cc_bcol),a
+
+	;; overlap: B0 <= c1 AND B0+COLBYTES-1 >= c0
+	cp (ix+3)			; B0 vs c1
+	jp z,cb_ovl1
+	jp nc,cc_comp_next		; B0 > c1 -> no overlap
+cb_ovl1:
+	ld a,(cc_bcol)
+	add a,JSP_GEOM_COLBYTES-1	; B1
+	cp (ix+1)			; B1 vs c0
+	jp c,cc_comp_next		; B1 < c0 -> no overlap
+
+	;; clip rectangle test (cell coords; only if fs->clip != NULL)
+	ld l,(ix+14)
+	ld h,(ix+15)
+	ld a,h
+	or l
+	jr z,cb_clip_ok
+	call cc_clip_check
+	jp nz,cc_comp_next
+cb_clip_ok:
+
+	;; seed the WHOLE cell scratch (COLBYTES*8) from the BTT tile, 1st sprite
+	ld a,(cc_covered)
+	or a
+	jr nz,cb_seeded
+	inc a
+	ld (cc_covered),a
+	ld hl,(cc_cell)
+	add hl,hl
+	ld de,_jsp_btt
+	add hl,de
+	ld e,(hl)
+	inc hl
+	ld d,(hl)			; DE = BTT tile pointer
+	ld hl,cc_scratch
+	ex de,hl			; HL = src, DE = dst
+	REPT JSP_GEOM_COLBYTES*8
+	ldi
+	ENDR
+cb_seeded:
+
+	ld a,(ix+6)			; rottbl_msb (same for all byte-columns)
+	ld (_jsp_current_rottbl_msb),a
+	ld a,(cc_row)			; i = row - r0
+	sub (ix+0)
+	ld (cc_i),a
+
+	xor a				; k = 0
+	ld (cc_k),a
+cb_kloop:
+	ld hl,cc_k
+	ld a,(cc_bcol)
+	add a,(hl)			; A = bc = B0 + k
+	ld (cc_bc),a
+	cp (ix+1)			; bc vs c0
+	jp c,cb_knext			; bc < c0 -> column not covered
+	cp (ix+3)			; bc vs c1
+	jp z,cb_kin
+	jp nc,cb_knext			; bc > c1 -> not covered
+cb_kin:
+	ld a,(cc_bc)			; j = bc - c0
+	sub (ix+1)
+	ld (cc_j),a
+	;; pdc = (j==0)?0 : (j>=cols)? cols-1 : j
+	or a
+	jr z,cb_pdc_done
+	cp (ix+7)
+	jr c,cb_pdc_done
+	ld a,(ix+7)
+	dec a
+cb_pdc_done:
+	;; graph = base + pdc*rowstride + i*cs
+	ld l,(ix+10)
+	ld h,(ix+11)			; base
+	ld e,(ix+12)
+	ld d,(ix+13)			; rowstride
+	or a				; A = pdc
+	jr z,cb_no_pdc
+	ld b,a
+cb_pdc_add:
+	add hl,de
+	djnz cb_pdc_add
+cb_no_pdc:
+	ld a,(cc_i)
+	or a
+	jr z,cb_no_i
+	ld b,a
+	ld d,0
+	ld e,(ix+4)			; cs
+cb_i_add:
+	add hl,de
+	djnz cb_i_add
+cb_no_i:
+	ld (cc_graph),hl
+
+	;; dst = cc_scratch + k*8
+	ld a,(cc_k)
+	add a,a
+	add a,a
+	add a,a
+	ld e,a
+	ld d,0
+	ld hl,cc_scratch
+	add hl,de
+	ld (cc_dst),hl
+
+	IF CPC_MODE0_FAST || CPC_MODE1_FAST || CPC_MODE2_FAST
+	;; FAST: no rotation/border/graph_left
+	ld de,(cc_dst)
+	push de
+	ld de,(cc_graph)
+	push de
+	ld a,(ix+5)			; ismask2
+	or a
+	jr nz,cb_fast_mask
+	call _jsp_draw_load1nr
+	jp cb_knext
+cb_fast_mask:
+	call _jsp_draw_mask2nr
+	jp cb_knext
+	ELSE
+	;; dispatch: j==0 left border, j>=cols right border, else middle
+	ld a,(cc_j)
+	or a
+	jp z,cb_lb
+	cp (ix+7)
+	jp nc,cb_rb
+	;; middle: graph_left = graph - rowstride
+	ld hl,(cc_graph)
+	ld e,(ix+12)
+	ld d,(ix+13)
+	or a
+	sbc hl,de
+	ld de,(cc_dst)
+	push de
+	ld de,(cc_graph)
+	push de
+	push hl				; graph_left
+	ld a,(ix+5)
+	or a
+	jr nz,cb_mid_mask
+	call _jsp_draw_load1
+	jp cb_knext
+cb_mid_mask:
+	call _jsp_draw_mask2
+	jp cb_knext
+cb_lb:
+	ld de,(cc_dst)
+	push de
+	ld de,(cc_graph)
+	push de
+	ld a,(ix+5)
+	or a
+	jr nz,cb_lb_mask
+	call _jsp_draw_load1lb
+	jp cb_knext
+cb_lb_mask:
+	call _jsp_draw_mask2lb
+	jp cb_knext
+cb_rb:
+	ld de,(cc_dst)
+	push de
+	ld de,(cc_graph)
+	push de
+	ld a,(ix+5)
+	or a
+	jr nz,cb_rb_mask
+	call _jsp_draw_load1rb
+	jp cb_knext
+cb_rb_mask:
+	call _jsp_draw_mask2rb
+	ENDIF			; CPC_MODE*_FAST
+
+cb_knext:
+	ld hl,cc_k
+	inc (hl)
+	ld a,(hl)
+	cp JSP_GEOM_COLBYTES
+	jp c,cb_kloop
+	jp cc_comp_next
+
+	ELSE
+	;; ===== Model A (byte-cell): one source column per cell =====
 	;; col >= c0 ?  col <= c1 ?
 	ld a,(cc_col)
 	cp (ix+1)			; CF if col < c0
@@ -312,6 +511,7 @@ cc_rb_mask:
 	call _jsp_draw_mask2rb
 
 	ENDIF			; CPC_MODE*_FAST
+	ENDIF			; JSP_CELL_MODEL_PIXEL (Model A vs Model B core)
 
 ;; SEAM (CPC, §6): no sprite colour merge — colour is baked into the pixels.
 
@@ -335,10 +535,15 @@ cc_draw:
 	inc hl
 	ld d,(hl)			; DE = jsp_btt[cell] tile pointer
 cc_do_draw:
-	;; jsp_draw_screen_tile_saddr: HL = line-0 screen addr, DE = src (8 bytes)
+	;; jsp_draw_screen_tile_saddr: HL = line-0 screen addr, DE = src
+	;; (JSP_CELL_BYTES, column-major).  Screen offset = cell << CELLSHIFT
+	;; (CELLSHIFT = 0 Model A -> 0xC000 + cell; 1/2 for Model B M1/M0).
 	ld hl,(cc_cell)
+	REPT JSP_GEOM_CELLSHIFT
+	add hl,hl
+	ENDR
 	ld bc,0xC000
-	add hl,bc			; HL = 0xC000 + cell
+	add hl,bc			; HL = cell line-0 screen address
 	call jsp_draw_screen_tile_saddr
 	ret
 
@@ -389,7 +594,13 @@ cc_graph:		dw 0
 cc_loop_n:		db 0
 cc_slot:		dw 0
 cc_row_active_n:	db 0
-cc_scratch:		ds 8
+;; Model-B per-byte-column compositing scratch (unused in Model A, harmless):
+cc_bcol:		db 0		; B0 = first screen byte-column of the cell
+cc_k:			db 0		; byte-column loop index 0..COLBYTES-1
+cc_bc:			db 0		; current byte-column = B0 + k
+cc_dst:			dw 0		; cc_scratch + k*8 (kernel dst slot)
+;; Wide enough for the cell: COLBYTES*8 = 8 (Model A/M2) or 16/32 (Model B M1/M0).
+cc_scratch:		ds JSP_GEOM_COLBYTES*8
 
 ;; Reset to 0xFF by jsp_redraw_begin() so the first covered cell of each
 ;; frame rebuilds the row-sweep set.

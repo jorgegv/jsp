@@ -12,6 +12,8 @@
 
 	IFDEF JSP_TARGET_CPC
 
+	INCLUDE "jsp_cpc_geom.inc"	; JSP_GEOM_DTT_BYTES / JSP_GEOM_CELLSHIFT
+
 	section code_compiler
 
 	extern _jsp_redraw_begin
@@ -37,6 +39,14 @@ _jsp_redraw:
 
 	xor a
 	ld (rd_g),a			; g = 0
+	IF JSP_GEOM_DTT_ROWPAD > 0
+	;; Model-B Mode 0: the DTT is row-padded, so the bit position != linear cell
+	;; index; track the linear cell base of the current group incrementally.
+	ld hl,0
+	ld (rd_cellbase),hl
+	xor a
+	ld (rd_grpinrow),a
+	ENDIF
 
 ;; ---- per-group loop: 250 groups of 8 cells ----
 rd_group:
@@ -55,13 +65,17 @@ rd_group:
 	ld a,(hl)
 	ld d,a				; D = ftt (rrc per bit -> CY = foreground)
 
-	;; cellbase = g << 3  (HL = cell index, inc per bit)
-	ld a,(rd_g)
+	;; cellbase = first linear cell index of this group (HL, inc per bit)
+	IF JSP_GEOM_DTT_ROWPAD > 0
+	ld hl,(rd_cellbase)		; M0: tracked linear base (DTT row-padded)
+	ELSE
+	ld a,(rd_g)			; COLS multiple of 8: bit position == cell index
 	ld l,a
 	ld h,0
 	add hl,hl
 	add hl,hl
 	add hl,hl			; HL = g*8 = first cell of the group
+	ENDIF
 
 	ld b,8				; B = bit counter
 
@@ -78,19 +92,41 @@ rd_advance:
 	;; fall through
 
 rd_group_next:
+	IF JSP_GEOM_DTT_ROWPAD > 0
+	;; M0: advance the linear cell base — +8 within a row, +(COLS-(ROWBYTES-1)*8)
+	;; at the row wrap (every ROWBYTES groups).  rd_grpinrow counts 0..ROWBYTES-1.
+	ld a,(rd_grpinrow)
+	inc a
+	cp JSP_GEOM_DTT_ROWBYTES
+	jr nz,rgn_samerow
+	xor a				; row wrap
+	ld (rd_grpinrow),a
+	ld hl,(rd_cellbase)
+	ld de,JSP_GEOM_COLS-(JSP_GEOM_DTT_ROWBYTES-1)*8
+	add hl,de
+	ld (rd_cellbase),hl
+	jr rgn_adv_done
+rgn_samerow:
+	ld (rd_grpinrow),a
+	ld hl,(rd_cellbase)
+	ld de,8
+	add hl,de
+	ld (rd_cellbase),hl
+rgn_adv_done:
+	ENDIF
 	ld a,(rd_g)
 	inc a
 	ld (rd_g),a
-	cp 250
+	cp JSP_GEOM_DTT_BYTES		; 250 / 125 / 75 (M2-A / M1 / M0)
 	jp c,rd_group
 
-	;; clear the DTT (250 bytes) for the next frame
+	;; clear the DTT (JSP_GEOM_DTT_BYTES) for the next frame
 	ld hl,_jsp_dtt
 	ld d,h
 	ld e,l
 	inc de
 	ld (hl),0
-	ld bc,249
+	ld bc,JSP_GEOM_DTT_BYTES-1
 	ldir
 	pop ix
 	ret
@@ -138,17 +174,34 @@ rd_bg_cell:				; HL = cell ; preserve B,C,D across the blit
 	ld d,(hl)			; DE = jsp_btt[cell] tile pointer
 
 	IFDEF CPC_MODE1_MONO
-	;; MONO: the BTT tile is 1bpp -> expand nibble(col&1) into cc_scratch and
-	;; blit that.  cell & 1 == col & 1 (cell = row*80 + col, row*80 even).
+	;; MONO: the BTT tile is 1bpp -> expand into cc_scratch and blit that.
 	ex de,hl			; HL = 1bpp tile ptr
-	ld a,(rd_cell)			; low byte of cell index
-	and 1				; parity = col & 1
+	IFDEF JSP_CELL_MODEL_PIXEL
+	;; pixel: the 8-px cell is 2 Mode-1 byte-cols = high nibble (col0) + low
+	;; nibble (col1); expand both into cc_scratch[0..7] / [8..15].
+	push hl
+	xor a
+	ld de,cc_scratch
+	call mono_tile_expand
+	pop hl
+	ld a,1
+	ld de,cc_scratch+8
+	call mono_tile_expand
+	ELSE
+	ld a,(rd_cell)			; parity = col & 1 (cell = row*80+col, row*80 even)
+	and 1
 	ld de,cc_scratch
 	call mono_tile_expand		; cc_scratch <- 8 Mode-1 bytes
+	ENDIF
 	ld de,cc_scratch
 	ENDIF
 
 	ld hl,(rd_cell)
+  IFDEF JSP_CELL_MODEL_PIXEL
+	REPT JSP_GEOM_CELLSHIFT
+	add hl,hl			; cell index << log2(COLBYTES) = screen byte offset
+	ENDR
+  ENDIF
 	ld bc,0xC000
 	add hl,bc			; HL = cell line-0 screen address
 	call jsp_draw_screen_tile_saddr	; blit DE -> screen (trashes A,B,D,HL)
@@ -164,5 +217,9 @@ rd_cell:	dw 0
 rd_dtt:		db 0
 rd_ftt:		db 0
 rd_bitc:	db 0
+	IF JSP_GEOM_DTT_ROWPAD > 0
+rd_cellbase:	dw 0		; M0: linear cell index of the current group's first cell
+rd_grpinrow:	db 0		; M0: group position within the row (0..ROWBYTES-1)
+	ENDIF
 
 	ENDIF			; JSP_TARGET_CPC
