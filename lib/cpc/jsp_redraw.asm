@@ -174,13 +174,25 @@ rd_bg_cell:				; HL = cell ; preserve B,C,D across the blit
 	ld d,(hl)			; DE = jsp_btt[cell] tile pointer
 
 	IFDEF CPC_MODE1_MONO
-	;; MONO: the BTT tile is 1bpp -> expand nibble(col&1) into cc_scratch and
-	;; blit that.  cell & 1 == col & 1 (cell = row*80 + col, row*80 even).
+	;; MONO: the BTT tile is 1bpp -> expand into cc_scratch and blit that.
 	ex de,hl			; HL = 1bpp tile ptr
-	ld a,(rd_cell)			; low byte of cell index
-	and 1				; parity = col & 1
+	IFDEF JSP_CELL_MODEL_PIXEL
+	;; pixel: the 8-px cell is 2 Mode-1 byte-cols = high nibble (col0) + low
+	;; nibble (col1); expand both into cc_scratch[0..7] / [8..15].
+	push hl
+	xor a
+	ld de,cc_scratch
+	call mono_tile_expand
+	pop hl
+	ld a,1
+	ld de,cc_scratch+8
+	call mono_tile_expand
+	ELSE
+	ld a,(rd_cell)			; parity = col & 1 (cell = row*80+col, row*80 even)
+	and 1
 	ld de,cc_scratch
 	call mono_tile_expand		; cc_scratch <- 8 Mode-1 bytes
+	ENDIF
 	ld de,cc_scratch
 	ENDIF
 
