@@ -16,9 +16,9 @@
 #
 # The whole CPC mode matrix is collapsed into cpc-run-test (parametrised by
 # TEST + MODE) and cpc-tests; per-mode lookup tables drive it (see "CPC matrix"
-# below).  A few non-test CPC maintenance targets (cpc-artifact-check,
-# cpc-perf-matrix, cpc-cell-model-archive) are kept but intentionally omitted
-# from `help`.  All artifacts land in build/ (see `clean`).
+# below).  Three further CPC maintenance/measurement targets (cpc-artifact-check,
+# cpc-perf-matrix, cpc-cell-model-archive) round out the set.  All artifacts land
+# in build/ (see `clean`).
 
 ZCC		= zcc +zx -compiler=sdcc
 CFLAGS		= -vn -SO3 --opt-code-size --max-allocs-per-node200000 --list -s --c-code-in-asm -I$(INCLUDE_DIR)
@@ -393,10 +393,10 @@ cpc-tests:
 	@$(MAKE) cpc-artifact-check
 	@echo "CPC tests complete."
 
-## --- CPC maintenance targets (intentionally omitted from `make help`) --------
+## --- CPC maintenance / measurement targets -----------------------------------
 
-## Build the 4 artifact disks, screenshot, compare to committed refs (AE; 0 = pass).
 CPC_ARTIFACT_PAIRS = $(foreach m,$(CPC_ARTIFACT_MODES),$(m):$(m_artname_$(m)))
+# Build the 4 artifact disks, screenshot, compare to committed refs (AE; 0 = pass)
 cpc-artifact-check:
 	@echo "CPC bottom-line artifact regression (AE vs tests/refs/cpc/artifact; 0 = pass)"
 	@for pair in $(CPC_ARTIFACT_PAIRS); do m=$${pair%%:*}; n=$${pair##*:}; \
@@ -410,8 +410,8 @@ cpc-artifact-check:
 		else echo "$$n MISSING (shot or ref)"; fi; \
 	done
 
-## Wall-clock redraw timing of every sprite config (TIME_LIMITED=$(CYCLES)).
 CPC_SPRITE_PAIRS = $(foreach m,$(CPC_SPRITE_MODES),$(m):$(m_name_$(m)))
+# Wall-clock redraw timing of every sprite config (override cycles with CYCLES=)
 cpc-perf-matrix:
 	@echo "CPC redraw timing — $(CYCLES) cycles/config (wall-clock s, lower is faster)"
 	@for pair in $(CPC_SPRITE_PAIRS); do m=$${pair%%:*}; n=$${pair##*:}; \
@@ -421,7 +421,7 @@ cpc-perf-matrix:
 		./tools/cap32-time.sh $(BUILD_DIR)/$$n.dsk $$n 2>/dev/null || echo "RUN FAILED"; \
 	done
 
-## Build every CPC test in BOTH cell models, archiving .dsk into cpc-cell-model/{byte,pixel}/.
+# Build every CPC test in BOTH cell models, archiving .dsk into cpc-cell-model/{byte,pixel}/
 cpc-cell-model-archive:
 	for cm in byte pixel; do \
 		mkdir -p cpc-cell-model/$$cm; \

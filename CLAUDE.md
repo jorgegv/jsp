@@ -63,9 +63,10 @@ make cpc-run-test TEST=demo          # Mode 2 sprite demo (bounces continuously)
 `TEST` ∈ `sprite artifact shift bg foreground btt-redraw demo`; for
 `sprite`/`artifact`/`shift`, `MODE` selects the variant (sprite: `2 1 1_mono 0
 2_fast 0_fast 1_fast`; artifact/shift: a subset). `SHOT=0` skips the screenshot
-(build only). Non-test maintenance targets `cpc-artifact-check`,
-`cpc-perf-matrix`, and `cpc-cell-model-archive` still exist but are omitted from
-`make help`.
+(build only). Three further CPC maintenance/measurement targets round out the
+set (all listed by `make help`): `cpc-artifact-check` (regression AE per mode),
+`cpc-perf-matrix` (wall-clock redraw timing), `cpc-cell-model-archive` (rebuild
+the committed byte/pixel `.dsk` archive).
 
 ## Code Structure
 
