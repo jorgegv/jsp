@@ -50,7 +50,7 @@ Options:
     -p, --preshift <1|2|4>
         --extra-right-col - generate sprite extra empty right column (default: no)
         --extra-bottom-row - generate sprite extra empty bottom row, SP1 style (default: no)
-        --extra-top-rows - generate 7 transparent pre-rows before label for safe sub-cell y-scroll (default: no)
+        --extra-top-rows - generate 8 transparent pre-rows before label for safe sub-cell y-scroll (default: no)
         --hmirror - mirror graphic data horizontally
         --vmirror - mirror graphic data vertically
 EOF_USAGE
@@ -448,7 +448,7 @@ sub output_sprite {
         $opt_symbol_name,
         ( $opt_extra_bottom_row ? 'with extra blank bottom row' : '' ),
         ( $opt_extra_right_col ? 'with extra blank right column' : '' ),
-        ( $opt_extra_top_rows ? 'with 7 transparent pre-rows before label' : '' ),
+        ( $opt_extra_top_rows ? 'with 8 transparent pre-rows before label' : '' ),
     );
     my $sprite_byte_count =
         ( zxgfx_get_width_cells( $gfx ) + ( $opt_extra_right_col ? 1 : 0 ) ) *
@@ -459,18 +459,18 @@ sub output_sprite {
     # first (unlabeled), then PUBLIC+label together.
     if ( $opt_extra_top_rows && $ct eq 'asm' ) {
         printf( "\t;; %s: %d bytes\n", $opt_symbol_name, $sprite_byte_count );
-        print "\t;; 7 transparent pre-rows before label (for safe sub-cell y positioning)\n";
+        print "\t;; 8 transparent pre-rows before label (for safe sub-cell y positioning)\n";
         if ( $spt eq 'sprite_mask' ) {
             print join("\n", map {
                 sprintf $sprite_output_format{'output1_mask'}{ $ct },
                     $_->[0], $_->[1], byte2graph( $_->[0] ), byte2graph( $_->[1] );
-            } ( ( [ 255, 0 ] ) x 7 ) );
+            } ( ( [ 255, 0 ] ) x 8 ) );
             print "\n";
         }
         if ( $spt eq 'sprite_load' ) {
             print join("\n", map {
                 sprintf $sprite_output_format{'output1_load'}{ $ct }, $_, byte2graph( $_ );
-            } ( ( 0 ) x 7 ) );
+            } ( ( 0 ) x 8 ) );
             print "\n";
         }
         printf( "PUBLIC %s\n%s:\n", $opt_symbol_name, $opt_symbol_name );
@@ -500,21 +500,21 @@ sub output_sprite {
                 print "\n";
             }
             if ( $opt_extra_bottom_row ) {
-                # 7 (not 8) blank scanlines: the vertical sub-cell shift reads at
-                # most 7 lines past a column's data, and these 7 trailing blanks
-                # double as the next column's leading 7 (they overlap).  The engine
-                # column stride is correspondingly (rows+1)*cs - (cs>>3) — see the
-                # "- (cs>>3)" correction in jsp_frame.asm.
+                # a full 8-line blank cell (start, end and between columns) —
+                # RAGE1's expected layout.  The vertical sub-cell shift reads at
+                # most 7 lines past a column's data, well inside the 8.  The engine
+                # column stride is correspondingly a clean (rows+1)*cs (see
+                # jsp_frame.asm — no correction term).
                 if ( $spt eq 'sprite_mask' ) {
                     print join("\n", map {
                         sprintf $sprite_output_format{'output1_mask'}{ $ct },
                             $_->[0], $_->[1], byte2graph( $_->[0] ), byte2graph( $_->[1] );
-                    } ( ( [ 255, 0] ) x 7 ) );
+                    } ( ( [ 255, 0] ) x 8 ) );
                 }
                 if ( $spt eq 'sprite_load' ) {
                     print join("\n", map {
                         sprintf $sprite_output_format{'output1_load'}{ $ct }, $_, byte2graph( $_ );
-                    } ( ( 0 ) x 7 ) );
+                    } ( ( 0 ) x 8 ) );
                 }
                 print "\n";
             }
@@ -523,20 +523,20 @@ sub output_sprite {
         # --extra-right-col adds one fully-blank trailing column.  JSP does not
         # use it (horizontal sub-cell spill is handled by the cols+1 footprint +
         # the lb/rb kernels, not a blank asset column), so this path is currently
-        # dead; its height is kept consistent with the 7-line column stride
-        # (rows*8 + 7 when --extra-bottom-row) in case it is ever used.
+        # dead; its height is kept consistent with the 8-line column stride
+        # (rows*8 + 8 when --extra-bottom-row) in case it is ever used.
         if ( $opt_extra_right_col ) {
             print $sprite_output_format{'comment3'}{ $ct };
             if ( $spt eq 'sprite_mask' ) {
                 print join("\n", map {
                     sprintf $sprite_output_format{'output1_mask'}{ $ct },
                         $_->[0], $_->[1], byte2graph( $_->[0] ), byte2graph( $_->[1] );
-                } ( ( [ 255,0 ] ) x ( zxgfx_get_height_cells( $gfx ) * 8 + ( $opt_extra_bottom_row ? 7 : 0 ) ) ) );
+                } ( ( [ 255,0 ] ) x ( zxgfx_get_height_cells( $gfx ) * 8 + ( $opt_extra_bottom_row ? 8 : 0 ) ) ) );
             }
             if ( $spt eq 'sprite_load' ) {
                 print join("\n", map {
                     sprintf $sprite_output_format{'output1_load'}{ $ct }, $_, byte2graph( $_ );
-                } ( ( 0 ) x ( zxgfx_get_height_cells( $gfx ) * 8 + ( $opt_extra_bottom_row ? 7 : 0 ) ) ) );
+                } ( ( 0 ) x ( zxgfx_get_height_cells( $gfx ) * 8 + ( $opt_extra_bottom_row ? 8 : 0 ) ) ) );
             }
             print "\n";
         }

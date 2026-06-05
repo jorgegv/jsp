@@ -79,18 +79,16 @@ arithmetic* change between modes.
   within a column, left-to-right across columns. The compositor addresses a cell
   as `graph = base + pdc*rowstride + i*cs` (see §2.4), so this layout is a hard
   requirement, not a convention.
-- **Sub-cell Y padding.** Each sprite has **7 transparent pre-rows before its
-  label** and **7 trailing blank lines after every column** (NOT a full 8-line
-  cell). Together they let a sprite be placed at any pixel Y: the engine starts
-  reading `yrot` lines *above* the label (into the pre-rows, `yrot ≤ 7`) and the
-  bottom spill reaches at most 7 lines past a column's data. The 7 trailing lines
-  of one column **double as the 7 leading lines of the next** (they overlap), so
-  columns sit `rows*cs + 7*(cs/8)` bytes apart — i.e. `rowstride = (rows+1)*cs -
-  (cs>>3)`, one (LOAD1) / two (MASK2) bytes less than a full extra cell. Without
-  this padding a sub-cell-Y sprite would read neighbouring data. (Earlier builds
-  used a full 8-line trailing cell, `(rows+1)*cs`; the 7-line form saves
-  `cols*(cs>>3)` bytes per frame with no engine cost — the stride is just
-  computed once per sprite per frame, hot path unchanged.)
+- **Sub-cell Y padding.** Each sprite has **8 transparent pre-rows before its
+  label** and a **full 8-line blank cell after every column**. Together they let
+  a sprite be placed at any pixel Y: the engine starts reading `yrot` lines
+  *above* the label (into the pre-rows, `yrot ≤ 7`) and the bottom spill reaches
+  at most 7 lines past a column's data — comfortably inside the 8. Columns
+  therefore sit a clean `(rows+1)*cs` bytes apart (`rowstride = (rows+1)*cs`, no
+  correction term). This is the layout RAGE1 (JSP's main consumer) assumes.
+  (Earlier builds used a memory-saving 7-line overlapping pad with
+  `rowstride = (rows+1)*cs - (cs>>3)`; the 8-line form trades `cols*(cs>>3)`
+  bytes/sprite for RAGE1 compatibility and a correction-free stride.)
 - **Coordinates.** Sprite X is 16-bit on CPC (full 640 px); Y is 8-bit. The
   per-frame split is `byte_col = x / ppb`, `xrot = x % ppb`, `r0 = y >> 3`,
   `yrot = y & 7` (doc/legacy/CPC-TARGET-PLAN.md §3).
@@ -116,19 +114,19 @@ For a sprite that is `rows` cells tall and `cols` cells wide:
 
 ```
 bytes per cell      cs        = 8 (LOAD1) | 16 (MASK2)
-bytes per column    rowstride = (rows + 1) * cs - (cs>>3)   ; rows*cs + 7 trailing lines
-sprite body         cols * rowstride bytes                  ; each col block incl. its 7-line tail
-pre-rows (before label) 7 lines = 7*1 (LOAD1) | 7*2 (MASK2) bytes
+bytes per column    rowstride = (rows + 1) * cs              ; rows*cs + 8 trailing lines
+sprite body         cols * rowstride bytes                  ; each col block incl. its 8-line tail
+pre-rows (before label) 8 lines = 8*1 (LOAD1) | 8*2 (MASK2) bytes
 ```
 
 Memory layout (columns-major), label points at the first body byte:
 
 ```
-            (7 transparent pre-rows live just BEFORE the label)
-label ->  column 0 :  cell(0,0) [cs] ... cell(rows-1,0) [cs] [7 blank lines]
-          column 1 :  cell(0,1) ...                          [7 blank lines]   ; col 0's tail
-          ...                                                                  ; = col 1's head
-          column cols-1 : cell(0,..) ... cell(rows-1,..) [cs] [7 blank lines]  ; bottom pad
+            (8 transparent pre-rows live just BEFORE the label)
+label ->  column 0 :  cell(0,0) [cs] ... cell(rows-1,0) [cs] [8 blank lines]
+          column 1 :  cell(0,1) ...                          [8 blank lines]
+          ...
+          column cols-1 : cell(0,..) ... cell(rows-1,..) [cs] [8 blank lines]  ; bottom pad
 ```
 
 ### 1.3 How the engine reads a sprite (per covered cell)
@@ -138,7 +136,7 @@ Set once per frame, per sprite (`jsp_redraw_begin`, `lib/cpc/jsp_frame.asm`):
 ```
 cs        = 8 (LOAD1) | 16 (MASK2)
 base      = pixels - yrot * (cs / 8)        ; back up yrot lines into the pre-rows
-rowstride = (rows + 1) * cs - (cs >> 3)     ; columns 7 lines apart (overlapping pad)
+rowstride = (rows + 1) * cs                 ; columns a full 8-line cell apart
 rottbl_msb= selects the xrot shift phase in jsp_rottbl
 ```
 
@@ -199,8 +197,8 @@ db $7E          ; line 2   pixels: .######.
  ... (8 lines)
 ```
 
-Stored columns-major with 7 trailing blank lines per column and 7 pre-rows
-(`db $00` ×7) before the label. Composites by overwrite.
+Stored columns-major with 8 trailing blank lines per column and 8 pre-rows
+(`db $00` ×8) before the label. Composites by overwrite.
 
 ### 2.3 MASK2 sprite (transparent)
 
@@ -208,21 +206,21 @@ Stored columns-major with 7 trailing blank lines per column and 7 pre-rows
 sprite (`tests/test_sprite_mask2.asm`, `## = 1 bit, MSB left`):
 
 ```
-;; 7 transparent pre-rows (before the label)
+;; 8 transparent pre-rows (before the label)
 db $ff,$00      ; mask ################   graph ................
- ... (7 of these)
+ ... (8 of these)
 label:
 ;; column 0, cell-row 0 (8 lines)
 db $f8,$00      ; mask ##########......   graph ................
 db $e0,$03      ; mask ######..........   graph ............####
 db $c0,$0c      ; mask ####............   graph ........####....
- ... (8 lines for this cell, then cell-row 1, then 7 trailing blank lines)
+ ... (8 lines for this cell, then cell-row 1, then 8 trailing blank lines)
 ;; then column 1: same structure
 ```
 
-A 16×16 (2×2-cell) MASK2 sprite body is `cols*rowstride = 2*46 = 92 bytes`
-(was `2*48 = 96` with a full 8-line trailing cell),
-preceded by `7*2 = 14` pre-row bytes.
+A 16×16 (2×2-cell) MASK2 sprite body is `cols*rowstride = 2*48 = 96 bytes`
+(the 8-line trailing cell; an older memory-saving 7-line form was `2*46 = 92`),
+preceded by `8*2 = 16` pre-row bytes.
 
 ### 2.4 Engine constants for Mode 2
 

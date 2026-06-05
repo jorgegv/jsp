@@ -2,8 +2,9 @@
 
 ;; CPC Mode 1 sprite '_ball_m1_pixels' (sprite_mask)
 ;; source assets/ball_m1.png region (0,0) 16x16 px -> 4 Mode-1 cols x 2 rows (+extra bottom row)
-;; _ball_m1_pixels: 184 body bytes (cs=16, 4 px/cell)
-	;; 7 transparent pre-rows before label (safe sub-cell Y)
+;; _ball_m1_pixels: 192 body bytes (cs=16, 4 px/cell)
+	;; 8 transparent pre-rows before label (safe sub-cell Y, RAGE1 layout)
+	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
@@ -37,6 +38,7 @@ _ball_m1_pixels:
 	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
+	db	$ff,$00
 	;; Mode-1 col 1 (src col 0, slice 1)
 	db	$88,$70		;; mask #... pix .111
 	db	$00,$f3		;; mask .... pix 1133
@@ -54,6 +56,7 @@ _ball_m1_pixels:
 	db	$00,$fc		;; mask .... pix 3311
 	db	$00,$f3		;; mask .... pix 1133
 	db	$88,$70		;; mask #... pix .111
+	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
@@ -85,6 +88,7 @@ _ball_m1_pixels:
 	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
+	db	$ff,$00
 	;; Mode-1 col 3 (src col 1, slice 1)
 	db	$ff,$00		;; mask #### pix ....
 	db	$77,$08		;; mask .### pix 2...
@@ -102,6 +106,7 @@ _ball_m1_pixels:
 	db	$33,$0c		;; mask ..## pix 22..
 	db	$77,$08		;; mask .### pix 2...
 	db	$ff,$00		;; mask #### pix ....
+	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00
 	db	$ff,$00

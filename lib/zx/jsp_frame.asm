@@ -8,7 +8,7 @@
 ;;
 ;; The two 16-bit multiplies the C version compiled to __mulint calls are
 ;; gone: cs is a power of two (8 for load1, 16 for mask2), so
-;;   rowstride = (rows+1)*cs - (cs>>3)  ->  ((rows+1)<<3)-1, or ((rows+1)<<4)-2
+;;   rowstride = (rows+1)*cs  ->  (rows+1)<<3, or (rows+1)<<4 for mask2
 ;;   base disp = yrot*(cs>>3)  ->  yrot, or yrot<<1 for mask2
 ;;
 ;; struct jsp_sprite_s (13 bytes):
@@ -66,7 +66,7 @@
 ;;         fs->rottbl_msb =
 ;;             (uint8_t)( ( (uint16_t)jsp_rottbl >> 8 ) + 2 * xrot - 2 );
 ;;         fs->base      = sp->pixels - (uint16_t)yrot * ( cs >> 3 );
-;;         fs->rowstride = (uint16_t)( sp->rows + 1 ) * cs - ( cs >> 3 );
+;;         fs->rowstride = (uint16_t)( sp->rows + 1 ) * cs;
 ;;
 ;;         fs->color      = sp->color;
 ;;         fs->color_mask = sp->color_mask;
@@ -224,7 +224,7 @@ rb_base:
 	sbc a,0
 	ld (hl),a
 	inc hl
-	ld a,(ix+0)			; +12/13 rowstride = (rows+1)*cs - (cs>>3)
+	ld a,(ix+0)			; +12/13 rowstride = (rows+1)*cs
 	inc a				; rows + 1
 	ld c,a
 	ld b,0				; BC = rows + 1
@@ -240,15 +240,9 @@ rb_base:
 	sla c
 	rl b				; * 16 for mask2
 rb_rowstride:
-	;; columns sit 7 blank scanlines apart (not a full 8-line cell), so the
-	;; stride is (rows+1)*cs - (cs>>3): -1 (load1) / -2 (mask2).  The matching
-	;; 7-line trailing pad per column is emitted by tools/gfxgen.pl.
-	dec bc				; - (cs>>3): load1 -> -1
-	ld a,(rb_ismask2)
-	or a
-	jr z,rb_rs_store
-	dec bc				; mask2 -> -2
-rb_rs_store:
+	;; columns sit a full 8-line cell apart, so the stride is exactly
+	;; (rows+1)*cs (no correction).  The matching 8-line trailing pad per
+	;; column is emitted by tools/gfxgen.pl (RAGE1-compatible layout).
 	ld (hl),c
 	inc hl
 	ld (hl),b

@@ -25,12 +25,12 @@
 #     mask_left   = (src_mask & 0xF0) | ((src_mask & 0xF0) >> 4)
 #     mask_right  = ((src_mask & 0x0F) << 4) | (src_mask & 0x0F)
 #
-# Layout matches the ZX sprite convention (columns-major, 7 transparent pre-rows
-# before the label).  For safe sub-cell Y, each column is followed by 7 (NOT 8)
-# blank scanlines: the vertical shift reads at most 7 lines beyond the data, and a
-# column's trailing 7 blanks serve as the next column's leading 7 (they overlap).
-# So the engine column stride is rows*cs + 7*(cs/8) = (rows+1)*cs - (cs/8); the
-# matching `- (cs>>3)` correction lives in jsp_frame.asm (base + pdc*rowstride + i*cs).
+# Layout matches the ZX sprite convention (columns-major, 8 transparent pre-rows
+# before the label).  Each column is followed by a full 8-line blank cell (start,
+# end and between columns), so the engine column stride is a clean (rows+1)*cs.
+# This matches RAGE1's sprite layout assumption (8 blank lines, not the older
+# memory-saving 7-line overlap).  The vertical sub-cell shift reads at most 7
+# lines beyond a column's data, comfortably inside the 8-line trailing pad.
 
 use strict;
 use warnings;
@@ -243,11 +243,11 @@ if ($opt_multicolor) {
 my $ncols  = $subcols * $wcells;  # each 8-px source column -> $subcols Mode-N cells
 my $cs     = $is_mask ? 16 : 8;   # bytes per Mode-N cell-row
 my $bottom = $opt_extra_bottom_row ? 1 : 0;
-# Only 7 blank scanlines (not a full 8-line cell) are needed for sub-cell Y: the
-# vertical shift reads at most 7 lines past the data, and a column's trailing 7
-# blanks double as the next column's leading 7 (they overlap).  So each column is
-# rows*cs + 7*(cs/8) bytes apart, matching the engine rowstride (see jsp_frame.asm).
-my $body_bytes = $ncols * ($hcells * $cs + ($bottom ? 7 * ($cs / 8) : 0));
+# A full 8-line blank cell follows each column (RAGE1-compatible layout): the
+# vertical shift reads at most 7 lines past the data, well inside the 8.  So each
+# column is rows*cs + 8*(cs/8) = (rows+1)*cs bytes apart, matching the engine
+# rowstride (see jsp_frame.asm).
+my $body_bytes = $ncols * ($hcells * $cs + ($bottom ? 8 * ($cs / 8) : 0));
 
 # Graphic + mask byte for cell (col,row), sub-column $sub, scanline $line, built
 # from the per-pixel pen grid.  Plane q of cell-pixel cp sits at bit (7-cp)-q*ppc
@@ -341,8 +341,8 @@ if ($is_tile) {
     printf ";; %s: %d body bytes (cs=%d, %d px/cell)\n", $opt_symbol_name, $body_bytes, $cs, $ppc;
 
     if ($opt_extra_top_rows) {
-        print "\t;; 7 transparent pre-rows before label (safe sub-cell Y)\n";
-        emit_blank_lines(7);
+        print "\t;; 8 transparent pre-rows before label (safe sub-cell Y, RAGE1 layout)\n";
+        emit_blank_lines(8);
     }
     printf "PUBLIC %s\n%s:\n", $opt_symbol_name, $opt_symbol_name;
 
@@ -353,7 +353,7 @@ if ($is_tile) {
         foreach my $row (0 .. $hcells - 1) {
             emit_cell($col, $row, $sub);
         }
-        emit_blank_lines(7 * $bottom);  # 7-line bottom/inter-column gap (see header)
+        emit_blank_lines(8 * $bottom);  # 8-line bottom/inter-column gap (see header)
     }
     print ";;;;;;\n";
 }
