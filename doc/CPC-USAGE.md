@@ -120,9 +120,10 @@ void main( void ) {
     cpc_set_mode_and_palette();   // 1. mode + palette  (YOUR code, see below)
     jsp_init( default_tile, 0 );  // 2. init engine (default_attr unused on CPC)
 
-    // 3. paint the background (80 cols x 25 rows of 8x8 cells)
-    for ( r = 0; r < 25; r++ )
-        for ( c = 0; c < 80; c++ )
+    // 3. paint the background grid of 8x8-px cells (80/40/20 cols x 25 rows
+    //    in Mode 2/1/0 — use the macros to stay mode-independent)
+    for ( r = 0; r < JSP_GRID_ROWS; r++ )
+        for ( c = 0; c < JSP_GRID_COLS; c++ )
             jsp_draw_background_tile( r, c, my_tile );
 
     // 4. game loop
@@ -179,10 +180,11 @@ DEFINE_SPRITE( player, 2,   2,   ball_pixels,  0, 0, JSP_TYPE_MASK2 );
 ```
 
 - **`rows`** = sprite height in 8-px cells (`height_px / 8`).
-- **`cols`** = sprite width in **byte-cells**, which is mode-dependent (a byte
-  spans 8/4/2 px in Mode 2/1/0). The simple rule: **`cols = width_px / ppb`**
-  (ppb = 8/4/2). A 16×16 sprite is `cols = 2 / 4 / 8` in Mode 2 / 1 / 0;
-  `rows = 2` always.
+- **`cols`** = sprite width in **byte-columns** (a screen byte spans 8/4/2 px in
+  Mode 2/1/0): **`cols = width_px / ppb`**, ppb = 8/4/2. A 16×16 sprite is
+  `cols = 2 / 4 / 8` in Mode 2 / 1 / 0; `rows = 2` always. The asset converter
+  (§7) prints the right `cols` for the mode you generate, so you normally just
+  copy it from there.
 - **`type`** = `JSP_TYPE_MASK2` (transparent, per-pixel mask) or `JSP_TYPE_LOAD1`
   (opaque, overwrites the background).
 
@@ -200,15 +202,17 @@ until `jsp_redraw()`. To make a sprite stop being drawn use `jsp_sprite_park()`.
 ### Background and foreground tiles
 
 ```c
-jsp_draw_background_tile( row, col, pix );   // row 0..24, col 0..79; pix = 8 bytes
+jsp_draw_background_tile( row, col, pix );   // row 0..24, col 0..79/39/19 (Mode 2/1/0)
 jsp_delete_background_tile( row, col );      // restore the default tile
 jsp_draw_foreground_tile( row, col, pix );   // sprites pass BEHIND this cell
 ```
 
-A tile is always **8 bytes** (8 scan-lines, one byte wide). What those bits mean
-depends on the mode's pixel encoding (Mode 2 = 8 mono px; Mode 1 = 4 px in two
-nibble-planes; Mode 0 = 2 px interleaved — see CPC-ASSETS-FORMAT.md). Build tiles
-with the asset tool (§7), or by hand for simple shapes.
+A cell is **8×8 px**, exactly like the ZX, so the grid is the screen width ÷ 8:
+**80 / 40 / 20 columns × 25 rows** in Mode 2 / 1 / 0 (`JSP_GRID_COLS` × `JSP_GRID_ROWS`
+if you want to loop generically). A tile is therefore one 8×8-px cell —
+`JSP_CELL_BYTES` bytes: **8 in Mode 2, 16 in Mode 1, 32 in Mode 0** (the extra
+bytes carry the per-pixel colour; see CPC-ASSETS-FORMAT.md for the exact
+encoding). Build tiles with the asset tool (§7), or by hand for simple shapes.
 
 ---
 
@@ -219,10 +223,11 @@ with the asset tool (§7), or by hand for simple shapes.
   ZX-only and are no-ops on CPC — set colour via the palette + the pixel data.
 - **Mode 2 is monochrome** per screen (ink/paper from two palette registers).
   **Mode 1/0 carry a real per-pixel palette index** (4 / 16 pens).
-- **X is 16-bit, Y is 8-bit** on CPC. The engine splits X into a byte column and a
-  sub-byte shift phase automatically.
-- **Grid is 80 × 25 byte-cells** in every mode (a cell is 8 lines tall and
-  2/4/8 px wide in Mode 0/1/2).
+- **X is 16-bit, Y is 8-bit** on CPC, both **pixel** coordinates — the engine
+  handles the byte-column / sub-pixel-shift split internally; you never deal with
+  it.
+- **The cell grid is 8×8-px cells**, like the ZX, so it is **80 / 40 / 20 columns
+  × 25 rows** in Mode 2 / 1 / 0 (screen width ÷ 8).
 
 ---
 
@@ -263,7 +268,7 @@ asset rules) shows the exact invocations for all modes.
 
 ---
 
-## 8. Memory map (Model A, all modes)
+## 8. Memory map (largest case — Mode 2)
 
 ```
 0xC000-0xFFFF   screen (16 KB)
@@ -276,8 +281,10 @@ below 0x9800    your program + data; stack grows down from 0x9800
 ~0x1200         code origin (both ROMs off)
 ```
 
-Your program and free RAM live below `0x9800`. Keep the stack modest (the
-forced `REGISTER_SP=0x9800` grows down from there).
+These are the **Mode 2** sizes (the largest). Mode 1 has half as many cells and
+Mode 0 a quarter, so the BTT/DTT/FTT are correspondingly smaller and more RAM is
+free below the block. Your program and free RAM live below `0x9800`; keep the
+stack modest (the forced `REGISTER_SP=0x9800` grows down from there).
 
 ---
 
