@@ -8,7 +8,7 @@
 
 extern uint8_t test_sprite_mask2_pixels[];
 
-DEFINE_SPRITE(test_sprite,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+DEFINE_SPRITE(test_sprite,16,16,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
 
 void test_sprite_draw( void ) {
     uint8_t i, j;

@@ -19,11 +19,11 @@ extern uint8_t test_sprite_mask2_pixels[];
 
 #define NUM_SPRITES 5
 
-DEFINE_SPRITE( sprite0, 2, 2, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
-DEFINE_SPRITE( sprite1, 2, 2, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
-DEFINE_SPRITE( sprite2, 2, 2, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
-DEFINE_SPRITE( sprite3, 2, 2, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
-DEFINE_SPRITE( sprite4, 2, 2, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( sprite0, 16, 16, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( sprite1, 16, 16, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( sprite2, 16, 16, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( sprite3, 16, 16, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( sprite4, 16, 16, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
 
 struct {
     uint16_t x;             // 16-bit X: full 640px Mode-2 screen

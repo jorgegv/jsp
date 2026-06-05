@@ -30,11 +30,11 @@ extern uint8_t test_sprite_mask2_m1_pixels[];
 #endif
 
 // 16x16 ball = 4 Mode-1 cols x 2 rows (8 px tall/cell).
-DEFINE_SPRITE( sprite0, 2, 4, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
-DEFINE_SPRITE( sprite1, 2, 4, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
-DEFINE_SPRITE( sprite2, 2, 4, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
-DEFINE_SPRITE( sprite3, 2, 4, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
-DEFINE_SPRITE( sprite4, 2, 4, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( sprite0, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( sprite1, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( sprite2, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( sprite3, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( sprite4, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
 
 struct {
     uint16_t x;             // 0..319 (Mode-1 screen is 320 px wide)

@@ -21,9 +21,9 @@ extern uint8_t test_sprite_load1_pixels[];
 
 #define NUM_SPRITES 3
 
-DEFINE_SPRITE( a0, 2, 2, test_sprite_load1_pixels, 0, 0, JSP_TYPE_LOAD1 );
-DEFINE_SPRITE( a1, 2, 2, test_sprite_load1_pixels, 0, 0, JSP_TYPE_LOAD1 );
-DEFINE_SPRITE( a2, 2, 2, test_sprite_load1_pixels, 0, 0, JSP_TYPE_LOAD1 );
+DEFINE_SPRITE( a0, 16, 16, test_sprite_load1_pixels, 0, 0, JSP_TYPE_LOAD1 );
+DEFINE_SPRITE( a1, 16, 16, test_sprite_load1_pixels, 0, 0, JSP_TYPE_LOAD1 );
+DEFINE_SPRITE( a2, 16, 16, test_sprite_load1_pixels, 0, 0, JSP_TYPE_LOAD1 );
 
 static struct jsp_sprite_s *spr[ NUM_SPRITES ] = { &a0, &a1, &a2 };
 

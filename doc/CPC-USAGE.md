@@ -175,18 +175,21 @@ Declare a sprite statically with `DEFINE_SPRITE`, or allocate from a pool
 ```c
 extern uint8_t ball_pixels[];   // emitted asset (see §7)
 
-//             name    rows cols pixels        x  y  type
-DEFINE_SPRITE( player, 2,   2,   ball_pixels,  0, 0, JSP_TYPE_MASK2 );
+//             name    height width pixels       x  y  type
+DEFINE_SPRITE( player, 16,    16,   ball_pixels,  0, 0, JSP_TYPE_MASK2 );
 ```
 
-- **`rows`** = sprite height in 8-px cells (`height_px / 8`).
-- **`cols`** = sprite width in **byte-columns** (a screen byte spans 8/4/2 px in
-  Mode 2/1/0): **`cols = width_px / ppb`**, ppb = 8/4/2. A 16×16 sprite is
-  `cols = 2 / 4 / 8` in Mode 2 / 1 / 0; `rows = 2` always. The asset converter
-  (§7) prints the right `cols` for the mode you generate, so you normally just
-  copy it from there.
+- **Size is in pixels** — height then width, both a whole number of 8×8 cells.
+  The macro derives the internal `rows`/`cols` for the active mode at compile
+  time, so the **same source builds unchanged on ZX and every CPC mode** (a
+  16×16 sprite is `16, 16` everywhere — no per-mode `cols` to look up). Non-8×8
+  multiples are rejected at compile time (a `jsp_dimcheck_*` typedef goes
+  negative).
 - **`type`** = `JSP_TYPE_MASK2` (transparent, per-pixel mask) or `JSP_TYPE_LOAD1`
   (opaque, overwrites the background).
+
+> Pool sprites still take cell counts (`jsp_sprite_alloc(rows, cols)`); convert
+> from pixels with `JSP_SPRITE_ROWS(h_px)` / `JSP_SPRITE_COLS(w_px)`.
 
 Then each frame:
 
@@ -294,7 +297,7 @@ stack modest (the forced `REGISTER_SP=0x9800` grows down from there).
 |----------|---------|
 | `jsp_init(default_tile, attr)` | initialise the engine (attr unused on CPC) |
 | `jsp_redraw()` | repaint all dirty cells — call once per frame |
-| `DEFINE_SPRITE(name,rows,cols,pixels,x,y,type)` | declare a static sprite |
+| `DEFINE_SPRITE(name,height_px,width_px,pixels,x,y,type)` | declare a static sprite (size in pixels, multiples of 8) |
 | `jsp_draw_sprite(sp,x,y)` / `jsp_move_sprite(sp,x,y)` | place / move (deferred) |
 | `jsp_sprite_park(sp)` | stop drawing a sprite |
 | `jsp_draw_background_tile(row,col,pix)` | place an 8-byte background tile |

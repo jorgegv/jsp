@@ -19,25 +19,24 @@
 #include <stdint.h>
 #include "jsp.h"
 
+// The sprite is 16x16 px in every mode (DEFINE_SPRITE derives rows/cols); only
+// the LOAD asset encoding differs per mode.
 #if defined(CPC_MODE0) || defined(CPC_MODE0_FAST)
   extern uint8_t test_sprite_load1_m0_pixels[];
   #define LOAD_PIX   test_sprite_load1_m0_pixels    // Mode-0 re-encoded ball
-  #define SPR_COLS   8
 #elif ( defined(CPC_MODE1) || defined(CPC_MODE1_FAST) ) && !defined(CPC_MODE1_MONO)
   extern uint8_t test_sprite_load1_m1_pixels[];
   #define LOAD_PIX   test_sprite_load1_m1_pixels    // Mode-1 two-nibble-plane ball
-  #define SPR_COLS   4
 #else   /* CPC_MODE2 / CPC_MODE2_FAST / CPC_MODE1_MONO: plain 1bpp */
   extern uint8_t test_sprite_load1_pixels[];
   #define LOAD_PIX   test_sprite_load1_pixels       // 1bpp (Mode-2 format) ball
-  #define SPR_COLS   2
 #endif
 
 #define NUM_SPRITES 3
 
-DEFINE_SPRITE( s0, 2, SPR_COLS, LOAD_PIX, 0, 0, JSP_TYPE_LOAD1 );
-DEFINE_SPRITE( s1, 2, SPR_COLS, LOAD_PIX, 0, 0, JSP_TYPE_LOAD1 );
-DEFINE_SPRITE( s2, 2, SPR_COLS, LOAD_PIX, 0, 0, JSP_TYPE_LOAD1 );
+DEFINE_SPRITE( s0, 16, 16, LOAD_PIX, 0, 0, JSP_TYPE_LOAD1 );
+DEFINE_SPRITE( s1, 16, 16, LOAD_PIX, 0, 0, JSP_TYPE_LOAD1 );
+DEFINE_SPRITE( s2, 16, 16, LOAD_PIX, 0, 0, JSP_TYPE_LOAD1 );
 
 static struct jsp_sprite_s *spr[ NUM_SPRITES ] = { &s0, &s1, &s2 };
 

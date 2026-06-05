@@ -50,11 +50,11 @@ extern uint8_t test_sprite_load1_pixels[];
 #define BENCH_TYPE3  JSP_TYPE_LOAD1
 #endif
 
-DEFINE_SPRITE( bspr0, 2, 2, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
-DEFINE_SPRITE( bspr1, 2, 2, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
-DEFINE_SPRITE( bspr2, 2, 2, BENCH_PIX3, 0, 0, BENCH_TYPE3 );
-DEFINE_SPRITE( bspr3, 2, 2, BENCH_PIX3, 0, 0, BENCH_TYPE3 );
-DEFINE_SPRITE( bspr4, 2, 2, BENCH_PIX3, 0, 0, BENCH_TYPE3 );
+DEFINE_SPRITE( bspr0, 16, 16, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( bspr1, 16, 16, test_sprite_mask2_pixels, 0, 0, JSP_TYPE_MASK2 );
+DEFINE_SPRITE( bspr2, 16, 16, BENCH_PIX3, 0, 0, BENCH_TYPE3 );
+DEFINE_SPRITE( bspr3, 16, 16, BENCH_PIX3, 0, 0, BENCH_TYPE3 );
+DEFINE_SPRITE( bspr4, 16, 16, BENCH_PIX3, 0, 0, BENCH_TYPE3 );
 
 // sprite motion state — file scope, kept off the small Spectrum stack
 struct bench_sprite_s {

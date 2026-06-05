@@ -131,6 +131,24 @@
 #define JSP_CELL_INDEX( row, col ) ( (uint16_t)( row ) * JSP_GRID_COLS + ( col ) )
 
 // -------------------------------------------------------------------------
+// Sprite dimensions: pixels -> descriptor cell counts.
+//
+// A sprite descriptor stores its size as rows (8-px-tall cell rows) and cols
+// (screen byte-columns).  DEFINE_SPRITE takes the size in PIXELS and derives
+// both at compile time from the active mode, so the same source builds on every
+// target/mode.  rows = height_px / 8.  cols = width_px / (asset pixels-per-byte):
+// the asset ppb is the screen ppb (JSP_PPB), except CPC_MODE1_MONO, whose 1bpp
+// (8 px/byte) assets are expanded onto a 4 px/byte Mode-1 screen at composite time.
+// -------------------------------------------------------------------------
+#ifdef CPC_MODE1_MONO
+  #define JSP_SPRITE_PPB   8
+#else
+  #define JSP_SPRITE_PPB   JSP_PPB
+#endif
+#define JSP_SPRITE_ROWS( h_px ) ( (h_px) / 8 )
+#define JSP_SPRITE_COLS( w_px ) ( (w_px) / JSP_SPRITE_PPB )
+
+// -------------------------------------------------------------------------
 // Sprite coordinate width (descriptor X/Y).  Decision (plan §3): per-target
 // field width.  ZX keeps 8-bit (cell-pixel range fits a byte).  CPC needs
 // 16-bit X to address a Mode-2 screen (640 px = 80 cells) and to carry real

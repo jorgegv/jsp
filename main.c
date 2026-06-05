@@ -95,7 +95,7 @@ extern uint8_t test_sprite_mask2_pixels[];
 extern uint8_t test_sprite_load1_pixels[];
 extern uint8_t test_bg1tile_pixels[];
 
-DEFINE_SPRITE(test_sprite,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+DEFINE_SPRITE(test_sprite,16,16,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
 
 void test_sprite_draw( void ) {
     uint8_t i,j;
@@ -126,17 +126,17 @@ void test_sprite_draw( void ) {
 
 #define NUM_SPRITES 5
 
-DEFINE_SPRITE(sprite0,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
-DEFINE_SPRITE(sprite1,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
-//DEFINE_SPRITE(sprite2,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
-//DEFINE_SPRITE(sprite3,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
-//DEFINE_SPRITE(sprite4,2,2,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+DEFINE_SPRITE(sprite0,16,16,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+DEFINE_SPRITE(sprite1,16,16,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+//DEFINE_SPRITE(sprite2,16,16,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+//DEFINE_SPRITE(sprite3,16,16,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
+//DEFINE_SPRITE(sprite4,16,16,test_sprite_mask2_pixels,0,0,JSP_TYPE_MASK2);
 
-//DEFINE_SPRITE(sprite0,2,2,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
-//DEFINE_SPRITE(sprite1,2,2,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
-DEFINE_SPRITE(sprite2,2,2,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
-DEFINE_SPRITE(sprite3,2,2,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
-DEFINE_SPRITE(sprite4,2,2,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
+//DEFINE_SPRITE(sprite0,16,16,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
+//DEFINE_SPRITE(sprite1,16,16,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
+DEFINE_SPRITE(sprite2,16,16,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
+DEFINE_SPRITE(sprite3,16,16,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
+DEFINE_SPRITE(sprite4,16,16,test_sprite_load1_pixels,0,0,JSP_TYPE_LOAD1);
 
 struct { 
     uint8_t x,y;

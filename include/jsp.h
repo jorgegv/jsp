@@ -176,8 +176,17 @@ void jsp_tile_put( uint8_t row, uint8_t col, uint8_t attr, uint16_t tile );
 
 // Define a standalone sprite (not pool-allocated).  No drawing buffer is
 // needed any more — sprites composite straight to the screen during redraw.
-#define DEFINE_SPRITE(_name,_rows,_cols,_pixels,_xpos,_ypos,_type) \
-    struct jsp_sprite_s _name = { .rows = (_rows), .cols = (_cols), \
+//
+// Size is given in PIXELS (height first, then width — same order as the old
+// rows/cols), and must be a whole number of 8x8 cells: both dimensions are
+// asserted to be multiples of 8 at compile time (a negative-sized typedef
+// fires otherwise).  rows/cols are derived from the active mode, so one source
+// builds unchanged on ZX and every CPC mode.
+#define DEFINE_SPRITE(_name,_height_px,_width_px,_pixels,_xpos,_ypos,_type) \
+    typedef char jsp_dimcheck_##_name[ \
+        ( (_width_px) % 8 == 0 && (_height_px) % 8 == 0 ) ? 1 : -1 ]; \
+    struct jsp_sprite_s _name = { \
+        .rows = JSP_SPRITE_ROWS(_height_px), .cols = JSP_SPRITE_COLS(_width_px), \
         .xpos = (_xpos), .ypos = (_ypos), .flags.initialized = 1, \
         .pixels = (_pixels), .type_ptr = (_type) }
 
