@@ -174,7 +174,7 @@ same deferred-recompositing model, the same four tables, the same sprite
 registry, per-frame precompute and covered-cell compositor flow.  Only a thin
 **platform layer** is swapped (`lib/cpc/` instead of `lib/zx/`), selected by the
 `JSP_TARGET_CPC` umbrella guard plus exactly one `CPC_MODE*` mode guard.  The
-full design lives in `doc/CPC-TARGET-PLAN.md`; the per-mode asset byte formats in
+full design lives in `doc/legacy/CPC-TARGET-PLAN.md`; the per-mode asset byte formats in
 `doc/CPC-ASSETS-FORMAT.md`.  Three things genuinely differ from the ZX, because
 the hardware does:
 

@@ -213,7 +213,7 @@ See [doc/CPC-USAGE.md](doc/CPC-USAGE.md) §7 for invocation examples.
 ## Further CPC reading
 
 - [doc/CPC-USAGE.md](doc/CPC-USAGE.md) — practical getting-started guide.
-- [doc/CPC-TARGET-PLAN.md](doc/CPC-TARGET-PLAN.md) — full design rationale.
+- [doc/legacy/CPC-TARGET-PLAN.md](doc/legacy/CPC-TARGET-PLAN.md) — full design rationale.
 - [doc/CPC-ASSETS-FORMAT.md](doc/CPC-ASSETS-FORMAT.md) — exact per-mode byte formats.
 - [doc/CPC-TILE-SIZE-DESIGN.md](doc/CPC-TILE-SIZE-DESIGN.md) — cell/tile-size design notes.
 - The CPC section of [doc/ENGINE.md](doc/ENGINE.md) — memory map and colour divergence.

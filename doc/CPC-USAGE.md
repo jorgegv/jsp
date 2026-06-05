@@ -4,7 +4,7 @@ This is the **third-party usage guide** for building an Amstrad CPC program with
 JSP. It assumes you can write C + a little Z80 and have the
 [z88dk](https://www.z88dk.org) toolchain installed. For *why* the engine works
 the way it does, see [ENGINE.md](ENGINE.md) (the CPC section) and the design
-record in [CPC-TARGET-PLAN.md](CPC-TARGET-PLAN.md); for the exact sprite/tile
+record in [CPC-TARGET-PLAN.md](legacy/CPC-TARGET-PLAN.md); for the exact sprite/tile
 **byte formats**, see [CPC-ASSETS-FORMAT.md](CPC-ASSETS-FORMAT.md). This document
 is the practical "how do I actually use it" path.
 
@@ -175,11 +175,11 @@ Declare a sprite statically with `DEFINE_SPRITE`, or allocate from a pool
 ```c
 extern uint8_t ball_pixels[];   // emitted asset (see §7)
 
-//             name    height width pixels       x  y  type
-DEFINE_SPRITE( player, 16,    16,   ball_pixels,  0, 0, JSP_TYPE_MASK2 );
+//             name    width height pixels       x  y  type
+DEFINE_SPRITE( player, 16,   16,    ball_pixels,  0, 0, JSP_TYPE_MASK2 );
 ```
 
-- **Size is in pixels** — height then width, both a whole number of 8×8 cells.
+- **Size is in pixels** — width then height (W×H), both a whole number of 8×8 cells.
   The macro derives the internal `rows`/`cols` for the active mode at compile
   time, so the **same source builds unchanged on ZX and every CPC mode** (a
   16×16 sprite is `16, 16` everywhere — no per-mode `cols` to look up). Non-8×8
@@ -297,7 +297,7 @@ stack modest (the forced `REGISTER_SP=0x9800` grows down from there).
 |----------|---------|
 | `jsp_init(default_tile, attr)` | initialise the engine (attr unused on CPC) |
 | `jsp_redraw()` | repaint all dirty cells — call once per frame |
-| `DEFINE_SPRITE(name,height_px,width_px,pixels,x,y,type)` | declare a static sprite (size in pixels, multiples of 8) |
+| `DEFINE_SPRITE(name,width_px,height_px,pixels,x,y,type)` | declare a static sprite (size in pixels W×H, multiples of 8) |
 | `jsp_draw_sprite(sp,x,y)` / `jsp_move_sprite(sp,x,y)` | place / move (deferred) |
 | `jsp_sprite_park(sp)` | stop drawing a sprite |
 | `jsp_draw_background_tile(row,col,pix)` | place an 8-byte background tile |
@@ -321,5 +321,5 @@ animates several masked sprites.
 - [ENGINE.md](ENGINE.md) — engine model + the CPC memory/screen/colour notes.
 - [CPC-ASSETS-FORMAT.md](CPC-ASSETS-FORMAT.md) — exact per-mode tile/sprite byte
   formats (authoritative).
-- [CPC-TARGET-PLAN.md](CPC-TARGET-PLAN.md) — full design rationale.
+- [CPC-TARGET-PLAN.md](legacy/CPC-TARGET-PLAN.md) — full design rationale.
 - `tests/cpc/*.c` — working examples for every mode.

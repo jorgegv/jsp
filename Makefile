@@ -423,19 +423,23 @@ cpc-tests:
 ## --- CPC maintenance / measurement targets -----------------------------------
 
 CPC_ARTIFACT_PAIRS = $(foreach m,$(CPC_ARTIFACT_MODES),$(m):$(m_artname_$(m)))
-# Build the 4 artifact disks, screenshot, compare to committed refs (AE; 0 = pass)
+# Build the 4 artifact disks, screenshot, compare to committed refs (AE; 0 = pass, any diff fails)
 cpc-artifact-check:
 	@echo "CPC bottom-line artifact regression (AE vs tests/refs/cpc/artifact; 0 = pass)"
-	@for pair in $(CPC_ARTIFACT_PAIRS); do m=$${pair%%:*}; n=$${pair##*:}; \
+	@fail=0; for pair in $(CPC_ARTIFACT_PAIRS); do m=$${pair%%:*}; n=$${pair##*:}; \
 		$(MAKE) cpc-run-test TEST=artifact MODE=$$m SHOT=0 JSP_CELL_MODEL=$(JSP_CELL_MODEL) >/dev/null 2>&1 \
-			|| { echo "$$n BUILD-FAIL"; continue; }; \
+			|| { echo "  $$n BUILD-FAIL"; fail=1; continue; }; \
 		CAP32_SHOT_OPTS='-O system.limit_speed=0' CAP32_SHOT_WAIT=6 \
 			./tools/cap32-shot.sh $(BUILD_DIR)/$$n.dsk $$n >/dev/null 2>&1; \
 		ref="tests/refs/cpc/artifact/$$n.png"; \
 		if [ -f $(BUILD_DIR)/shot.png ] && [ -f "$$ref" ]; then \
-			printf "%-10s AE=%s\n" "$$n" "$$(magick compare -metric AE "$$ref" $(BUILD_DIR)/shot.png null: 2>&1)"; \
-		else echo "$$n MISSING (shot or ref)"; fi; \
-	done
+			ae=$$(magick compare -metric AE "$$ref" $(BUILD_DIR)/shot.png null: 2>&1); \
+			printf "  %-10s AE=%s\n" "$$n" "$$ae"; \
+			[ "$${ae%% *}" = "0" ] || fail=1; \
+		else echo "  $$n MISSING (shot or ref)"; fail=1; fi; \
+	done; \
+	if [ $$fail -eq 0 ]; then echo "CPC artifact regression: all pass"; \
+	else echo "CPC artifact regression: FAILURES"; exit 1; fi
 
 CPC_SPRITE_PAIRS = $(foreach m,$(CPC_SPRITE_MODES),$(m):$(m_name_$(m)))
 # Wall-clock redraw timing of every sprite config (override cycles with CYCLES=)

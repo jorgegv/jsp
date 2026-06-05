@@ -93,7 +93,7 @@ arithmetic* change between modes.
   computed once per sprite per frame, hot path unchanged.)
 - **Coordinates.** Sprite X is 16-bit on CPC (full 640 px); Y is 8-bit. The
   per-frame split is `byte_col = x / ppb`, `xrot = x % ppb`, `r0 = y >> 3`,
-  `yrot = y & 7` (doc/CPC-TARGET-PLAN.md §3).
+  `yrot = y & 7` (doc/legacy/CPC-TARGET-PLAN.md §3).
 
 ### 1.1 Two sprite types
 
@@ -432,7 +432,7 @@ per-line encoding written directly.
 
 ## See also
 
-- `doc/CPC-TARGET-PLAN.md` — full design (§4 shift tables, §10 asset format).
+- `doc/legacy/CPC-TARGET-PLAN.md` — full design (§4 shift tables, §10 asset format).
 - `include/jsp_rottbl_formula.h` — the shared shift-table entry formula.
 - `tests/cpc/shift_test_mode2.c` — the Mode-2 shift/mask unit test.
 - `tests/test_sprite_mask2.asm` / `test_sprite_load1.asm` — emitted Mode-2 assets.
