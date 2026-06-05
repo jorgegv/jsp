@@ -41,7 +41,7 @@ DEFINE_SPRITE( sprite0, 16, 16, test_sprite_mask2_m0_pixels, 0, 0, JSP_TYPE_MASK
 DEFINE_SPRITE( sprite1, 16, 16, test_sprite_mask2_m0_pixels, 0, 0, JSP_TYPE_MASK2 );
 DEFINE_SPRITE( sprite2, 16, 16, test_sprite_mask2_m0_pixels, 0, 0, JSP_TYPE_MASK2 );
 DEFINE_SPRITE( sprite3, 16, 16, test_sprite_mask2_m0_pixels, 0, 0, JSP_TYPE_MASK2 );
-// multicolour ball — stationary (dx=dy=0) so it sits still for the screenshot
+// multicolour ball — bounces around the scene like the mono balls
 DEFINE_SPRITE( mcball,  16, 16, ball_m0_pixels,             0, 0, JSP_TYPE_MASK2 );
 
 struct {
@@ -54,7 +54,7 @@ struct {
     {  70,  40, -1,  3, &sprite1 },
     { 110,  90,  3, -1, &sprite2 },
     { 140,  20, -2, -2, &sprite3 },
-    {  72,  88,  0,  0, &mcball  },    // stationary multicolour ball (centre)
+    {  72,  88,  2, -3, &mcball  },    // moving multicolour ball
 };
 
 // Wireframe tiles per pen, built at run time: a vertical line (left edge), a

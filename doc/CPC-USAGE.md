@@ -289,9 +289,10 @@ Author the PNG in exact CPC RGB (the 27 inks use the three levels 0/128/255 per
 channel) so the nearest-ink mapping is exact. `tests/cpc/test_cpc_sprite_mode0.c`
 and `…_mode1.c` are worked examples (assets `assets/ball_m0.png` / `ball_m1.png`).
 
-> Multi-pen *background-tile* generation (`-g tile`) under the pixel-cell model is
-> the one combination still to be exercised; multicolour **sprites** work in both
-> models. (`gfxgen.pl` / Mode 2 are inherently 2-colour.)
+> `--multicolor` works for both **sprites** (`-g sprite_mask` / `sprite_load`) and
+> **background tiles** (`-g tile`) — the engine's tile blit is pen-agnostic, so a
+> multi-pen tile renders like any other (verified in pixel-cell Mode 1).
+> (`gfxgen.pl` / Mode 2 remain inherently 2-colour.)
 
 ---
 

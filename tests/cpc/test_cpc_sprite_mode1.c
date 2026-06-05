@@ -41,7 +41,7 @@ DEFINE_SPRITE( sprite1, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK
 DEFINE_SPRITE( sprite2, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
 DEFINE_SPRITE( sprite3, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
 DEFINE_SPRITE( sprite4, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
-// multicolour ball — stationary (dx=dy=0) so it sits still for the screenshot
+// multicolour ball — bounces around the scene like the mono balls
 DEFINE_SPRITE( mcball,  16, 16, ball_m1_pixels,             0, 0, JSP_TYPE_MASK2 );
 
 struct {
@@ -55,7 +55,7 @@ struct {
     { 170,  90,  4, -1, &sprite2 },
     { 240,  20, -3, -2, &sprite3 },
     { 295,  70,  1,  4, &sprite4 },
-    { 150,  88,  0,  0, &mcball  },    // stationary multicolour ball (centre)
+    { 150,  88,  3, -2, &mcball  },    // moving multicolour ball
 };
 
 // Cyan (pen2) crossbar / graph-paper grid on black (pen0).  Mode-1 pen2 = binary
