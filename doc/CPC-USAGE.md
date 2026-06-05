@@ -263,11 +263,35 @@ options plus `--code-type asm -l columns -g sprite_mask|sprite_load
 --extra-bottom-row --extra-top-rows`. The repository `Makefile` (`$(TESTS_DIR)/...`
 asset rules) shows the exact invocations for all modes.
 
-> **Current limitation (honest note).** The Mode 0/1 emitter maps **2-colour**
-> source art (foreground → pen 1, background → pen 0); full per-pixel multi-pen
-> source art is a planned extension. The shift kernels already handle every byte
-> value, so the engine itself is not the limit — only the converter's colour
-> mapping. Mode 2 is inherently 2-colour.
+### Multicolour sprites/tiles (Mode 0 = 16 pens, Mode 1 = 4 pens)
+
+By default `cpcgfx.pl` maps 2-colour art (background → pen 0, foreground → pen 1).
+Add **`--multicolor`** to use the full palette: every PNG pixel is mapped to the
+nearest of the 27 CPC hardware inks and assigned a pen (pen 0 = the `-b`
+background ink, the `-m` mask ink stays transparent, the rest get pens 1, 2, …
+in first-appearance order). It errors if an asset needs more than **4** pens
+(Mode 1) or **16** pens (Mode 0). Because the CPC has no attribute RAM, all
+on-screen sprites/tiles share one palette, so program the screen palette to match
+the asset — pass **`--palette-symbol SYM`** to also emit that palette as a
+linkable array of Gate-Array ink bytes (`0x40 | hw_ink`, padded to the mode's pen
+count) that the harness writes straight to the gate array:
+
+```sh
+tools/cpcgfx.pl -i art/ball.png --width 16 --height 16 \
+    -m FF0000 -b 000000 --mode 0 --multicolor \
+    -s _ball_pixels --palette-symbol _ball_palette \
+    -g sprite_mask --extra-bottom-row --extra-top-rows > ball.asm
+# C: extern uint8_t ball_pixels[], ball_palette[]; then for pen p: OUT &7F00, p
+#    then OUT &7F00, ball_palette[p].  See tests/cpc/test_cpc_sprite_mode0.c.
+```
+
+Author the PNG in exact CPC RGB (the 27 inks use the three levels 0/128/255 per
+channel) so the nearest-ink mapping is exact. `tests/cpc/test_cpc_sprite_mode0.c`
+and `…_mode1.c` are worked examples (assets `assets/ball_m0.png` / `ball_m1.png`).
+
+> Multi-pen *background-tile* generation (`-g tile`) under the pixel-cell model is
+> the one combination still to be exercised; multicolour **sprites** work in both
+> models. (`gfxgen.pl` / Mode 2 are inherently 2-colour.)
 
 ---
 

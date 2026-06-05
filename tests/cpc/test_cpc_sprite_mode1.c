@@ -18,8 +18,14 @@
 #include "jsp.h"
 
 extern uint8_t test_sprite_mask2_m1_pixels[];
+// Multicolour ball (4-pen Mode-1 asset) + its emitted Gate-Array palette
+// (tools/cpcgfx.pl --multicolor --palette-symbol).  The screen palette below is
+// programmed straight from this array, so pen 0 = black, and the ball's blue /
+// green body + white highlight show in their true colours.
+extern uint8_t ball_m1_pixels[];
+extern uint8_t ball_m1_palette[];
 
-#define NUM_SPRITES 5
+#define NUM_SPRITES 6
 #ifdef TIME_LIMITED
 #if TIME_LIMITED > 65535
 #error "TIME_LIMITED must be <= 65535 (the redraw-cycle counter is uint16_t)"
@@ -35,6 +41,8 @@ DEFINE_SPRITE( sprite1, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK
 DEFINE_SPRITE( sprite2, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
 DEFINE_SPRITE( sprite3, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
 DEFINE_SPRITE( sprite4, 16, 16, test_sprite_mask2_m1_pixels, 0, 0, JSP_TYPE_MASK2 );
+// multicolour ball — stationary (dx=dy=0) so it sits still for the screenshot
+DEFINE_SPRITE( mcball,  16, 16, ball_m1_pixels,             0, 0, JSP_TYPE_MASK2 );
 
 struct {
     uint16_t x;             // 0..319 (Mode-1 screen is 320 px wide)
@@ -47,6 +55,7 @@ struct {
     { 170,  90,  4, -1, &sprite2 },
     { 240,  20, -3, -2, &sprite3 },
     { 295,  70,  1,  4, &sprite4 },
+    { 150,  88,  0,  0, &mcball  },    // stationary multicolour ball (centre)
 };
 
 // Cyan (pen2) crossbar / graph-paper grid on black (pen0).  Mode-1 pen2 = binary
@@ -69,29 +78,27 @@ static uint8_t tile_grid_b[8] = { 0x0F, 0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
 static uint8_t tile_blank[8]  = { 0,0,0,0,0,0,0,0 };
 #endif
 
-// Set Mode 1 + a 4-pen palette; both ROMs off (0x8D = RMR mode 1, ROMs off) so
+// Set Mode 1 + program the 4 pens straight from the multicolour ball's emitted
+// palette (cpcgfx.pl --palette-symbol _ball_m1_palette): pen0=black, pen1=blue,
+// pen2=green, pen3=white.  Both ROMs off (0x8D = RMR mode 1, ROMs off) so
 // 0x0000-0xBFFF is RAM (code at 0x1200 stays visible).
 static void cpc_setup_mode1( void ) {
     __asm
     di
+    ld hl,_ball_m1_palette
+    ld e,0                  ; pen index 0..3
+pal_loop1:
     ld bc,0x7f00
-    ld a,0x00
-    out (c),a
-    ld a,0x54          ; pen0 = black   (paper)
-    out (c),a
-    ld a,0x01
-    out (c),a
-    ld a,0x4b          ; pen1 = bright white  (ball / bar 1)
-    out (c),a
-    ld a,0x02
-    out (c),a
-    ld a,0x4e          ; pen2 = bright cyan   (bar 2)
-    out (c),a
-    ld a,0x03
-    out (c),a
-    ld a,0x44          ; pen3 = bright yellow (bar 3)
-    out (c),a
-    ld a,0x8d          ; RMR: mode 1, both ROMs OFF (full RAM)
+    out (c),e               ; select pen E
+    ld a,(hl)
+    out (c),a               ; set its ink
+    inc hl
+    inc e
+    ld a,e
+    cp 4
+    jr nz,pal_loop1
+    ld bc,0x7f00
+    ld a,0x8d               ; RMR: mode 1, both ROMs OFF (full RAM)
     out (c),a
     __endasm;
 }

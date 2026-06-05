@@ -272,7 +272,8 @@ emitted encoding changes per mode, not the artwork.
   `screen = (screen & shifted_mask) | shifted_pixels`.
 - **Asset:** two nibble-plane pixel (and, for MASK2, mask) bytes, emitted by the
   in-repo `tools/cpcgfx.pl` (`--mode 1`) from the same source art.  For 2-colour
-  art the low plane is 0 (pen 0/1); full 4-pen art is a future emitter extension.
+  art the low plane is 0 (pen 0/1); `--multicolor` uses all 4 pens (both planes
+  carry the per-pixel pen bits) and can emit the matching palette.
 - Validated by `make cpc-shift-test-mode1` (exhaustive combine vs an independent
   pixel-array shift, plus the emitted bytes) and visually in cap32
   (`make cpc-run-test TEST=sprite MODE=1`).
@@ -342,7 +343,8 @@ two-nibble-plane and need no expansion.)
   (right) the even {6,4,2,0}; cell-pixel `cp`'s plane `q` bit is `(7-cp) - q*ppc`
   (plane stride = `ppb` = 2).  Each 8-px ZX source column → **4 Mode-0 cells**
   (2 px each), so a 16-px-wide sprite is `cols = 8`.  For 2-colour art only
-  plane 0 (pen 1) is set; full 16-pen art is a future emitter extension.
+  plane 0 (pen 1) is set; `--multicolor` uses all 16 pens (the 4 planes carry the
+  per-pixel pen bits) and can emit the matching palette.
 - **Shift (single phase):** `in = (src & 0xAA) >> 1`, `carry = (src & 0x55) << 1`
   (xrot 0 = aligned/no shift, xrot 1 = the 1-px step) — in
   `include/jsp_rottbl_formula.h` (guard `CPC_MODE0`).  `jsp_init_rottbl` builds

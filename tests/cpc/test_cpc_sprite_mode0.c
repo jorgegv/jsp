@@ -19,8 +19,14 @@
 #include "jsp.h"
 
 extern uint8_t test_sprite_mask2_m0_pixels[];
+// Multicolour ball (many-pen Mode-0 asset) + its emitted Gate-Array palette
+// (tools/cpcgfx.pl --multicolor --palette-symbol).  The 16-pen screen palette is
+// programmed straight from this array, so the ball's rainbow body shows in its
+// true colours and the wireframe grid (pens 2..15) reuses the same palette.
+extern uint8_t ball_m0_pixels[];
+extern uint8_t ball_m0_palette[];
 
-#define NUM_SPRITES 4
+#define NUM_SPRITES 5
 #ifdef TIME_LIMITED
 #if TIME_LIMITED > 65535
 #error "TIME_LIMITED must be <= 65535 (the redraw-cycle counter is uint16_t)"
@@ -35,6 +41,8 @@ DEFINE_SPRITE( sprite0, 16, 16, test_sprite_mask2_m0_pixels, 0, 0, JSP_TYPE_MASK
 DEFINE_SPRITE( sprite1, 16, 16, test_sprite_mask2_m0_pixels, 0, 0, JSP_TYPE_MASK2 );
 DEFINE_SPRITE( sprite2, 16, 16, test_sprite_mask2_m0_pixels, 0, 0, JSP_TYPE_MASK2 );
 DEFINE_SPRITE( sprite3, 16, 16, test_sprite_mask2_m0_pixels, 0, 0, JSP_TYPE_MASK2 );
+// multicolour ball — stationary (dx=dy=0) so it sits still for the screenshot
+DEFINE_SPRITE( mcball,  16, 16, ball_m0_pixels,             0, 0, JSP_TYPE_MASK2 );
 
 struct {
     uint16_t x;             // 0..159 (Mode-0 screen is 160 px wide)
@@ -46,13 +54,7 @@ struct {
     {  70,  40, -1,  3, &sprite1 },
     { 110,  90,  3, -1, &sprite2 },
     { 140,  20, -2, -2, &sprite3 },
-};
-
-// 16-pen palette (gate-array hardware inks, 0x40 | hw).  pen0 = black (background
-// + ball body), pen1 = white (ball highlight); pens 2..15 = the grid-line colours.
-static uint8_t palette_inks[16] = {
-    0x54, 0x4B, 0x44, 0x55, 0x5C, 0x58, 0x5D, 0x4C,
-    0x45, 0x4D, 0x56, 0x46, 0x57, 0x5E, 0x40, 0x4E
+    {  72,  88,  0,  0, &mcball  },    // stationary multicolour ball (centre)
 };
 
 // Wireframe tiles per pen, built at run time: a vertical line (left edge), a
@@ -83,11 +85,13 @@ static uint8_t m0_cell( uint8_t p0, uint8_t p1 ) {
     return b;
 }
 
-// Set Mode 0 + program all 16 pens; both ROMs off (0x8C = RMR mode 0, ROMs off).
+// Set Mode 0 + program all 16 pens straight from the multicolour ball's emitted
+// palette (cpcgfx.pl --palette-symbol _ball_m0_palette); both ROMs off
+// (0x8C = RMR mode 0, ROMs off).
 static void cpc_setup_mode0( void ) {
     __asm
     di
-    ld hl,_palette_inks
+    ld hl,_ball_m0_palette
     ld e,0                  ; pen index 0..15
 pal_loop:
     ld bc,0x7f00

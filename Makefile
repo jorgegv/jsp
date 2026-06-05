@@ -176,6 +176,9 @@ SPRITE_MASK2_M1_ASM = $(TESTS_DIR)/test_sprite_mask2_m1.asm
 SPRITE_LOAD1_M1_ASM = $(TESTS_DIR)/test_sprite_load1_m1.asm
 SPRITE_MASK2_M0_ASM = $(TESTS_DIR)/test_sprite_mask2_m0.asm
 SPRITE_LOAD1_M0_ASM = $(TESTS_DIR)/test_sprite_load1_m0.asm
+# Multicolour balls (4 pens Mode 1 / many pens Mode 0): pixels + emitted palette.
+BALL_M1_ASM         = $(TESTS_DIR)/test_ball_m1.asm
+BALL_M0_ASM         = $(TESTS_DIR)/test_ball_m0.asm
 
 TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
 		  test_sprite_move test_pool_and_colour test_tiles_and_print \
@@ -338,12 +341,12 @@ m_src_0_fast = test_cpc_sprite_mode0.c
 m_src_1_fast = test_cpc_sprite_mode1.c
 
 m_mask_2 = $(SPRITE_MASK2_ASM)
-m_mask_1 = $(SPRITE_MASK2_M1_ASM)
+m_mask_1 = $(SPRITE_MASK2_M1_ASM) $(BALL_M1_ASM)
 m_mask_1_mono = $(SPRITE_MASK2_ASM)
-m_mask_0 = $(SPRITE_MASK2_M0_ASM)
+m_mask_0 = $(SPRITE_MASK2_M0_ASM) $(BALL_M0_ASM)
 m_mask_2_fast = $(SPRITE_MASK2_ASM)
-m_mask_0_fast = $(SPRITE_MASK2_M0_ASM)
-m_mask_1_fast = $(SPRITE_MASK2_M1_ASM)
+m_mask_0_fast = $(SPRITE_MASK2_M0_ASM) $(BALL_M0_ASM)
+m_mask_1_fast = $(SPRITE_MASK2_M1_ASM) $(BALL_M1_ASM)
 
 m_load_2 = $(SPRITE_LOAD1_ASM)
 m_load_1 = $(SPRITE_LOAD1_M1_ASM)
@@ -510,3 +513,19 @@ $(TESTS_DIR)/test_sprite_load1_m0.asm:
 		-m FF0000 -f FFFFFF -b 000000 --mode 0 \
 		-s _test_sprite_load1_m0_pixels \
 		-g sprite_load --extra-bottom-row --extra-top-rows > $@
+
+## Multicolour balls — same ball shape, interior recoloured with several CPC
+## colours (Mode 1 = 4 pens, Mode 0 = many).  --multicolor maps each PNG pixel to
+## the nearest CPC ink; --palette-symbol also emits the Gate-Array palette the
+## test harness programs (red FF0000 = transparent mask, black = pen 0).
+$(TESTS_DIR)/test_ball_m1.asm:
+	tools/cpcgfx.pl -i assets/ball_m1.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -b 000000 --mode 1 --multicolor \
+		-s _ball_m1_pixels --palette-symbol _ball_m1_palette \
+		-g sprite_mask --extra-bottom-row --extra-top-rows > $@
+
+$(TESTS_DIR)/test_ball_m0.asm:
+	tools/cpcgfx.pl -i assets/ball_m0.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -b 000000 --mode 0 --multicolor \
+		-s _ball_m0_pixels --palette-symbol _ball_m0_palette \
+		-g sprite_mask --extra-bottom-row --extra-top-rows > $@
