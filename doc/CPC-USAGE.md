@@ -101,7 +101,7 @@ Key points:
   own tile/sprite data, never the firmware font, so you don't page in any ROM.
 
 The repository `Makefile` is a working reference for all of this (see the
-`cpc-sprite*` targets and `CPC_CFLAGS`).
+`cpc-run-test` target and `CPC_CFLAGS`).
 
 ---
 

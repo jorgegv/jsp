@@ -275,7 +275,7 @@ emitted encoding changes per mode, not the artwork.
   art the low plane is 0 (pen 0/1); full 4-pen art is a future emitter extension.
 - Validated by `make cpc-shift-test-mode1` (exhaustive combine vs an independent
   pixel-array shift, plus the emitted bytes) and visually in cap32
-  (`make run-cpc-sprite-mode1`).
+  (`make cpc-run-test TEST=sprite MODE=1`).
 
 ### 3.1 Mode 1 MONO — IMPLEMENTED
 
@@ -325,7 +325,7 @@ a bespoke MONO table.  Concretely:
   parity storage is needed and the 80-col grid / 1-pointer-per-cell BTT are
   unchanged.
 - Validated by `make cpc-shift-test-mode1-mono` (the expansion + combine vs a
-  true monochrome shift) and visually in cap32 (`make run-cpc-sprite-mode1-mono`:
+  true monochrome shift) and visually in cap32 (`make cpc-run-test TEST=sprite MODE=1_mono`:
   masked 1bpp balls over a seamless 1bpp tile background, all xrot 0–3 clean).
 
 (This is distinct from full Mode 1 above, whose assets are genuinely 4-colour
@@ -357,7 +357,7 @@ two-nibble-plane and need no expansion.)
   all four planes (so the AND keeps the background).
 - Validated by `make cpc-shift-test-mode0` (exhaustive combine + emitted bytes
   vs an independent Mode-0 pixel-array shift) and visually in cap32
-  (`make run-cpc-sprite-mode0`).
+  (`make cpc-run-test TEST=sprite MODE=0`).
 
 ---
 
@@ -405,8 +405,8 @@ redirect prologue, no `graph_left`).  Verified: the FAST maps contain only the
 `nr` kernels; the rotating kernel symbols are absent.
 
 No shift unit test is needed (no shift); the no-rotate render is confirmed by
-`make run-cpc-sprite-mode{2,0,1}-fast` (masked balls byte-aligned over the
-per-mode grid, verified in cap32).
+`make cpc-run-test TEST=sprite MODE=2_fast` (and `0_fast` / `1_fast`) (masked
+balls byte-aligned over the per-mode grid, verified in cap32).
 
 ---
 

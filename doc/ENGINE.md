@@ -182,9 +182,12 @@ the hardware does:
 at `C000-FFFF` in **all** modes; the mode only changes how many pixels a byte
 holds (8/4/2 for Mode 2/1/0).  A scan-line `y` address is
 `0xC000 + (y & 7) * 0x800 + (y >> 3) * 80`, so within an 8-line cell the pixel
-lines step by **`+0x800`** (not the ZX `+0x100`).  The cell grid is 80 × 25 =
-2000 cells (Model A "byte-cell": a cell is always 8 lines × 1 byte, so a cell is
-8/4/2 px wide in Mode 2/1/0).  There is no thirds layout: `rd_rowtab` is 25
+lines step by **`+0x800`** (not the ZX `+0x100`).  The cell grid depends on the
+cell model (`doc/CPC-TILE-SIZE-DESIGN.md`): **by default JSP uses the pixel-cell
+model** (8×8-px cells → 80×25 / 40×25 / 20×25 in Mode 2/1/0); the legacy
+byte-cell model (`JSP_CELL_MODEL=byte`) is 80×25 in every mode (a cell is 8 lines
+× 1 byte, 8/4/2 px wide).  In Mode 2 the two coincide.  There is no thirds
+layout: `rd_rowtab` is 25
 entries of `0xC000 + row*80`, and the redraw walks an explicit `(row, col0)`
 running counter (80 ÷ 8 = 10 groups/row is not a power of two).
 
@@ -213,9 +216,11 @@ kernels out** — the covered-cell compositor calls the no-rotate kernel directl
 neither the rotation table nor the rotating kernel code (~1 KB), at a coarser
 horizontal granularity.
 
-**CPC memory map (Model A, all modes packed below the `C000` screen).**  Sizes:
-ROTTBL ≤ 3584 B (Mode 2; Mode 1 1536, Mode 0 512, FAST 0), BTT 4000, DTT 250,
-FTT 250, BAT 2000 (still allocated but unused, §6).  Block `9800-BFFF`:
+**CPC memory map (largest case — Mode 2; all modes packed below the `C000`
+screen).**  Sizes: ROTTBL ≤ 3584 B (Mode 2; Mode 1 1536, Mode 0 512, FAST 0),
+BTT 4000, DTT 250, FTT 250, BAT 2000 (still allocated but unused, §6).  These
+are the Mode-2 sizes; under the default pixel-cell model Mode 1 has half the
+cells and Mode 0 a quarter, so BTT/DTT/FTT shrink accordingly.  Block `9800-BFFF`:
 
 | Range     | Contents                                                |
 |-----------|---------------------------------------------------------|
@@ -230,10 +235,10 @@ The firmware-default stack sits high (~`B000-BFFF`) and would overlap the
 rottbl, so the CPC build forces `REGISTER_SP=0x9800` (stack grows down below the
 block).  Both ROMs are kept off (code at `0x1200`, in the lower-ROM region).
 
-**Build / verify.**  The Makefile drives the matrix: `make run JSP_TARGET=cpc
-JSP_CPC_MODE=<2|1|0|1_MONO|2_FAST|0_FAST|1_FAST>` builds and screenshots one
-config in cap32; `make cpc-matrix` builds all of them; `make run-cpc-matrix`
-screenshots all of them.  There is **no headless T-state profiler** for the CPC
+**Build / verify.**  The Makefile drives the matrix: `make cpc-run-test
+TEST=sprite MODE=<2|1|1_mono|0|2_fast|0_fast|1_fast>` builds and screenshots one
+config in cap32; `make cpc-tests` builds every config and runs the regressions.
+There is **no headless T-state profiler** for the CPC
 (the JNEXT magic-port/heatmap path is ZX-only): CPC performance is eyeballed /
 wall-clock-timed via the `caprice-testing` skill (`tools/cap32-shot.sh`, cap32
 headless in a private Xvfb) until a CPC profiling path exists.
