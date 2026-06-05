@@ -271,8 +271,12 @@ endif
 CPC_LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) $(wildcard lib/cpc/*.asm)
 HOSTCC		?= cc
 
-CYCLES		?= 1000				# cpc-perf-matrix cycles/config
-ARTIFACT_SRC	= test_cpc_artifact.c		# LOAD-sprite artifact regression
+# NB: keep these comments on their own line — a `#` after a tab would be
+# captured into the value (make only strips a single trailing space).
+# cpc-perf-matrix cycles/config
+CYCLES		?= 1000
+# LOAD-sprite artifact regression test source
+ARTIFACT_SRC	= test_cpc_artifact.c
 
 # Single-mode CPC test disk names
 CPC_BG_NAME	= CPCBG
@@ -368,6 +372,7 @@ cpc-run-test: $(ALL_CPC_ASSETS) | $(BUILD_STAMP)
 	*) echo "unknown TEST='$(TEST)' — pick: sprite artifact shift bg foreground btt-redraw demo"; exit 1 ;; \
 	esac; \
 	[ -n "$$name" ] || { echo "no config for TEST=$(TEST) MODE=$(MODE)"; exit 1; }; \
+	[ -n "$(CPC_MODE)" ] || { echo "invalid MODE='$(MODE)' (no CPC_MODE guard); pick: $(CPC_SPRITE_MODES)"; exit 1; }; \
 	echo "Building CPC $(TEST) [MODE=$(MODE)] -> $$name.dsk"; \
 	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
 		$(CPCTEST_DIR)/$$src $$asset $(CPC_LIB_SRCS) -o $(BUILD_DIR)/$$name -m; \
