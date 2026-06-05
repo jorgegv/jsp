@@ -31,21 +31,24 @@ make test_sprite_load1.asm
 
 ## Running Tests
 
-Tests are integration tests that run visually on the emulator — there is no
-automated test runner. Test programs are split by platform, mirroring `lib/`:
-shared generated sprite assets live in `tests/` (like `lib/*.asm`), ZX test
-programs in `tests/zx/`, CPC test programs in `tests/cpc/`.
+Tests are integration tests run on the emulator. Both platforms have an
+automated screenshot-regression suite (`make zx-tests` / `make cpc-tests`): each
+test is run headless, captured at a deterministic frame and compared to a
+committed reference in `tests/refs/` with `magick compare -metric AE` (0 = pass).
+Test programs are split by platform, mirroring `lib/`: shared generated sprite
+assets live in `tests/` (like `lib/*.asm`), ZX test programs in `tests/zx/`, CPC
+test programs in `tests/cpc/`.
 
 All build artifacts (taps, dsks, named binaries, screenshots) are emitted into
 the `build/` directory; `make clean` is just `rm -rf build/`.
 
 ```bash
-make zx-tests                     # Build all ZX test taps (build/)
+make zx-tests                     # Build + run every ZX test headless in JNEXT, diff vs tests/refs/zx
 make build/test_NAME.tap          # Build a single ZX test
 make zx-run-test TEST=test_NAME   # Build and launch a single ZX test in FUSE
 ```
 
-Available ZX tests: `test_dtt`, `test_btt_contents`, `test_btt_redraw`, `test_sprite_draw`, `test_sprite_move`, `test_pool_and_colour`, `test_tiles_and_print`, `test_foreground_tiles`.
+Available ZX tests: `test_dtt`, `test_btt_contents`, `test_btt_redraw`, `test_sprite_draw`, `test_sprite_move`, `test_pool_and_colour`, `test_tiles_and_print`, `test_foreground_tiles`, `test_redraw_bench`, `test_artifact`.
 
 CPC tests (`zcc +cpc`, headless cap32 screenshot via the `caprice-testing` skill)
 are driven by one parametrized target, `cpc-run-test TEST=<name> [MODE=<token>]`,

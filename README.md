@@ -78,21 +78,23 @@ resulting `build/main.tap` runs on any ZX Spectrum emulator.
 
 ## Tests
 
-ZX test programs (in `tests/zx/`) are integration tests that run visually on the
-emulator. There is no live pass/fail runner, but a committed reference-screenshot
-baseline (`tests/refs/zx/`, captured headless via JNEXT at a deterministic frame)
-backs visual regression comparison after changes — including `test_artifact`,
+ZX test programs (in `tests/zx/`) are integration tests. `make zx-tests` is an
+automated regression suite (the analogue of `cpc-tests`): it builds every test,
+runs each headless in JNEXT, captures a screenshot at a deterministic frame and
+compares it to the committed reference in `tests/refs/zx/` with `magick compare
+-metric AE` (0 = pass; any pixel diff fails the run). It includes `test_artifact`,
 which guards the bottom cell-row over-render bug.
 
 ```bash
-make zx-tests                     # build every ZX test tap
+make zx-tests                     # build + run every ZX test, diff vs tests/refs/zx
 make build/test_NAME.tap          # build a single ZX test
 make zx-run-test TEST=test_NAME   # build + launch a single ZX test in FUSE
 ```
 
 Available ZX tests: `test_dtt`, `test_btt_contents`, `test_btt_redraw`,
 `test_sprite_draw`, `test_sprite_move`, `test_pool_and_colour`,
-`test_tiles_and_print`, `test_foreground_tiles`.
+`test_tiles_and_print`, `test_foreground_tiles`, `test_redraw_bench`,
+`test_artifact`.
 
 A headless T-state profiler and a JSP-vs-SP1 redraw benchmark are available
 (ZX only): `make zx-profile`, `make zx-bench`, `make zx-bench-sp1`.

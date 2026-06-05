@@ -7,7 +7,7 @@
 #   clean                    remove build/ + per-source intermediates
 #   zx-run / zx-run-jnext    launch build/main.tap in FUSE / JNEXT
 #   zx-profile               headless T-state heatmap of build/main.tap
-#   zx-tests                 build every ZX test tap
+#   zx-tests                 build every ZX test + run the ZX regressions
 #   zx-run-test  TEST=…      build + launch one ZX test in FUSE
 #   zx-bench[-mask2]         JSP redraw benchmarks (headless JNEXT)
 #   zx-bench-sp1[-mask2]     SP1 comparison benchmarks
@@ -182,8 +182,35 @@ TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
 		  test_foreground_tiles test_redraw_bench
 TEST_TAPS	= $(TESTS:%=$(BUILD_DIR)/%.tap)
 
-# Build every ZX test tap
-zx-tests: $(TEST_TAPS)
+## ZX regression set: every test that has a committed reference screenshot in
+## tests/refs/zx/.  test_artifact (the bottom-line over-render guard) is built
+## by its own prereq rule below and is not part of the FUSE-runnable TESTS list.
+ZXTEST_REFS	= tests/refs/zx
+ZX_REGRESSION	= $(TESTS) test_artifact
+ZX_REGRESSION_TAPS = $(ZX_REGRESSION:%=$(BUILD_DIR)/%.tap)
+# deterministic capture frame (matches how the refs were generated)
+ZX_SHOT_FRAMES	?= 300
+
+## NOTE: --delayed-screenshot-frames is EMULATED frames; --delayed-automatic-exit is
+## wall-clock SECONDS and must outlast the capture frame, else no PNG is written.
+# Build every ZX test + run each headless in JNEXT, diff vs reference screenshots (AE; 0 = pass)
+zx-tests: $(ZX_REGRESSION_TAPS)
+	@echo "== ZX regression — frame $(ZX_SHOT_FRAMES) screenshot, AE vs $(ZXTEST_REFS) (0 = pass) =="
+	@fail=0; for t in $(ZX_REGRESSION); do \
+		$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
+			--load $(BUILD_DIR)/$$t.tap \
+			--delayed-screenshot $(BUILD_DIR)/$$t.png \
+			--delayed-screenshot-frames $(ZX_SHOT_FRAMES) \
+			--delayed-automatic-exit 10 >/dev/null 2>&1; \
+		ref="$(ZXTEST_REFS)/$$t.png"; \
+		if [ -f $(BUILD_DIR)/$$t.png ] && [ -f "$$ref" ]; then \
+			ae=$$(magick compare -metric AE "$$ref" $(BUILD_DIR)/$$t.png null: 2>&1); \
+			printf "  %-22s AE=%s\n" "$$t" "$$ae"; \
+			[ "$${ae%% *}" = "0" ] || fail=1; \
+		else printf "  %-22s MISSING (shot or ref)\n" "$$t"; fail=1; fi; \
+	done; \
+	if [ $$fail -eq 0 ]; then echo "ZX regression: all pass"; \
+	else echo "ZX regression: FAILURES"; exit 1; fi
 
 ## Pattern rule: compile test + all lib sources in one zcc invocation
 $(BUILD_DIR)/%.tap: $(ZXTEST_DIR)/%.c $(LIB_SRCS) | $(BUILD_STAMP)
