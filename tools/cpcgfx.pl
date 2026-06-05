@@ -184,6 +184,7 @@ if ($opt_multicolor) {
     my $maxpens  = ($opt_mode == 1) ? 4 : 16;
     my $mask_ink = nearest_cpc_ink($opt_mask);
     my %pen_of_ink;
+    my %transp_raw;     # distinct raw colours that snapped onto the mask ink
     # pen 0 is always the background ink (paper), like the 2-colour convention.
     my $bg_ink = nearest_cpc_ink($opt_background);
     $pen_of_ink{$bg_ink} = 0; $ink_of_pen[0] = $bg_ink; $npens = 1;
@@ -191,13 +192,21 @@ if ($opt_multicolor) {
         foreach my $x (0 .. $opt_width - 1) {
             my $hex = sprintf('%02x%02x%02x', $png->rgb($png->getPixel($opt_xpos+$x, $opt_ypos+$y)));
             my $ink = nearest_cpc_ink($hex);
-            if ($is_mask && $ink == $mask_ink) { $TRANSP[$y][$x] = 1; $PEN[$y][$x] = 0; next; }
+            if ($is_mask && $ink == $mask_ink) { $TRANSP[$y][$x] = 1; $PEN[$y][$x] = 0; $transp_raw{$hex} = 1; next; }
             if (!exists $pen_of_ink{$ink}) {
                 $pen_of_ink{$ink} = $npens; $ink_of_pen[$npens] = $ink; $npens++;
             }
             $TRANSP[$y][$x] = 0;
             $PEN[$y][$x]    = $pen_of_ink{$ink};
         }
+    }
+    # Warn if an *interior* colour (not the -m mask colour) snapped onto the mask
+    # ink and was silently made transparent — a sign the mask colour is too close
+    # to content, or the art uses a near-mask colour.
+    if ($is_mask) {
+        my @collide = grep { $_ ne lc($opt_mask) } keys %transp_raw;
+        warn sprintf("cpcgfx.pl: WARNING: %s: %d interior colour(s) snap to the mask ink (CPC %s) and became transparent: %s\n",
+            $opt_input, scalar @collide, $cpc_ink_name{$mask_ink}, join(', ', map { "#$_" } sort @collide)) if @collide;
     }
     $npens <= $maxpens or die sprintf(
         "cpcgfx.pl: %s uses %d opaque colours but Mode %d allows only %d pens\n",
