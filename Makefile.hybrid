@@ -1,0 +1,45 @@
+# Makefile.hybrid — CANDIDATE 3: parametrized core (exactly Makefile.param) PLUS
+# thin back-compat aliases so every OLD per-mode target name still works.
+#
+#   make cpc-sprite MODE=1_fast      # parametrized core (the new, lean interface)
+#   make cpc-sprite-mode1-fast       # old name -> forwards to MODE=1_fast
+#   make run-cpc-sprite-mode0        # old name -> run-cpc-sprite MODE=0
+#   make cpc-artifact-mode1          # old name -> cpc-artifact MODE=1
+#   make cpc-shift-test-mode0        # old name -> cpc-shift-test MODE=0
+#   make cpc-sprite-demo-mode2       # old name -> cpc-sprite-demo
+#
+# `make help` stays lean: only the parametrized core carries `#` comments; the
+# aliases are intentionally uncommented (functional but hidden), so nothing in
+# docs/skills breaks while the surface a newcomer sees is small.
+#
+# Run this candidate with:  make -f $(MAKEFILE_MAIN) <target> [MODE=…]
+
+include Makefile.param
+
+## --- back-compat aliases: old per-mode names -> parametrized targets ---------
+## Generated from the shared mode tables; each just re-invokes the core target
+## with the right MODE.  Mode 2 sprite is skipped (its old name `cpc-sprite`
+## already IS the default core target).
+
+define cpc_sprite_alias
+cpc-sprite$(m_tgt_$(1)):
+	$$(MAKE) -f $(MAKEFILE_MAIN) cpc-sprite MODE=$(1)
+run-cpc-sprite$(m_tgt_$(1)):
+	$$(MAKE) -f $(MAKEFILE_MAIN) run-cpc-sprite MODE=$(1)
+endef
+$(foreach m,$(filter-out 2,$(CPC_SPRITE_MODES)),$(eval $(call cpc_sprite_alias,$(m))))
+
+define cpc_artifact_alias
+cpc-artifact$(m_modetgt_$(1)):
+	$$(MAKE) -f $(MAKEFILE_MAIN) cpc-artifact MODE=$(1)
+endef
+$(foreach m,$(CPC_ARTIFACT_MODES),$(eval $(call cpc_artifact_alias,$(m))))
+
+define cpc_shift_alias
+cpc-shift-test$(m_modetgt_$(1)):
+	$$(MAKE) -f $(MAKEFILE_MAIN) cpc-shift-test MODE=$(1)
+endef
+$(foreach m,$(CPC_SHIFT_MODES),$(eval $(call cpc_shift_alias,$(m))))
+
+cpc-sprite-demo-mode2:
+	$(MAKE) -f $(MAKEFILE_MAIN) cpc-sprite-demo

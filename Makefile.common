@@ -1,0 +1,462 @@
+# Makefile.common — shared base for the three Makefile reorganization candidates
+# (Makefile.param / Makefile.macro / Makefile.hybrid).  Holds everything that is
+# IDENTICAL between them: config, the ZX main build, the ZX tests/benches, the
+# CPC compile flags + the per-mode lookup tables, the single-mode CPC utility
+# tests (bg/foreground/btt-redraw), and the asset generators.  Each candidate
+# `include`s this file and then defines ONLY the CPC mode-matrix targets in its
+# own style — so diffing the three candidates shows exactly the dimension under
+# evaluation.  Run a candidate with e.g.  `make -f Makefile.param build`.
+
+ZCC		= zcc +zx -compiler=sdcc
+CFLAGS		= -vn -SO3 --opt-code-size --max-allocs-per-node200000 --list -s --c-code-in-asm -I$(INCLUDE_DIR)
+LDFLAGS		= -lndos -m
+
+BIN		= main
+FUSE		= fuse
+
+# All final build artifacts (ZX main.tap, CPC .dsk + named binaries, test taps,
+# host unit-test binaries, emulator screenshots) are emitted into $(BUILD_DIR).
+# Per-source z88dk intermediates (.o/.lis/.lst/.sym/.map) stay beside sources.
+BUILD_DIR	= build
+# Order-only stamp used to ensure $(BUILD_DIR) exists (a target literally named
+# `build` would collide with the phony `build` rebuild target, so we depend on a
+# file inside the directory instead).
+BUILD_STAMP	= $(BUILD_DIR)/.stamp
+TAP		= $(BUILD_DIR)/$(BIN).tap
+
+# Headless cap32 screenshots land in $(BUILD_DIR) too (cap32-shot.sh honours
+# CAP32_SHOT_OUT; exported so every run-cpc-* recipe inherits it).
+export CAP32_SHOT_OUT = $(CURDIR)/$(BUILD_DIR)/shot.png
+
+# JNEXT emulator (override on the command line if installed elsewhere)
+JNEXT		= $(HOME)/src/spectrum/jnext/build/gui-release/jnext
+JNEXT_SD	= $(HOME)/src/spectrum/jnext/roms/nextzxos-1gb-fat32fix.img
+JNEXT_MACHINE	= 48k
+JNEXT_HEATMAP	= $(HOME)/src/spectrum/jnext/tools/get-function-heatmap.pl
+
+# CPU T-state profiler tunables (override on the command line)
+PROFILE_DAT	= /tmp/$(BIN)_profile.dat
+PROFILE_EXIT	= 8
+PROFILE_TOP	= 25
+
+INCLUDE_DIR	= include
+
+# The top makefile actually invoked (a candidate during evaluation, plain
+# `Makefile` once promoted).  Recursive sub-makes re-invoke it via -f so they
+# don't fall back to a different makefile.
+MAKEFILE_MAIN	:= $(firstword $(MAKEFILE_LIST))
+
+# Platform selection: compile lib/ (platform-independent) plus the platform
+# layer in lib/$(JSP_TARGET)/.  Defaults to the ZX target.  See §1.3 of
+# doc/CPC-TARGET-PLAN.md.
+JSP_TARGET	?= zx
+PLATDIR		= lib/$(JSP_TARGET)
+
+C_SRCS		= $(wildcard lib/*.c) $(wildcard $(PLATDIR)/*.c) $(wildcard *.c)
+ASM_SRCS	= $(wildcard lib/*.asm) $(wildcard $(PLATDIR)/*.asm) $(wildcard *.asm)
+
+C_OBJS		= $(C_SRCS:.c=.o)
+ASM_OBJS	= $(ASM_SRCS:.asm=.o)
+
+# sprite pixel data referenced by the main.c test harness; these .asm files
+# live under tests/ (generated from PNGs) so they are not picked up by the
+# wildcards above and must be linked into the main binary explicitly.
+BIN_ASSET_ASMS	= tests/test_sprite_mask2.asm tests/test_sprite_load1.asm
+BIN_ASSET_OBJS	= $(BIN_ASSET_ASMS:.asm=.o)
+
+.SILENT:
+MAKEFLAGS 	+= --no-print-directory -j4
+
+.PHONY: help default build clean run run-jnext profile tests run-test \
+	bench bench-mask2 bench-sp1 bench-sp1-mask2 clean-tests \
+	cpc-bg run-cpc-bg cpc-foreground run-cpc-foreground cpc-btt-redraw run-cpc-btt-redraw
+
+## Self-documenting help — `make` with no target lists every target that has
+## a `#` comment on the line immediately above it (names print in bold red).
+## Scans every file in MAKEFILE_LIST, so the included candidate's targets show too.
+.DEFAULT_GOAL := help
+
+# Show this help
+help:
+	@if [ -t 1 ] && [ -z "$$NO_COLOR" ]; then c='\033[1;31m'; r='\033[0m'; else c=; r=; fi; \
+	awk -v c="$$c" -v r="$$r" 'BEGIN { FS = ":"; n = 0; w = 0 } \
+		/^# / { desc = substr($$0, 3); next } \
+		/^[a-zA-Z0-9][a-zA-Z0-9_.-]*:($$|[^=])/ { \
+			if (desc != "") { name[n] = $$1; text[n] = desc; \
+				if (length($$1) > w) w = length($$1); n++; desc = "" } \
+			next \
+		} \
+		{ desc = "" } \
+		END { for (i = 0; i < n; i++) \
+			printf "  %s%-*s%s  %s\n", c, w, name[i], r, text[i] }' $(MAKEFILE_LIST)
+
+## generic rules
+
+# Create the build output directory (order-only prerequisite for every target
+# that emits a final artifact).
+$(BUILD_STAMP):
+	mkdir -p $(BUILD_DIR)
+	touch $@
+
+%.o: %.c
+	echo Compiling $*.c...
+	$(ZCC) $(CFLAGS) -c $*.c
+
+%.o: %.asm
+	echo Assembling $*.asm...
+	$(ZCC) $(CFLAGS) -c $*.asm
+
+# Build main.tap incrementally
+default: $(BUILD_DIR)/$(BIN)
+
+# Clean rebuild — produces main.tap
+build:
+	$(MAKE) -f $(MAKEFILE_MAIN) clean
+	$(MAKE) -f $(MAKEFILE_MAIN) $(TAP)
+	echo Build successful
+
+# Remove all build artifacts
+clean: clean-tests
+	echo Cleaning up...
+	# All final artifacts now live in $(BUILD_DIR) — one recursive rm replaces the
+	# old ever-growing list of CPC binary names / disk images / screenshots.
+	-rm -rf $(BUILD_DIR) 2>/dev/null
+	# Per-source z88dk intermediates are kept beside their sources; clean them too.
+	-rm -f *.{map,lst,o,lis,sym,bin,c.asm} 2>/dev/null
+	-rm -f lib/*.{map,lst,o,lis,sym,bin} 2>/dev/null
+	-rm -f lib/zx/*.{map,lst,o,lis,sym,bin} lib/cpc/*.{map,lst,o,lis,sym,bin} 2>/dev/null
+
+## binary
+$(BUILD_DIR)/$(BIN): $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS) | $(BUILD_STAMP)
+	echo Linking $@...
+	$(ZCC) $(LDFLAGS) $(ASM_OBJS) $(C_OBJS) $(BIN_ASSET_OBJS) -o $(BUILD_DIR)/$(BIN) -create-app
+	echo Created $(TAP)
+
+$(TAP): $(BUILD_DIR)/$(BIN)
+
+# JSP_CPC_MODE selects which CPC config `make run JSP_TARGET=cpc` builds and
+# screenshots (the candidate's cpc `run` rule consumes it).  Default Mode 2.
+JSP_CPC_MODE	?= 2
+
+# Launch in FUSE (ZX).  The cpc branch of `run` (JSP_TARGET=cpc) is defined by
+# each candidate, since the dispatch differs by target-style.
+ifneq ($(JSP_TARGET),cpc)
+run: $(TAP)
+	$(FUSE) $(TAP)
+endif
+
+# Build and launch main.tap in the JNEXT emulator (GUI)
+run-jnext: $(TAP)
+	$(JNEXT) --sd-card $(JNEXT_SD) --machine $(JNEXT_MACHINE) --load $(TAP)
+
+# Profile main.tap headless and print the hottest functions (T-state heatmap)
+profile: $(TAP)
+	echo Profiling $(TAP) for $(PROFILE_EXIT)s...
+	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
+		--load $(TAP) --profile --profile-output $(PROFILE_DAT) \
+		--delayed-automatic-exit $(PROFILE_EXIT) >/dev/null 2>&1
+	echo "Top $(PROFILE_TOP) functions by T-states:"
+	$(JNEXT_HEATMAP) -m $(BUILD_DIR)/$(BIN).map < $(PROFILE_DAT) 2>/dev/null | head -$(PROFILE_TOP)
+
+## tests
+
+# Test programs are split by platform, mirroring the lib/ layout: shared
+# generated sprite assets live in tests/ (like lib/*.asm), ZX test programs in
+# tests/zx/, CPC test programs in tests/cpc/.
+TESTS_DIR	= tests
+ZXTEST_DIR	= tests/zx
+CPCTEST_DIR	= tests/cpc
+LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) \
+		  $(wildcard $(PLATDIR)/*.c) $(wildcard $(PLATDIR)/*.asm)
+
+SPRITE_MASK2_ASM = $(TESTS_DIR)/test_sprite_mask2.asm
+SPRITE_LOAD1_ASM = $(TESTS_DIR)/test_sprite_load1.asm
+SPRITE_MASK2_M1_ASM = $(TESTS_DIR)/test_sprite_mask2_m1.asm
+SPRITE_LOAD1_M1_ASM = $(TESTS_DIR)/test_sprite_load1_m1.asm
+SPRITE_MASK2_M0_ASM = $(TESTS_DIR)/test_sprite_mask2_m0.asm
+SPRITE_LOAD1_M0_ASM = $(TESTS_DIR)/test_sprite_load1_m0.asm
+
+TESTS		= test_dtt test_btt_contents test_btt_redraw test_sprite_draw \
+		  test_sprite_move test_pool_and_colour test_tiles_and_print \
+		  test_foreground_tiles test_redraw_bench
+TEST_TAPS	= $(TESTS:%=$(BUILD_DIR)/%.tap)
+
+# Build all (ZX) test taps
+tests: $(TEST_TAPS)
+
+## Pattern rule: compile test + all lib sources in one zcc invocation
+$(BUILD_DIR)/%.tap: $(ZXTEST_DIR)/%.c $(LIB_SRCS) | $(BUILD_STAMP)
+	echo Building $@...
+	$(ZCC) $(CFLAGS) $(LDFLAGS) $^ -o $(@:.tap=.bin) -create-app
+
+## Extra sprite data prerequisites for tests that use sprites
+$(BUILD_DIR)/test_sprite_draw.tap: $(SPRITE_MASK2_ASM)
+$(BUILD_DIR)/test_sprite_move.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
+$(BUILD_DIR)/test_pool_and_colour.tap: $(SPRITE_MASK2_ASM)
+$(BUILD_DIR)/test_foreground_tiles.tap: $(SPRITE_MASK2_ASM)
+$(BUILD_DIR)/test_redraw_bench.tap: $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM)
+$(BUILD_DIR)/test_artifact.tap: $(SPRITE_LOAD1_ASM)		# bottom-line artifact regression
+
+# Build and launch one test in FUSE (usage: make run-test TEST=test_dtt)
+run-test: $(BUILD_DIR)/$(TEST).tap
+	fuse $(BUILD_DIR)/$(TEST).tap
+
+# Build and run the redraw speed benchmark headless in JNEXT
+bench: $(BUILD_DIR)/test_redraw_bench.tap
+	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
+		--load $< --magic-port 0x00FF --magic-port-mode ascii \
+		--delayed-automatic-exit 300 2>&1 | grep -E '^(A0?=|B=|END)'
+
+# Run the JSP redraw benchmark with an all-MASK2 sprite workload
+bench-mask2: $(SPRITE_MASK2_ASM) | $(BUILD_STAMP)
+	echo Building all-MASK2 JSP benchmark...
+	$(ZCC) $(CFLAGS) $(LDFLAGS) -DBENCH_ALL_MASK2 \
+		$(ZXTEST_DIR)/test_redraw_bench.c $(LIB_SRCS) $(SPRITE_MASK2_ASM) \
+		-o $(BUILD_DIR)/test_redraw_bench_mask2.bin -create-app
+	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
+		--load $(BUILD_DIR)/test_redraw_bench_mask2.tap \
+		--magic-port 0x00FF --magic-port-mode ascii \
+		--delayed-automatic-exit 300 2>&1 | grep -E '^(A0?=|B=|END)'
+
+## SP1 benchmark — standalone SP1 program, built with the z88dk new C
+## library (-clib=sdcc_iy): sdcc then uses IY as its frame pointer, so
+## SP1's asm (which trashes IX) does not corrupt C frames.  No JSP sources.
+$(BUILD_DIR)/bench_sp1.tap: $(ZXTEST_DIR)/bench_sp1.c | $(BUILD_STAMP)
+	echo Building $@...
+	$(ZCC) -vn -SO3 --max-allocs-per-node200000 -startup=31 -clib=sdcc_iy -m \
+		$< -o $(@:.tap=.bin) -create-app
+
+# Build and run the SP1 redraw benchmark headless (JSP-vs-SP1 comparison)
+bench-sp1: $(BUILD_DIR)/bench_sp1.tap
+	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
+		--load $< --magic-port 0x00FF --magic-port-mode ascii \
+		--delayed-automatic-exit 600 2>&1 | grep -E '^(A0?=|B=|END)'
+
+# Run the SP1 redraw benchmark with an all-MASK2 sprite workload
+bench-sp1-mask2: | $(BUILD_STAMP)
+	echo Building all-MASK2 SP1 benchmark...
+	$(ZCC) -vn -SO3 --max-allocs-per-node200000 -startup=31 -clib=sdcc_iy -m \
+		-DBENCH_ALL_MASK2 $(ZXTEST_DIR)/bench_sp1.c \
+		-o $(BUILD_DIR)/bench_sp1_mask2.bin -create-app
+	$(JNEXT) --headless --machine $(JNEXT_MACHINE) --sd-card $(JNEXT_SD) \
+		--load $(BUILD_DIR)/bench_sp1_mask2.tap \
+		--magic-port 0x00FF --magic-port-mode ascii \
+		--delayed-automatic-exit 600 2>&1 | grep -E '^(A0?=|B=|END)'
+
+clean-tests:
+	echo Cleaning tests...
+	# Test taps/bins now live in $(BUILD_DIR) (wiped by `make clean`); here we
+	# remove them for a standalone `clean-tests`, plus the per-source intermediates
+	# z88dk leaves beside the test sources.
+	-rm -f $(BUILD_DIR)/test_*.{tap,bin,map} $(BUILD_DIR)/bench_sp1*.{tap,bin,map} 2>/dev/null
+	-rm -f $(TESTS_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
+	-rm -f $(ZXTEST_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
+	-rm -f $(CPCTEST_DIR)/*.{map,lst,o,lis,sym,bin} 2>/dev/null
+
+## ============================================================================
+## CPC compile configuration (shared by every candidate's CPC targets)
+## ============================================================================
+
+# REGISTER_SP=0x9800 places the stack just below the JSP data block (BAT base,
+# see lib/jsp_data.c): the firmware default SP sits high (~0xB000-0xBFFF) and
+# would overlap the rottbl (0xB200-0xBFFF), corrupting it.
+CPC_MODE	?= 2
+CPC_CFLAGS	= -DJSP_TARGET_CPC -Ca-DJSP_TARGET_CPC \
+		  -DCPC_MODE$(CPC_MODE) -Ca-DCPC_MODE$(CPC_MODE) \
+		  -pragma-define:REGISTER_SP=0x9800 \
+		  -SO2 --max-allocs-per-node200000 -I$(INCLUDE_DIR) \
+		  $(CPC_EXTRA_CFLAGS)
+# Appended to CPC_CFLAGS for ad-hoc/perf builds (e.g. CPC_EXTRA_CFLAGS=-DTIME_LIMITED=1000).
+CPC_EXTRA_CFLAGS ?=
+
+# Cell model (CPC): "pixel" (DEFAULT, Model B) or "byte" (Model A).  See
+# doc/CPC-TILE-SIZE-DESIGN.md.  Passes the matching JSP_CELL_MODEL_* define to
+# both the C compiler and the asm (-Ca), e.g.:  make cpc-matrix JSP_CELL_MODEL=byte
+JSP_CELL_MODEL ?= pixel
+ifeq ($(JSP_CELL_MODEL),pixel)
+CPC_CFLAGS += -DJSP_CELL_MODEL_PIXEL -Ca-DJSP_CELL_MODEL_PIXEL
+else ifeq ($(JSP_CELL_MODEL),byte)
+CPC_CFLAGS += -DJSP_CELL_MODEL_BYTE -Ca-DJSP_CELL_MODEL_BYTE
+else
+$(error JSP_CELL_MODEL must be 'pixel' or 'byte' (got '$(JSP_CELL_MODEL)'))
+endif
+CPC_LIB_SRCS	= $(wildcard lib/*.c) $(wildcard lib/*.asm) $(wildcard lib/cpc/*.asm)
+HOSTCC		?= cc
+
+# Wall-clock perf harness: cycles per config (TIME_LIMITED build).
+CYCLES		?= 1000
+# Bottom-line artifact regression test source (LOAD sprites).
+ARTIFACT_SRC	= $(CPCTEST_DIR)/test_cpc_artifact.c
+
+# Single-mode CPC utility test disk names (bg / foreground / btt-redraw / demo).
+CPC_BG_NAME	= CPCBG
+CPC_FG_NAME	= CPCFG
+CPC_TILE_NAME	= CPCTILE
+CPC_SPRD_NAME	= CPCSPRD
+
+## --- CPC mode-matrix lookup tables -------------------------------------------
+## Every per-mode CPC sprite / artifact / shift-test build differs ONLY by the
+## mode token below; these tables turn one token into the things a build needs.
+## Mode tokens (lowercase, also accepted as MODE=…): sprite uses all seven;
+## artifact and shift-test use a subset.
+MODE			?= 2
+CPC_SPRITE_MODES	= 2 1 1_mono 0 2_fast 0_fast 1_fast
+CPC_ARTIFACT_MODES	= 2 1 0 1_mono
+CPC_SHIFT_MODES		= 2 1 1_mono 0
+
+# mode -> -DCPC_MODE<suffix> (i.e. the CPC_MODE value)
+m_def_2       = 2
+m_def_1       = 1
+m_def_1_mono  = 1_MONO
+m_def_0       = 0
+m_def_2_fast  = 2_FAST
+m_def_0_fast  = 0_FAST
+m_def_1_fast  = 1_FAST
+
+# mode -> sprite test source (under $(CPCTEST_DIR))
+m_src_2       = test_cpc_sprite.c
+m_src_1       = test_cpc_sprite_mode1.c
+m_src_1_mono  = test_cpc_sprite_mode1_mono.c
+m_src_0       = test_cpc_sprite_mode0.c
+m_src_2_fast  = test_cpc_sprite.c
+m_src_0_fast  = test_cpc_sprite_mode0.c
+m_src_1_fast  = test_cpc_sprite_mode1.c
+
+# mode -> masked sprite asset (.asm); also the shift-test asset
+m_mask_2      = $(SPRITE_MASK2_ASM)
+m_mask_1      = $(SPRITE_MASK2_M1_ASM)
+m_mask_1_mono = $(SPRITE_MASK2_ASM)
+m_mask_0      = $(SPRITE_MASK2_M0_ASM)
+m_mask_2_fast = $(SPRITE_MASK2_ASM)
+m_mask_0_fast = $(SPRITE_MASK2_M0_ASM)
+m_mask_1_fast = $(SPRITE_MASK2_M1_ASM)
+
+# mode -> LOAD sprite asset (artifact tests; the 4 artifact modes only)
+m_load_2      = $(SPRITE_LOAD1_ASM)
+m_load_1      = $(SPRITE_LOAD1_M1_ASM)
+m_load_1_mono = $(SPRITE_LOAD1_ASM)
+m_load_0      = $(SPRITE_LOAD1_M0_ASM)
+
+# mode -> sprite disk/run name
+m_name_2      = CPCSPR2
+m_name_1      = CPCSPR1
+m_name_1_mono = CPCSPR1M
+m_name_0      = CPCSPR0
+m_name_2_fast = CPCSPR2F
+m_name_0_fast = CPCSPR0F
+m_name_1_fast = CPCSPR1F
+
+# mode -> artifact disk name
+m_artname_2      = CPCART
+m_artname_1      = CPCART1
+m_artname_0      = CPCART0
+m_artname_1_mono = CPCARTM
+
+# mode -> shift-test extra -D (mode 2 needs none)
+m_shiftdef_2      =
+m_shiftdef_1      = -DCPC_MODE1
+m_shiftdef_1_mono = -DCPC_MODE1_MONO
+m_shiftdef_0      = -DCPC_MODE0
+
+# mode -> sprite target-name suffix (mode 2 is the bare `cpc-sprite`)
+m_tgt_2       =
+m_tgt_1       = -mode1
+m_tgt_1_mono  = -mode1-mono
+m_tgt_0       = -mode0
+m_tgt_2_fast  = -mode2-fast
+m_tgt_0_fast  = -mode0-fast
+m_tgt_1_fast  = -mode1-fast
+
+# mode -> regular target-name suffix (artifact / shift-test: always -mode<N>…)
+m_modetgt_2       = -mode2
+m_modetgt_1       = -mode1
+m_modetgt_1_mono  = -mode1-mono
+m_modetgt_0       = -mode0
+m_modetgt_2_fast  = -mode2-fast
+m_modetgt_0_fast  = -mode0-fast
+m_modetgt_1_fast  = -mode1-fast
+
+# Pairs "mode:diskname" for the matrix/perf/archive shell loops.
+CPC_SPRITE_PAIRS	= $(foreach m,$(CPC_SPRITE_MODES),$(m):$(m_name_$(m)))
+CPC_ARTIFACT_PAIRS	= $(foreach m,$(CPC_ARTIFACT_MODES),$(m):$(m_artname_$(m)))
+
+## ============================================================================
+## CPC single-mode utility tests (identical across candidates)
+## ============================================================================
+
+# Build the CPC Mode 2 background test (.dsk)
+cpc-bg: | $(BUILD_STAMP)
+	echo Building CPC Mode $(CPC_MODE) background test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_bg.c $(CPC_LIB_SRCS) -o $(BUILD_DIR)/$(CPC_BG_NAME) -m
+	echo "Created $(BUILD_DIR)/$(CPC_BG_NAME).dsk"
+
+# Build and screenshot the CPC background test headless in cap32
+run-cpc-bg: cpc-bg
+	./tools/cap32-shot.sh $(BUILD_DIR)/$(CPC_BG_NAME).dsk $(CPC_BG_NAME)
+
+# Build the CPC Mode 2 foreground-tiles + sprite-pool test (sprites pass behind)
+cpc-foreground: $(SPRITE_MASK2_ASM) | $(BUILD_STAMP)
+	echo Building CPC Mode 2 foreground test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_foreground.c $(SPRITE_MASK2_ASM) $(CPC_LIB_SRCS) \
+		-o $(BUILD_DIR)/$(CPC_FG_NAME) -m
+	echo "Created $(BUILD_DIR)/$(CPC_FG_NAME).dsk"
+
+# Build and screenshot the CPC foreground test headless in cap32
+run-cpc-foreground: cpc-foreground
+	./tools/cap32-shot.sh $(BUILD_DIR)/$(CPC_FG_NAME).dsk $(CPC_FG_NAME)
+
+# Build the CPC Mode 2 background-tile draw/delete/redraw test
+cpc-btt-redraw: | $(BUILD_STAMP)
+	echo Building CPC Mode 2 BTT redraw test...
+	zcc +cpc -compiler=sdcc $(CPC_CFLAGS) -create-app -subtype=dsk \
+		$(CPCTEST_DIR)/test_cpc_btt_redraw.c $(CPC_LIB_SRCS) -o $(BUILD_DIR)/$(CPC_TILE_NAME) -m
+	echo "Created $(BUILD_DIR)/$(CPC_TILE_NAME).dsk"
+
+# Build and screenshot the CPC BTT redraw test headless in cap32
+run-cpc-btt-redraw: cpc-btt-redraw
+	./tools/cap32-shot.sh $(BUILD_DIR)/$(CPC_TILE_NAME).dsk $(CPC_TILE_NAME)
+
+## ============================================================================
+## Sprite assets (generated from assets/*.png via the in-repo, vendored
+## tools/gfxgen.pl + tools/cpcgfx.pl).  ZX 1bpp mask2 / load1 byte format,
+## columns-major, 8 lines/cell.  CPC Mode 2 reuses the ZX files unchanged;
+## Mode 0/1 are re-quantised planar encodings of the same source art.
+## ============================================================================
+
+$(TESTS_DIR)/test_sprite_mask2.asm:
+	tools/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 \
+		--code-type asm -s _test_sprite_mask2_pixels \
+		-g sprite_mask -l columns --extra-bottom-row --extra-top-rows > $@
+
+$(TESTS_DIR)/test_sprite_load1.asm:
+	tools/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 \
+		--code-type asm -s _test_sprite_load1_pixels \
+		-g sprite_load -l columns --extra-bottom-row --extra-top-rows > $@
+
+$(TESTS_DIR)/test_sprite_mask2_m1.asm:
+	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 --mode 1 \
+		-s _test_sprite_mask2_m1_pixels \
+		-g sprite_mask --extra-bottom-row --extra-top-rows > $@
+
+$(TESTS_DIR)/test_sprite_load1_m1.asm:
+	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 --mode 1 \
+		-s _test_sprite_load1_m1_pixels \
+		-g sprite_load --extra-bottom-row --extra-top-rows > $@
+
+$(TESTS_DIR)/test_sprite_mask2_m0.asm:
+	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 --mode 0 \
+		-s _test_sprite_mask2_m0_pixels \
+		-g sprite_mask --extra-bottom-row --extra-top-rows > $@
+
+$(TESTS_DIR)/test_sprite_load1_m0.asm:
+	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 --mode 0 \
+		-s _test_sprite_load1_m0_pixels \
+		-g sprite_load --extra-bottom-row --extra-top-rows > $@

@@ -37,10 +37,10 @@ cp shot.png tests/refs/cpc/<model>/<NAME>.png
 **ZX** (640×512 JNEXT headless dump at frame 300):
 
 ```sh
-make tests/zx/<test>.tap
+make build/<test>.tap
 ~/src/spectrum/jnext/build/gui-release/jnext --headless --machine 48k \
   --sd-card ~/src/spectrum/jnext/roms/nextzxos-1gb-fat32fix.img \
-  --load tests/zx/<test>.tap \
+  --load build/<test>.tap \
   --delayed-screenshot tests/refs/zx/<test>.png --delayed-screenshot-frames 300 \
   --delayed-automatic-exit 10
 ```
@@ -63,12 +63,12 @@ Regenerate / check (CPC, all 4 modes — `make cpc-artifact-check` prints AE per
 mode, 0 = pass):
 
 ```sh
-make cpc-artifact-mode2          # then screenshot CPCART.dsk -> cpc/artifact/CPCART.png
-make cpc-artifact-mode1          #                 CPCART1.dsk -> CPCART1.png
-make cpc-artifact-mode0          #                 CPCART0.dsk -> CPCART0.png
-make cpc-artifact-mode1-mono     #                 CPCARTM.dsk -> CPCARTM.png
-make cpc-artifact-check          # build all + screenshot + compare to refs
+make cpc-run-test TEST=artifact MODE=2        # CPCART.dsk  -> cpc/artifact/CPCART.png
+make cpc-run-test TEST=artifact MODE=1        # CPCART1.dsk -> CPCART1.png
+make cpc-run-test TEST=artifact MODE=0        # CPCART0.dsk -> CPCART0.png
+make cpc-run-test TEST=artifact MODE=1_mono   # CPCARTM.dsk -> CPCARTM.png
+make cpc-artifact-check                       # build all + screenshot + compare to refs
 ```
 
-ZX: `make tests/zx/test_artifact.tap` then the JNEXT capture above into
+ZX: `make build/test_artifact.tap` then the JNEXT capture above into
 `zx/test_artifact.png`.

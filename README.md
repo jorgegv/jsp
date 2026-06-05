@@ -22,10 +22,9 @@ mode + palette before the first redraw.
 Build/run the CPC matrix with the Makefile:
 
 ```
-make run JSP_TARGET=cpc JSP_CPC_MODE=2          # build + screenshot Mode 2 in cap32
-make run JSP_TARGET=cpc JSP_CPC_MODE=2_FAST     # any of 2 1 0 1_MONO 2_FAST 0_FAST 1_FAST
-make cpc-matrix                                 # build every CPC config
-make run-cpc-matrix                             # build + screenshot every config
+make cpc-run-test TEST=sprite                   # build + screenshot Mode 2 in cap32
+make cpc-run-test TEST=sprite MODE=2_fast       # any of 2 1 1_mono 0 2_fast 0_fast 1_fast
+make cpc-tests                                  # build every CPC config + run the regressions
 ```
 
 CPC programs are run/screenshotted headless in the Caprice32 emulator (there is
@@ -45,7 +44,7 @@ Ensure you have a recent Z88DK build and you have configured your environment to
 
 Edit `main.c` and comment/uncomment the desired test to be run, then do a `make build` to create the `main.tap` file which can be run on any ZX Spectrum emulator.
 
-Do a `make run` to build and run the `main.tap` file on [FUSE emulator](https://fuse-emulator.sourceforge.net/) (which you must have installed).
+Do a `make zx-run` to build and run the `main.tap` file on [FUSE emulator](https://fuse-emulator.sourceforge.net/) (which you must have installed).
 
 ## Memory layout
 

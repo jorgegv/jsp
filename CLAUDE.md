@@ -11,13 +11,17 @@ JSP (Jorge's Sprite Library) is an experimental sprite and background tile manag
 The Makefile is self-documenting: `make` with no target prints the list of
 available targets and what each does.
 
+The top-level Makefile keeps a small curated target set (ZX targets are
+`zx-*`-prefixed; the whole CPC mode matrix is collapsed into `cpc-run-test` /
+`cpc-tests`). All artifacts go to `build/`.
+
 ```bash
-make build   # Clean rebuild → produces build/main.tap
-make run     # Build and launch in FUSE emulator
-make clean   # Remove all build artifacts
+make build   # alias of build-zx: clean rebuild → produces build/main.tap
+make zx-run  # Build and launch build/main.tap in FUSE emulator
+make clean   # Remove build/ + per-source intermediates
 ```
 
-Requires: Z88DK with `zcc` in PATH, and FUSE emulator for `make run`.
+Requires: Z88DK with `zcc` in PATH, and FUSE emulator for `make zx-run`.
 
 Asset generation (regenerate sprite ASM from PNG):
 ```bash
@@ -36,21 +40,32 @@ All build artifacts (taps, dsks, named binaries, screenshots) are emitted into
 the `build/` directory; `make clean` is just `rm -rf build/`.
 
 ```bash
-make tests                        # Build all ZX test taps (build/)
+make zx-tests                     # Build all ZX test taps (build/)
 make build/test_NAME.tap          # Build a single ZX test
-make run-test TEST=test_NAME      # Build and launch a single ZX test in FUSE
+make zx-run-test TEST=test_NAME   # Build and launch a single ZX test in FUSE
 ```
 
 Available ZX tests: `test_dtt`, `test_btt_contents`, `test_btt_redraw`, `test_sprite_draw`, `test_sprite_move`, `test_pool_and_colour`, `test_tiles_and_print`, `test_foreground_tiles`.
 
-CPC tests (`zcc +cpc`, headless cap32 screenshot via the `caprice-testing` skill):
+CPC tests (`zcc +cpc`, headless cap32 screenshot via the `caprice-testing` skill)
+are driven by one parametrized target, `cpc-run-test TEST=<name> [MODE=<token>]`,
+plus `cpc-tests` which builds every config and runs the regressions:
 
 ```bash
-make run-cpc-bg                   # Mode 2 background-tile test
-make run-cpc-sprite               # Mode 2 sprite test (settles for screenshot)
-make cpc-sprite-demo-mode2        # Mode 2 sprite demo (bounces continuously);
-                                  #   watch: cap32 -a 'run"CPCSPRD.' build/CPCSPRD.dsk
+make cpc-tests                       # build all CPC configs + shift unit tests + artifact regression
+make cpc-run-test TEST=bg            # Mode 2 background-tile test (build + screenshot)
+make cpc-run-test TEST=sprite        # Mode 2 sprite test (MODE defaults to 2)
+make cpc-run-test TEST=sprite MODE=1_fast   # a specific sprite mode
+make cpc-run-test TEST=demo          # Mode 2 sprite demo (bounces continuously);
+                                     #   watch: cap32 -a 'run"CPCSPRD.' build/CPCSPRD.dsk
 ```
+
+`TEST` ∈ `sprite artifact shift bg foreground btt-redraw demo`; for
+`sprite`/`artifact`/`shift`, `MODE` selects the variant (sprite: `2 1 1_mono 0
+2_fast 0_fast 1_fast`; artifact/shift: a subset). `SHOT=0` skips the screenshot
+(build only). Non-test maintenance targets `cpc-artifact-check`,
+`cpc-perf-matrix`, and `cpc-cell-model-archive` still exist but are omitted from
+`make help`.
 
 ## Code Structure
 
