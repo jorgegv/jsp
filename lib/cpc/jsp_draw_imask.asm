@@ -2,8 +2,8 @@
 ;;
 ;; The _IMASK sprite modes (CPC_MODE0_IMASK / CPC_MODE1_IMASK) store graph bytes
 ;; only (8 B/cell, like LOAD1); pen 0 is transparent and the per-pixel mask is
-;; derived at composite time from the graph byte via jsp_imask_tbl[256] (built in
-;; lib/jsp_init.c from JSP_IMASK()).  The composite per byte is:
+;; derived at composite time from jsp_imask_tbl[256] (built in lib/jsp_init.c
+;; from JSP_IMASK()).  The composite per byte is:
 ;;
 ;;     screen = ( background & jsp_imask_tbl[ graph ] ) | graph
 ;;
@@ -13,16 +13,18 @@
 ;; background", a sprite's vacated/border bits (which are 0) are transparent for
 ;; free — so the border kernels need no special 0xFF mask seeding (unlike MASK2).
 ;;
+;; Register plan (optimised — avoids per-line page juggling): the rottbl IN page
+;; stays in H for the whole kernel (a single inc h / dec h per line reaches the
+;; CARRY page); the LUT lookup uses DE (D = LUT page held constant, E = the graph
+;; byte), so H never has to be swapped to the LUT page and back.  The graph
+;; pointer therefore lives in BC (ld a,(bc)); IX = left graph def, IY = dst slot.
+;;
 ;; Four kernels, same signatures as the MASK2 family so the covered-cell
 ;; compositor only swaps the call target:
 ;;   _jsp_draw_imask   (dst, graph, graph_left)  middle column: IN(this)|CARRY(left)
 ;;   _jsp_draw_imasknr (dst, graph)              no rotation (xrot==0 aligned)
 ;;   _jsp_draw_imasklb (dst, graph)              left border:  IN(this) only
 ;;   _jsp_draw_imaskrb (dst, graph)              right border: CARRY(this) only
-;;
-;; Written in a simple, uniform per-line style (correctness first); the rottbl
-;; page is held in B across the line loop and H is reloaded each line, swapping
-;; to the LUT page (immediate _jsp_imask_tbl/256) for the mask lookup.
 
 	IFDEF JSP_TARGET_CPC
 	IF CPC_MODE0_IMASK || CPC_MODE1_IMASK
@@ -44,48 +46,42 @@
 	extern cc_scratch
 
 ;; ---- per-line composite macros --------------------------------------------
-;; MID line n: B = rottbl IN page, DE = this graph ptr, IX = left graph def,
-;;             dst via CC (iy / absolute).  G = IN(this) | CARRY(left).
+;; Shared register state: H = rottbl IN page, D = LUT page, BC = graph ptr,
+;; IX = left graph def, dst via CC (iy / absolute).  A/E/L are scratch; E carries
+;; the combined graph G into the final OR.
+
+;; MID line n: G = IN(this) | CARRY(left).
 	MACRO IMASK_MID n
-	ld h,b				; H = rottbl IN page
-	ld a,(de)			; this graph byte
-	inc de
+	ld a,(bc)			; this graph byte
+	inc bc
 	ld l,a
-	ld a,(hl)			; IN(this)
+	ld a,(hl)			; IN(this)        [H = rottbl IN page]
 	inc h				; H = CARRY page
 	ld l,(ix+n)			; left graph byte (line n)
 	or (hl)				; A = G = IN(this) | CARRY(left)
-	ld c,a				; save G
-	ld l,a
-	ld h,_jsp_imask_tbl/256		; H = LUT page
-	ld a,(hl)			; A = mask = jsp_imask_tbl[G]
-	ld l,a				; stash mask in L (CC_RD/WR don't touch L)
+	dec h				; H = rottbl IN page (for next line)
+	ld e,a				; E = G           [D = LUT page]
+	ld a,(de)			; A = mask = jsp_imask_tbl[G]
+	ld l,a				; stash mask in L (CC_RD/WR keep L,E)
 	CC_RD n				; A = background
 	and l				; bg & mask
-	or c				; | graph
+	or e				; | graph (E = G)
 	CC_WR n				; store
 	ENDM
 
-;; BORDER line n: B = rottbl IN page, DE = source graph ptr, dst via CC.
-;;   carry=0 -> G = IN(source)   (left border, this column)
-;;   carry=1 -> G = CARRY(source) (right border, last column's spill)
-	MACRO IMASK_BORDER n, carry
-	ld h,b				; H = rottbl IN page
-	IF carry
-	inc h				; H = CARRY page
-	ENDIF
-	ld a,(de)			; source graph byte
-	inc de
+;; BORDER line n: H is set ONCE at entry (IN page for lb, CARRY page for rb), so
+;; one rottbl read gives G directly — no per-line page change.
+	MACRO IMASK_BORDER n
+	ld a,(bc)			; source graph byte
+	inc bc
 	ld l,a
-	ld a,(hl)			; A = G (IN or CARRY half)
-	ld c,a				; save G
-	ld l,a
-	ld h,_jsp_imask_tbl/256		; H = LUT page
-	ld a,(hl)			; A = mask
+	ld a,(hl)			; A = G (IN or CARRY half; H constant)
+	ld e,a				; E = G
+	ld a,(de)			; A = mask
 	ld l,a
 	CC_RD n
 	and l
-	or c
+	or e
 	CC_WR n
 	ENDM
 
@@ -125,12 +121,14 @@ _jsp_draw_imask:
 	push ix				; save caller's IX (frame sprite)
 	push de
 	pop ix				; IX = left graphic def
-	ex de,hl			; DE = this graphic def ptr
 	IF JSP_GEOM_COLBYTES > 1
 	push bc
 	pop iy				; IY = dst slot
 	ENDIF
-	ld b,a				; B = rottbl IN page
+	ld c,l
+	ld b,h				; BC = this graphic def ptr
+	ld h,a				; H = rottbl IN page (L set per line)
+	ld d,_jsp_imask_tbl/256		; D = LUT page (E set per line)
 
 	IMASK_MID 0
 	IMASK_MID 1
@@ -191,17 +189,19 @@ _jsp_draw_imasklb:
 	push bc
 	pop iy				; IY = dst slot
 	ENDIF
-	ex de,hl			; DE = graphic def ptr
-	ld b,a				; B = rottbl IN page
+	ld c,l
+	ld b,h				; BC = graphic def ptr
+	ld h,a				; H = rottbl IN page (constant)
+	ld d,_jsp_imask_tbl/256		; D = LUT page
 
-	IMASK_BORDER 0, 0
-	IMASK_BORDER 1, 0
-	IMASK_BORDER 2, 0
-	IMASK_BORDER 3, 0
-	IMASK_BORDER 4, 0
-	IMASK_BORDER 5, 0
-	IMASK_BORDER 6, 0
-	IMASK_BORDER 7, 0
+	IMASK_BORDER 0
+	IMASK_BORDER 1
+	IMASK_BORDER 2
+	IMASK_BORDER 3
+	IMASK_BORDER 4
+	IMASK_BORDER 5
+	IMASK_BORDER 6
+	IMASK_BORDER 7
 	ret
 
 ;; ===========================================================================
@@ -223,17 +223,20 @@ _jsp_draw_imaskrb:
 	push bc
 	pop iy				; IY = dst slot
 	ENDIF
-	ex de,hl			; DE = graphic def ptr
-	ld b,a				; B = rottbl IN page
+	ld c,l
+	ld b,h				; BC = graphic def ptr
+	ld h,a
+	inc h				; H = rottbl CARRY page (constant)
+	ld d,_jsp_imask_tbl/256		; D = LUT page
 
-	IMASK_BORDER 0, 1
-	IMASK_BORDER 1, 1
-	IMASK_BORDER 2, 1
-	IMASK_BORDER 3, 1
-	IMASK_BORDER 4, 1
-	IMASK_BORDER 5, 1
-	IMASK_BORDER 6, 1
-	IMASK_BORDER 7, 1
+	IMASK_BORDER 0
+	IMASK_BORDER 1
+	IMASK_BORDER 2
+	IMASK_BORDER 3
+	IMASK_BORDER 4
+	IMASK_BORDER 5
+	IMASK_BORDER 6
+	IMASK_BORDER 7
 	ret
 
 	ENDIF			; CPC_MODE0_IMASK || CPC_MODE1_IMASK

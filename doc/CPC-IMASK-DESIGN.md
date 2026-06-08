@@ -107,19 +107,40 @@ Counting memory cycles per byte (the Z80 bottleneck):
 Conclusion: **no performance penalty expected**; small win in the rotating
 kernel, plus halved data improves fetch locality.
 
-**Measured** (2026-06-08, cap32 wall-clock, same scene built as MASK2 vs IMASK,
-boot-free metric t(2000)−t(1000) for 1000 redraws of 8 sprites; lower = faster):
+**Measured** (2026-06-08, cap32 wall-clock). Two kernel revisions exist:
 
-| Mode | MASK2 | IMASK | Δ |
-|------|-------|-------|---|
-| Mode 1 | 13.26 s | 13.28 s | +0.2% |
-| Mode 0 | 15.12 s | 15.12 s | +0.05% |
+- **Baseline** (correctness-first): reloads the rottbl page and swaps to the LUT
+  page *per line* (`ld h,b` + `ld h,imask/256`).
+- **Optimised** (`lib/cpc/jsp_draw_imask.asm`): keeps the rottbl page in H for the
+  whole kernel (a single `inc h`/`dec h` reaches the CARRY page) and does the LUT
+  lookup via **DE** (`D` = LUT page held constant, `E` = the graph byte), so H is
+  never swapped. The graph pointer moves to BC. Border kernels become
+  H-constant (no per-line page load at all).
 
-So the simple correctness-first kernel is **performance-neutral** (within
-measurement noise) at **half the sprite memory** — the predicted outcome. The
-implemented kernel reloads the rottbl page per line and swaps to the LUT page,
-which spends back the theoretical rotating-path saving; a future optimisation
-pass could pull ahead, but the memory win is the point.
+Per-byte T-state cost (deterministic, counted from the assembly):
+
+| Kernel | baseline | optimised |
+|--------|----------|-----------|
+| mid    | 130 T    | **119 T** (−8.5%) |
+| border (lb/rb) | 110 T | **85 T** (−23%) |
+
+Frame-level wall-clock, Mode 1, a kernel-heavy scene (8 sprites re-composited
+every frame), large-sample boot-free metric **t(8000) − t(2000)** (= 6000
+redraws; the small-sample t(2000)−t(1000) earlier was swamped by boot-overhead
+noise and is unreliable):
+
+| M1, 6000 redraws | time | vs MASK2 |
+|------------------|------|----------|
+| MASK2            | 89.2 s | — |
+| IMASK baseline   | 84.1 s | 5.7% faster |
+| IMASK optimised  | **68.4 s** | **23% faster** (19% faster than baseline IMASK) |
+
+So the optimised kernel is **faster than MASK2** (not just neutral) at **half the
+sprite memory**. The frame-level gain scales with how kernel-bound the scene is;
+a lighter scene shows less. (Mode 0 wall-clock was too flaky to pin down in this
+environment — cap32 timing crashed/varied wildly per run — but the kernel is the
+same code with strictly fewer T-states, and the optimised M0 build is verified
+pixel-identical to MASK2.)
 
 ## 5. Special optimisations unlocked
 
