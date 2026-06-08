@@ -1,12 +1,40 @@
 # CPC `_IMASK` Implementation Plan
 
-Status: **plan** (2026-06-08). Companion to `doc/CPC-IMASK-DESIGN.md` (the
-evaluation/rationale). This document is the concrete build order: every file to
-touch, the design decisions taken, and the test gate per phase.
+Status: **complete** (2026-06-08, branch `cpc_implicit_mask`, not yet merged).
+Companion to `doc/CPC-IMASK-DESIGN.md` (the evaluation/rationale). This document
+is the concrete build order: every file to touch, the design decisions taken, and
+the test gate per phase.
 
 Scope: add `CPC_MODE0_IMASK` and `CPC_MODE1_IMASK`. **No** `CPC_MODE2_IMASK`
 (collapses to `_MONO`). **No** `_IMASK_FAST` combo (IMASK is always a shifting
 build). Work branch: `cpc_implicit_mask`.
+
+## Outcome
+
+All seven phases landed and verified:
+
+- **Correctness:** the IMASK render is **pixel-identical to MASK2 over a black
+  background** (AE = 0) at every xrot phase, in both Mode 0 and Mode 1 (the
+  oracle — opaque pixels draw exactly as MASK2; over a coloured background they
+  differ only in pen-0 regions, the intended transparency). Host LUT unit test
+  PASS both modes. `make cpc-tests` green, `make zx-tests` all AE = 0 (no
+  regression from the shared-header edits).
+- **Memory:** masked sprites halved — M1 = ZX size, M0 = 2× ZX; +256 B LUT/build.
+- **Performance:** an optimisation pass (rottbl page kept in H, LUT lookup via
+  DE, graph pointer in BC, border kernels H-constant — baseline tagged
+  `imask-baseline`) cut the per-byte kernel cost: mid 130→119 T (−8.5%), border
+  110→85 T (−23%). At the **frame level** (rigorous 3-round interleaved,
+  boot-free t(6000)−t(2000), 8-sprite scene) the optimised IMASK is **~1–3%
+  faster than MASK2** — M1 54.4 s vs 56.2 s, M0 60.9 s vs 61.4 s per 4000 redraws
+  — at half the sprite memory. The per-byte saving is diluted at frame level
+  because the redraw is dominated by the background blit + DTT walk, not the
+  sprite kernel. (An earlier *single-run* "23%" was a measurement artifact;
+  cap32 wall-clock needs multi-round sampling. Full numbers + method in
+  `doc/CPC-IMASK-DESIGN.md` §4.)
+- **Correction to §0.2 below:** the lb/rb border kernels are **kept** (they
+  handle the graph rotation carry, like LOAD1's); IMASK only drops the parallel
+  *mask* shift and the 0xFF border-mask seeding. The §5/§9 notes in the design
+  doc are corrected accordingly.
 
 ---
 

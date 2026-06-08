@@ -124,23 +124,28 @@ Per-byte T-state cost (deterministic, counted from the assembly):
 | mid    | 130 T    | **119 T** (−8.5%) |
 | border (lb/rb) | 110 T | **85 T** (−23%) |
 
-Frame-level wall-clock, Mode 1, a kernel-heavy scene (8 sprites re-composited
-every frame), large-sample boot-free metric **t(8000) − t(2000)** (= 6000
-redraws; the small-sample t(2000)−t(1000) earlier was swamped by boot-overhead
-noise and is unreliable):
+Frame-level wall-clock — the rigorous measurement (8 sprites re-composited every
+frame, **3 interleaved rounds**, boot-free metric **t(6000) − t(2000)** = 4000
+redraws, crash runs discarded; averaged):
 
-| M1, 6000 redraws | time | vs MASK2 |
-|------------------|------|----------|
-| MASK2            | 89.2 s | — |
-| IMASK baseline   | 84.1 s | 5.7% faster |
-| IMASK optimised  | **68.4 s** | **23% faster** (19% faster than baseline IMASK) |
+| 4000 redraws | MASK2 | IMASK baseline | IMASK optimised |
+|--------------|-------|----------------|-----------------|
+| Mode 1 | 56.2 s | 54.8 s (−2.5%) | **54.4 s** (−3.2% vs MASK2, −0.75% vs baseline) |
+| Mode 0 | 61.4 s | 61.5 s (≈0) | **60.9 s** (−0.9% vs MASK2, −1.0% vs baseline) |
 
-So the optimised kernel is **faster than MASK2** (not just neutral) at **half the
-sprite memory**. The frame-level gain scales with how kernel-bound the scene is;
-a lighter scene shows less. (Mode 0 wall-clock was too flaky to pin down in this
-environment — cap32 timing crashed/varied wildly per run — but the kernel is the
-same code with strictly fewer T-states, and the optimised M0 build is verified
-pixel-identical to MASK2.)
+So at the frame level IMASK is **slightly faster than MASK2** (~1–3%) at **half
+the sprite memory**, and the optimisation adds a further ~1% over the baseline
+IMASK. The per-byte kernel saving (−8.5% / −23% above) is real but **heavily
+diluted** at frame level, because this scene's redraw is dominated by the
+background-tile blit and the DTT walk, not the sprite kernel; a sprite/overlap-
+heavy scene would show the kernel saving more strongly.
+
+> **Measurement caveat (learned the hard way).** cap32 wall-clock is noisy:
+> single runs vary by several percent and occasionally crash (1 s / 4.5 s
+> outliers). An earlier *single-run* reading suggested "23% faster" — that was a
+> noise artifact. Only **interleaved multi-round sampling** with the large-gap
+> boot-free metric gives a trustworthy number; the table above uses that. Always
+> average ≥3 interleaved rounds and discard sub-10 s (crashed) results.
 
 ## 5. Special optimisations unlocked
 
