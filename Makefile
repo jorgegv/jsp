@@ -176,6 +176,9 @@ SPRITE_MASK2_M1_ASM = $(TESTS_DIR)/test_sprite_mask2_m1.asm
 SPRITE_LOAD1_M1_ASM = $(TESTS_DIR)/test_sprite_load1_m1.asm
 SPRITE_MASK2_M0_ASM = $(TESTS_DIR)/test_sprite_mask2_m0.asm
 SPRITE_LOAD1_M0_ASM = $(TESTS_DIR)/test_sprite_load1_m0.asm
+# Implicit-mask balls (graph-only, pen 0 transparent; CPC _IMASK modes).
+SPRITE_IMASK_M1_ASM = $(TESTS_DIR)/test_sprite_imask_m1.asm
+SPRITE_IMASK_M0_ASM = $(TESTS_DIR)/test_sprite_imask_m0.asm
 # Multicolour balls (4 pens Mode 1 / many pens Mode 0): pixels + emitted palette.
 BALL_M1_ASM         = $(TESTS_DIR)/test_ball_m1.asm
 BALL_M0_ASM         = $(TESTS_DIR)/test_ball_m0.asm
@@ -320,9 +323,10 @@ CPC_SPRD_NAME	= CPCSPRD
 ## Mode tokens (also accepted as MODE=…): sprite uses all seven; artifact and
 ## shift-test use a subset.
 MODE			?= 2
-CPC_SPRITE_MODES	= 2 1 1_mono 0 2_fast 0_fast 1_fast
+CPC_SPRITE_MODES	= 2 1 1_mono 0 2_fast 0_fast 1_fast 1_imask 0_imask
 CPC_ARTIFACT_MODES	= 2 1 0 1_mono
 CPC_SHIFT_MODES		= 2 1 1_mono 0
+CPC_IMASK_MODES		= 1_imask 0_imask
 
 m_def_2 = 2
 m_def_1 = 1
@@ -331,6 +335,8 @@ m_def_0 = 0
 m_def_2_fast = 2_FAST
 m_def_0_fast = 0_FAST
 m_def_1_fast = 1_FAST
+m_def_1_imask = 1_IMASK
+m_def_0_imask = 0_IMASK
 
 m_src_2 = test_cpc_sprite.c
 m_src_1 = test_cpc_sprite_mode1.c
@@ -339,6 +345,8 @@ m_src_0 = test_cpc_sprite_mode0.c
 m_src_2_fast = test_cpc_sprite.c
 m_src_0_fast = test_cpc_sprite_mode0.c
 m_src_1_fast = test_cpc_sprite_mode1.c
+m_src_1_imask = test_cpc_sprite_imask.c
+m_src_0_imask = test_cpc_sprite_imask.c
 
 m_mask_2 = $(SPRITE_MASK2_ASM)
 m_mask_1 = $(SPRITE_MASK2_M1_ASM) $(BALL_M1_ASM)
@@ -347,6 +355,8 @@ m_mask_0 = $(SPRITE_MASK2_M0_ASM) $(BALL_M0_ASM)
 m_mask_2_fast = $(SPRITE_MASK2_ASM)
 m_mask_0_fast = $(SPRITE_MASK2_M0_ASM) $(BALL_M0_ASM)
 m_mask_1_fast = $(SPRITE_MASK2_M1_ASM) $(BALL_M1_ASM)
+m_mask_1_imask = $(SPRITE_IMASK_M1_ASM)
+m_mask_0_imask = $(SPRITE_IMASK_M0_ASM)
 
 m_load_2 = $(SPRITE_LOAD1_ASM)
 m_load_1 = $(SPRITE_LOAD1_M1_ASM)
@@ -360,6 +370,8 @@ m_name_0 = CPCSPR0
 m_name_2_fast = CPCSPR2F
 m_name_0_fast = CPCSPR0F
 m_name_1_fast = CPCSPR1F
+m_name_1_imask = CPCSPR1I
+m_name_0_imask = CPCSPR0I
 
 m_artname_2 = CPCART
 m_artname_1 = CPCART1
@@ -374,7 +386,8 @@ m_shiftdef_0 = -DCPC_MODE0
 # every sprite asset (cpc-run-test depends on these so the needed .asm exists)
 ALL_CPC_ASSETS = $(SPRITE_MASK2_ASM) $(SPRITE_LOAD1_ASM) \
 		 $(SPRITE_MASK2_M1_ASM) $(SPRITE_LOAD1_M1_ASM) \
-		 $(SPRITE_MASK2_M0_ASM) $(SPRITE_LOAD1_M0_ASM)
+		 $(SPRITE_MASK2_M0_ASM) $(SPRITE_LOAD1_M0_ASM) \
+		 $(SPRITE_IMASK_M1_ASM) $(SPRITE_IMASK_M0_ASM)
 
 ## ============================================================================
 ## CPC tests
@@ -392,6 +405,12 @@ cpc-run-test: $(ALL_CPC_ASSETS) | $(BUILD_STAMP)
 		$(HOSTCC) -O2 -Wall $(m_shiftdef_$(MODE)) -I$(INCLUDE_DIR) \
 			-o $(BUILD_DIR)/shift_test_mode$(MODE) $(CPCTEST_DIR)/shift_test_mode$(MODE).c; \
 		$(BUILD_DIR)/shift_test_mode$(MODE) $(m_mask_$(MODE)); \
+		exit 0 ;; \
+	imask) \
+		echo "CPC _IMASK LUT unit test [MODE=$(MODE)]..."; \
+		$(HOSTCC) -O2 -Wall -DCPC_MODE$(m_def_$(MODE)) -I$(INCLUDE_DIR) \
+			-o $(BUILD_DIR)/imask_test_$(MODE) $(CPCTEST_DIR)/imask_test.c; \
+		$(BUILD_DIR)/imask_test_$(MODE); \
 		exit 0 ;; \
 	sprite)     src=$(m_src_$(MODE));      asset="$(m_mask_$(MODE))"; name="$(m_name_$(MODE))" ;; \
 	artifact)   src=$(ARTIFACT_SRC);       asset="$(m_load_$(MODE))"; name="$(m_artname_$(MODE))" ;; \
@@ -419,6 +438,8 @@ cpc-tests:
 	@for t in bg foreground btt-redraw; do $(MAKE) cpc-run-test TEST=$$t SHOT=0 || exit 1; done
 	@echo "== CPC: shift/mask host unit tests =="
 	@for m in $(CPC_SHIFT_MODES); do $(MAKE) cpc-run-test TEST=shift MODE=$$m || exit 1; done
+	@echo "== CPC: _IMASK LUT host unit tests =="
+	@for m in $(CPC_IMASK_MODES); do $(MAKE) cpc-run-test TEST=imask MODE=$$m || exit 1; done
 	@echo "== CPC: bottom-line artifact regression =="
 	@$(MAKE) cpc-artifact-check
 	@echo "CPC tests complete."
@@ -513,6 +534,20 @@ $(TESTS_DIR)/test_sprite_load1_m0.asm:
 		-m FF0000 -f FFFFFF -b 000000 --mode 0 \
 		-s _test_sprite_load1_m0_pixels \
 		-g sprite_load --extra-bottom-row --extra-top-rows > $@
+
+## Implicit-mask balls (graph-only, pen 0 transparent): same art as mask2, half
+## the size.  CPC _IMASK modes (sprite_imask gfx-type).
+$(TESTS_DIR)/test_sprite_imask_m1.asm:
+	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 --mode 1 \
+		-s _test_sprite_imask_m1_pixels \
+		-g sprite_imask --extra-bottom-row --extra-top-rows > $@
+
+$(TESTS_DIR)/test_sprite_imask_m0.asm:
+	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+		-m FF0000 -f FFFFFF -b 000000 --mode 0 \
+		-s _test_sprite_imask_m0_pixels \
+		-g sprite_imask --extra-bottom-row --extra-top-rows > $@
 
 ## Multicolour balls — same ball shape, interior recoloured with several CPC
 ## colours (Mode 1 = 4 pens, Mode 0 = many).  --multicolor maps each PNG pixel to
