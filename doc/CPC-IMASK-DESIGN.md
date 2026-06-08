@@ -105,8 +105,21 @@ Counting memory cycles per byte (the Z80 bottleneck):
   → **net faster in the shifted case.**
 
 Conclusion: **no performance penalty expected**; small win in the rotating
-kernel, plus halved data improves fetch locality. To be confirmed with
-`cpc-perf-matrix` before committing.
+kernel, plus halved data improves fetch locality.
+
+**Measured** (2026-06-08, cap32 wall-clock, same scene built as MASK2 vs IMASK,
+boot-free metric t(2000)−t(1000) for 1000 redraws of 8 sprites; lower = faster):
+
+| Mode | MASK2 | IMASK | Δ |
+|------|-------|-------|---|
+| Mode 1 | 13.26 s | 13.28 s | +0.2% |
+| Mode 0 | 15.12 s | 15.12 s | +0.05% |
+
+So the simple correctness-first kernel is **performance-neutral** (within
+measurement noise) at **half the sprite memory** — the predicted outcome. The
+implemented kernel reloads the rottbl page per line and swaps to the LUT page,
+which spends back the theoretical rotating-path saving; a future optimisation
+pass could pull ahead, but the memory win is the point.
 
 ## 5. Special optimisations unlocked
 

@@ -136,19 +136,42 @@ void main( void ) {
 #ifndef BALLSTEP
 #define BALLSTEP 25                          // odd step -> walks all xrot phases
 #endif
+
+// The transparent draw call differs only by the type wrapper; in a _IMASK build
+// it's the imask wrapper, otherwise the generic (type set via DEFINE_SPRITE).
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+#define DRAW(sp,xx,yy) jsp_draw_sprite_imask( (sp), (xx), (yy) )
+#else
+#define DRAW(sp,xx,yy) jsp_draw_sprite( (sp), (xx), (yy) )
+#endif
+
+#ifdef TIME_LIMITED
+    // Perf harness: re-draw all sprites (marks their cells dirty) and recomposite
+    // for exactly TIME_LIMITED frames, then rst 0.  Same scene whether built as
+    // _IMASK (imask kernel) or plain (MASK2 kernel) — a fair head-to-head.
+    {
+        uint16_t f;
+        for ( f = 0; f < TIME_LIMITED; f++ ) {
+            for ( i = 0; i < NBALLS; i++ ) {
+                x = BALLX0 + i * BALLSTEP;
+                DRAW( balls[i], x, 50 + ( i & 1 ) * 60 );
+            }
+            jsp_redraw();
+        }
+    }
+    __asm
+    di
+    rst 0
+    __endasm;
+#else
     // Non-overlapping row of balls at successive X so every sub-byte xrot phase
     // is exercised (the NR / mid / lb / rb kernels) without inter-sprite overlap
-    // muddying the picture.  Two rows for M0 (more, narrower cells).
+    // muddying the picture.
     for ( i = 0; i < NBALLS; i++ ) {
         x = BALLX0 + i * BALLSTEP;
-#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
-        jsp_draw_sprite_imask( balls[i], x, 50 + ( i & 1 ) * 60 );  // wrapper API
-#else
-        jsp_draw_sprite( balls[i], x, 50 + ( i & 1 ) * 60 );
-#endif
+        DRAW( balls[i], x, 50 + ( i & 1 ) * 60 );
     }
-
     jsp_redraw();
-
     for ( ;; ) ;
+#endif
 }
