@@ -31,10 +31,11 @@ All seven phases landed and verified:
   sprite kernel. (An earlier *single-run* "23%" was a measurement artifact;
   cap32 wall-clock needs multi-round sampling. Full numbers + method in
   `doc/CPC-IMASK-DESIGN.md` §4.)
-- **Correction to §0.2 below:** the lb/rb border kernels are **kept** (they
-  handle the graph rotation carry, like LOAD1's); IMASK only drops the parallel
-  *mask* shift and the 0xFF border-mask seeding. The §5/§9 notes in the design
-  doc are corrected accordingly.
+- **Kernel shape:** four kernels (mid / nr / lb / rb), same as MASK2 — the lb/rb
+  border kernels are **kept** (they handle the graph rotation carry, like LOAD1's)
+  and the nr kernel serves the aligned xrot==0 phase; IMASK only drops the
+  parallel *mask* shift and the 0xFF border-mask seeding. (An earlier design-doc
+  draft claimed the border kernels were eliminated — corrected in §5/§9 there.)
 
 ---
 
@@ -56,9 +57,11 @@ All seven phases landed and verified:
    shift* (mask2 shifts both mask and graph through `jsp_rottbl`; imask shifts
    only graph and derives the mask via a LUT) and the 0xFF transparent
    border-mask seeding (borders are transparent for free because edge graph bits
-   are 0 → `imask[0…]` = keep background). So IMASK needs **3 rotating kernels**
-   (mid/lb/rb), each simpler than its mask2 twin, and **no** no-rotate kernel
-   (IMASK is never FAST).
+   are 0 → `imask[0…]` = keep background). So IMASK needs the **same four kernels**
+   as MASK2 — three rotating (mid/lb/rb) plus the **no-rotate `nr`**, which the
+   rotating kernels delegate to for the aligned (xrot==0) phase exactly as MASK2
+   does — each a simpler, graph-only variant of its MASK2 twin. (An earlier draft
+   of this section wrongly said "no nr kernel"; the aligned phase needs it.)
 
 3. **The LUT page is addressable as an immediate.** `z80asm` accepts
    `_jsp_rottbl/256` on an extern (`jsp_frame.asm:226`), so the kernel can do
