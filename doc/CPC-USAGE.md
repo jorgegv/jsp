@@ -42,17 +42,17 @@ SP1's equivalent).
 Choose **exactly one** mode at compile time via a `-D` guard. The mode fixes the
 colour count, horizontal resolution and sub-pixel positioning granularity:
 
-| Compile guard      | px/byte | colours | screen W | sprite X positioning | notes                              |
-|--------------------|---------|---------|----------|----------------------|------------------------------------|
-| `CPC_MODE2`        | 8       | 2       | 640 px   | 1 px (7 shift phases)| closest to ZX; mono ink/paper      |
-| `CPC_MODE1`        | 4       | 4       | 320 px   | 1 px (3 shift phases)| per-pixel colour (4 pens)          |
-| `CPC_MODE0`        | 2       | 16      | 160 px   | 1 px (1 shift phase) | per-pixel colour (16 pens)         |
-| `CPC_MODE1_MONO`   | 4       | 2       | 320 px   | 1 px                 | 1bpp assets on a Mode-1 screen     |
-| `CPC_MODE2_FAST`   | 8       | 2       | 640 px   | **8 px** (byte-aligned)| no shift table — smallest/fastest |
-| `CPC_MODE0_FAST`   | 2       | 16      | 160 px   | **2 px** (byte-aligned)| no shift table                    |
-| `CPC_MODE1_FAST`   | 4       | 4       | 320 px   | **4 px** (byte-aligned)| no shift table                    |
-| `CPC_MODE1_IMASK`  | 4       | 4 (pen 0 = transp.) | 320 px | 1 px (3 shift phases)| implicit-mask sprites: half-size, pen 0 transparent |
-| `CPC_MODE0_IMASK`  | 2       | 16 (pen 0 = transp.)| 160 px | 1 px (1 shift phase) | implicit-mask sprites: half-size, pen 0 transparent |
+| Compile guard     | px/byte | colours              | screen W | sprite X positioning    | notes                                               |
+|-------------------|---------|----------------------|----------|-------------------------|-----------------------------------------------------|
+| `CPC_MODE2`       | 8       | 2                    | 640 px   | 1 px (7 shift phases)   | closest to ZX; mono ink/paper                       |
+| `CPC_MODE1`       | 4       | 4                    | 320 px   | 1 px (3 shift phases)   | per-pixel colour (4 pens)                           |
+| `CPC_MODE0`       | 2       | 16                   | 160 px   | 1 px (1 shift phase)    | per-pixel colour (16 pens)                          |
+| `CPC_MODE1_MONO`  | 4       | 2                    | 320 px   | 1 px                    | 1bpp assets on a Mode-1 screen                      |
+| `CPC_MODE2_FAST`  | 8       | 2                    | 640 px   | **8 px** (byte-aligned) | no shift table — smallest/fastest                   |
+| `CPC_MODE0_FAST`  | 2       | 16                   | 160 px   | **2 px** (byte-aligned) | no shift table                                      |
+| `CPC_MODE1_FAST`  | 4       | 4                    | 320 px   | **4 px** (byte-aligned) | no shift table                                      |
+| `CPC_MODE1_IMASK` | 4       | 4 (pen 0 = transp.)  | 320 px   | 1 px (3 shift phases)   | implicit-mask sprites: half-size, pen 0 transparent |
+| `CPC_MODE0_IMASK` | 2       | 16 (pen 0 = transp.) | 160 px   | 1 px (1 shift phase)    | implicit-mask sprites: half-size, pen 0 transparent |
 
 The **FAST** variants force byte-aligned positioning (no sub-byte shift); they
 drop the rotation table and the rotating kernels, saving RAM/time at coarser
@@ -329,20 +329,20 @@ stack modest (the forced `REGISTER_SP=0x9800` grows down from there).
 
 ## 9. API quick reference
 
-| Function | Purpose |
-|----------|---------|
-| `jsp_init(default_tile, attr)` | initialise the engine (attr unused on CPC) |
-| `jsp_redraw()` | repaint all dirty cells — call once per frame |
-| `DEFINE_SPRITE(name,width_px,height_px,pixels,x,y,type)` | declare a static sprite (size in pixels W×H, multiples of 8) |
-| `jsp_draw_sprite(sp,x,y)` / `jsp_move_sprite(sp,x,y)` | place / move (deferred) |
-| `jsp_draw_sprite_imask(sp,x,y)` / `jsp_move_sprite_imask(sp,x,y)` | place / move an implicit-mask sprite (`_IMASK` builds) |
-| `jsp_sprite_park(sp)` | stop drawing a sprite |
-| `jsp_draw_background_tile(row,col,pix)` | place an 8-byte background tile |
-| `jsp_delete_background_tile(row,col)` | restore the default tile |
-| `jsp_draw_foreground_tile(row,col,pix)` | tile that sprites pass behind |
-| `jsp_sprite_pool_init` / `jsp_sprite_alloc` / `jsp_sprite_free` | dynamic sprites |
-| `jsp_sprite_set_clip(sp,rect)` | clip a sprite to a cell rectangle |
-| `jsp_move_sprite_frame(sp,frame,x,y)` | move + swap the pixel frame (animation) |
+| Function                                                          | Purpose                                                      |
+|-------------------------------------------------------------------|--------------------------------------------------------------|
+| `jsp_init(default_tile, attr)`                                    | initialise the engine (attr unused on CPC)                   |
+| `jsp_redraw()`                                                    | repaint all dirty cells — call once per frame                |
+| `DEFINE_SPRITE(name,width_px,height_px,pixels,x,y,type)`          | declare a static sprite (size in pixels W×H, multiples of 8) |
+| `jsp_draw_sprite(sp,x,y)` / `jsp_move_sprite(sp,x,y)`             | place / move (deferred)                                      |
+| `jsp_draw_sprite_imask(sp,x,y)` / `jsp_move_sprite_imask(sp,x,y)` | place / move an implicit-mask sprite (`_IMASK` builds)       |
+| `jsp_sprite_park(sp)`                                             | stop drawing a sprite                                        |
+| `jsp_draw_background_tile(row,col,pix)`                           | place an 8-byte background tile                              |
+| `jsp_delete_background_tile(row,col)`                             | restore the default tile                                     |
+| `jsp_draw_foreground_tile(row,col,pix)`                           | tile that sprites pass behind                                |
+| `jsp_sprite_pool_init` / `jsp_sprite_alloc` / `jsp_sprite_free`   | dynamic sprites                                              |
+| `jsp_sprite_set_clip(sp,rect)`                                    | clip a sprite to a cell rectangle                            |
+| `jsp_move_sprite_frame(sp,frame,x,y)`                             | move + swap the pixel frame (animation)                      |
 
 `jsp_*_color` / `jsp_apply_sprite_color` and the text/print API are ZX-oriented
 (attribute colour / ROM font) and have no effect on the current CPC build.
