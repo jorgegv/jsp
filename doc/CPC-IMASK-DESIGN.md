@@ -241,7 +241,7 @@ Each step is independently testable; small commits per the repo conventions.
 - `include/jsp_rottbl_formula.h` — per-mode plane layouts (LUT source of truth)
 - `lib/cpc/jsp_cpc_geom.inc` — per-mode geometry constants
 - `lib/cpc/jsp_covered.asm` — covered-cell compositor / kernel dispatch
-- `tools/cpcgfx.pl` — asset emitter (`--multicolor`, mask encoding)
+- `tools/gfxgen.pl --platform cpc` — asset emitter (`--multicolor`, mask encoding)
 - `doc/CPC-ASSETS-FORMAT.md` — current sprite data formats
 
 ---

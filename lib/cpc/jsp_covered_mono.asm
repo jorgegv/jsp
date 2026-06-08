@@ -19,7 +19,7 @@
 ;; MONO needs only the middle kernels — no lb/rb variants.  The footprint is
 ;; 2*cols wide (jsp_frame / jsp_sprite_defer, via JSP_MONO_DBL).
 ;;
-;; Per-nibble expansion (the tools/cpcgfx.pl transform, in asm):
+;; Per-nibble expansion (the tools/gfxgen.pl --platform cpc transform, in asm):
 ;;   parity 0 (high 4 px):  eg = g & 0xF0          em = (m&0xF0)|((m&0xF0)>>4)
 ;;   parity 1 (low  4 px):  eg = (g & 0x0F) << 4   em = ((m&0x0F)<<4)|(m&0x0F)
 ;;

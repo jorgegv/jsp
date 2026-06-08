@@ -20,7 +20,7 @@
 
 extern uint8_t test_sprite_mask2_m0_pixels[];
 // Multicolour ball (many-pen Mode-0 asset) + its emitted Gate-Array palette
-// (tools/cpcgfx.pl --multicolor --palette-symbol).  The 16-pen screen palette is
+// (tools/gfxgen.pl --platform cpc --multicolor --palette-symbol).  The 16-pen screen palette is
 // programmed straight from this array, so the ball's rainbow body shows in its
 // true colours and the wireframe grid (pens 2..15) reuses the same palette.
 extern uint8_t ball_m0_pixels[];
@@ -86,7 +86,7 @@ static uint8_t m0_cell( uint8_t p0, uint8_t p1 ) {
 }
 
 // Set Mode 0 + program all 16 pens straight from the multicolour ball's emitted
-// palette (cpcgfx.pl --palette-symbol _ball_m0_palette); both ROMs off
+// palette (gfxgen.pl --platform cpc --palette-symbol _ball_m0_palette); both ROMs off
 // (0x8C = RMR mode 0, ROMs off).
 static void cpc_setup_mode0( void ) {
     __asm
