@@ -2,9 +2,12 @@ package JSPGfx::CPC;
 #
 # Amstrad CPC sprite/tile asset emitter — the `--platform cpc` path of gfxgen.pl.
 #
-# Body moved verbatim from the former standalone tools/cpcgfx.pl; the only
-# structural change is wrapping the imperative main flow in run(@argv) so the
-# unified gfxgen.pl driver can dispatch to it.  Output is byte-identical.
+# Body moved from the former standalone tools/cpcgfx.pl with two mechanical
+# changes that preserve behaviour exactly: the imperative main flow is wrapped
+# in run(@argv) so the unified gfxgen.pl driver can dispatch to it, and the
+# former inline-initialized file lexicals (geometry/grids) are split into bare
+# package-scope declarations (closed over by the emit helpers) plus assignments
+# inside run(), keeping the original load-order.  Output is byte-identical.
 #
 # Reuses the ZXGfx library (PNG load + cell extraction) so the source art and
 # colour handling are shared with the ZX pipeline, and emits the per-mode CPC
@@ -115,7 +118,7 @@ sub nearest_cpc_ink {
     my $hex = lc shift;
     return $ink_cache{$hex} if exists $ink_cache{$hex};
     $hex =~ /^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/
-        or die "cpcgfx.pl: bad colour '$hex'\n";
+        or die "gfxgen.pl --platform cpc: bad colour '$hex'\n";
     my ($r,$g,$b) = (hex $1, hex $2, hex $3);
     my ($best, $bestd);
     foreach my $e (@cpc_palette) {
@@ -227,7 +230,7 @@ sub run {
     $opt_background = uc($opt_background);
 
     ( $opt_mode == 1 || $opt_mode == 0 )
-        or die "cpcgfx.pl: --mode must be 0 or 1\n";
+        or die "gfxgen.pl --platform cpc: --mode must be 0 or 1\n";
     $opt_gfx_type = 'sprite_mask' if $opt_gfx_type eq 'sprite';
     $opt_gfx_type =~ /^(sprite_(mask|load|imask)|tile)$/
         or die "--gfx-type must be sprite_mask, sprite_load, sprite_imask or tile\n";
@@ -256,9 +259,9 @@ sub run {
     # reuse the 2-colour ZXGfx extractor (pen 0 = background, pen 1 = foreground).
     if ($opt_multicolor) {
         ($opt_width % 8 == 0 && $opt_height % 8 == 0)
-            or die "cpcgfx.pl: --multicolor needs width/height multiples of 8\n";
+            or die "gfxgen.pl --platform cpc: --multicolor needs width/height multiples of 8\n";
         my $png = GD::Image->newFromPng($opt_input)
-            or die "cpcgfx.pl: cannot load PNG '$opt_input'\n";
+            or die "gfxgen.pl --platform cpc: cannot load PNG '$opt_input'\n";
         my $maxpens  = ($opt_mode == 1) ? 4 : 16;
         my $mask_ink = nearest_cpc_ink($opt_mask);
         my %pen_of_ink;
@@ -283,11 +286,11 @@ sub run {
         # to content, or the art uses a near-mask colour.
         if ($want_transp) {
             my @collide = grep { $_ ne lc($opt_mask) } keys %transp_raw;
-            warn sprintf("cpcgfx.pl: WARNING: %s: %d interior colour(s) snap to the mask ink (CPC %s) and became transparent: %s\n",
+            warn sprintf("gfxgen.pl --platform cpc: WARNING: %s: %d interior colour(s) snap to the mask ink (CPC %s) and became transparent: %s\n",
                 $opt_input, scalar @collide, $cpc_ink_name{$mask_ink}, join(', ', map { "#$_" } sort @collide)) if @collide;
         }
         $npens <= $maxpens or die sprintf(
-            "cpcgfx.pl: %s uses %d opaque colours but Mode %d allows only %d pens\n",
+            "gfxgen.pl --platform cpc: %s uses %d opaque colours but Mode %d allows only %d pens\n",
             $opt_input, $npens, $opt_mode, $maxpens);
         $wcells = $opt_width / 8;
         $hcells = $opt_height / 8;
@@ -383,7 +386,7 @@ sub run {
     # pen unconditionally; unused pens repeat pen 0 (the background).  The C harness
     # declares `extern uint8_t <sym>[];` and writes each byte straight to the GA.
     if ($opt_palette_symbol) {
-        $opt_multicolor or die "cpcgfx.pl: --palette-symbol requires --multicolor\n";
+        $opt_multicolor or die "gfxgen.pl --platform cpc: --palette-symbol requires --multicolor\n";
         my $penmax = ($opt_mode == 1) ? 4 : 16;
         printf "\n;; CPC Mode %d palette for '%s' : %d used pen(s), padded to %d\n",
             $opt_mode, $opt_symbol_name, $npens, $penmax;
