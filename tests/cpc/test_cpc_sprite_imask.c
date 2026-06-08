@@ -63,8 +63,14 @@
 static uint8_t tile_bg[ JSP_CELL_BYTES ];
 
 // Gate-Array ink bytes (0x40 | hw_ink): pen0=black, pen1=bright white,
-// pen2=bright cyan.  Programmed straight to the GA (ROMs off).
-static const uint8_t pal[3] = { 0x54, 0x4b, 0x53 };
+// pen2=background.  -DBG_RED makes the background bright red (else bright cyan).
+// Programmed straight to the GA (ROMs off).
+#ifdef BG_RED
+#define PEN2_INK 0x4c                /* bright red */
+#else
+#define PEN2_INK 0x53                /* bright cyan */
+#endif
+static const uint8_t pal[3] = { 0x54, 0x4b, PEN2_INK };
 
 // Ball sprites (16x16) — count is NBALLS (default 8); a clustered HEAVY layout
 // (-DHEAVY) stacks them so each covered cell composites many sprites, making the
@@ -73,6 +79,21 @@ static const uint8_t pal[3] = { 0x54, 0x4b, 0x53 };
 #define NBALLS 8
 #endif
 static struct jsp_sprite_s balls[ NBALLS ];
+
+// xorshift-16 PRNG for the demo's random START conditions (position + velocity).
+// Seeded from the Z80 R (refresh) register at startup so each run differs.
+static uint16_t rng = 0xA5C3;
+static uint16_t rnd( void ) {
+    rng ^= rng << 7;
+    rng ^= rng >> 9;
+    rng ^= rng << 8;
+    return rng;
+}
+
+// Play-field bounds (pixels): screen is JSP_GRID_COLS*8 wide, 200 tall; keep the
+// 16x16 sprite fully on-screen.
+#define XMAX ( JSP_GRID_COLS * 8 - 16 )
+#define YMAX ( 200 - 16 )
 
 // Program pens 0..2 from pal[], the rest black, then set the mode register.
 static void cpc_setup( void ) {
@@ -156,7 +177,39 @@ void main( void ) {
         balls[i].flags.initialized = 1;
     }
 
-#ifdef TIME_LIMITED
+#ifdef ANIMATE
+    // Demo: each ball starts at a RANDOM position with a RANDOM velocity
+    // (1..4 px/cycle on each axis, random sign), then bounces off the screen
+    // edges.  Runs forever — run it live to watch the motion.
+    {
+        static int16_t bx[ NBALLS ], by[ NBALLS ], dx[ NBALLS ], dy[ NBALLS ];
+
+        __asm                       ; seed the PRNG from the R (refresh) register
+        ld a,r
+        ld (_rng),a
+        __endasm;
+
+        for ( i = 0; i < NBALLS; i++ ) {
+            bx[i] = rnd() % ( XMAX + 1 );
+            by[i] = rnd() % ( YMAX + 1 );
+            dx[i] = ( rnd() & 3 ) + 1;  if ( rnd() & 1 ) dx[i] = -dx[i];   // ±1..4
+            dy[i] = ( rnd() & 3 ) + 1;  if ( rnd() & 1 ) dy[i] = -dy[i];
+        }
+
+        for ( ;; ) {
+            for ( i = 0; i < NBALLS; i++ ) {
+                jsp_move_sprite( &balls[i], (uint16_t) bx[i], (uint8_t) by[i] );
+                bx[i] += dx[i];
+                if ( bx[i] < 0 )    { bx[i] = 0;    dx[i] = -dx[i]; }
+                else if ( bx[i] > XMAX ) { bx[i] = XMAX; dx[i] = -dx[i]; }
+                by[i] += dy[i];
+                if ( by[i] < 0 )    { by[i] = 0;    dy[i] = -dy[i]; }
+                else if ( by[i] > YMAX ) { by[i] = YMAX; dy[i] = -dy[i]; }
+            }
+            jsp_redraw();
+        }
+    }
+#elif defined( TIME_LIMITED )
     // Perf harness: re-draw all sprites (marks their cells dirty) and recomposite
     // for exactly TIME_LIMITED frames, then rst 0.  Same scene whether built as
     // _IMASK (imask kernel) or plain (MASK2 kernel) — a fair head-to-head.
