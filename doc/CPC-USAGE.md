@@ -51,10 +51,17 @@ colour count, horizontal resolution and sub-pixel positioning granularity:
 | `CPC_MODE2_FAST`   | 8       | 2       | 640 px   | **8 px** (byte-aligned)| no shift table — smallest/fastest |
 | `CPC_MODE0_FAST`   | 2       | 16      | 160 px   | **2 px** (byte-aligned)| no shift table                    |
 | `CPC_MODE1_FAST`   | 4       | 4       | 320 px   | **4 px** (byte-aligned)| no shift table                    |
+| `CPC_MODE1_IMASK`  | 4       | 4 (pen 0 = transp.) | 320 px | 1 px (3 shift phases)| implicit-mask sprites: half-size, pen 0 transparent |
+| `CPC_MODE0_IMASK`  | 2       | 16 (pen 0 = transp.)| 160 px | 1 px (1 shift phase) | implicit-mask sprites: half-size, pen 0 transparent |
 
 The **FAST** variants force byte-aligned positioning (no sub-byte shift); they
 drop the rotation table and the rotating kernels, saving RAM/time at coarser
 horizontal granularity. Vertical positioning is always 1 px in every mode.
+
+The **IMASK** variants (Mode 0/1 only) make **pen 0 transparent** and store
+sprites graph-only (no explicit mask), so masked sprites are **half the size**
+(M1 = ZX size). Use `JSP_TYPE_IMASK` + `-g sprite_imask` assets (§7); pen 0 is no
+longer available as an opaque sprite colour. See `doc/CPC-IMASK-DESIGN.md`.
 
 ---
 
@@ -186,7 +193,9 @@ DEFINE_SPRITE( player, 16,   16,    ball_pixels,  0, 0, JSP_TYPE_MASK2 );
   multiples are rejected at compile time (a `jsp_dimcheck_*` typedef goes
   negative).
 - **`type`** = `JSP_TYPE_MASK2` (transparent, per-pixel mask) or `JSP_TYPE_LOAD1`
-  (opaque, overwrites the background).
+  (opaque, overwrites the background). In a `_IMASK` build, transparent sprites
+  use `JSP_TYPE_IMASK` instead of `JSP_TYPE_MASK2` (pen 0 = transparent,
+  half-size; place with `jsp_draw_sprite_imask` / `jsp_move_sprite_imask`).
 
 > Pool sprites still take cell counts (`jsp_sprite_alloc(rows, cols)`); convert
 > from pixels with `JSP_SPRITE_ROWS(h_px)` / `JSP_SPRITE_COLS(w_px)`.
@@ -254,7 +263,9 @@ tools/cpcgfx.pl -i art/ball.png -x 0 -y 0 --width 16 --height 16 \
   PNG (mask colour marks transparent pixels).
 - `-s` = the emitted C-linkable symbol (`extern uint8_t _ball_pixels[];` — refer
   to it in C without the leading underscore: `ball_pixels`).
-- `-g sprite_mask` (→ `JSP_TYPE_MASK2`) or `-g sprite_load` (→ `JSP_TYPE_LOAD1`).
+- `-g sprite_mask` (→ `JSP_TYPE_MASK2`), `-g sprite_load` (→ `JSP_TYPE_LOAD1`), or
+  `-g sprite_imask` (→ `JSP_TYPE_IMASK`, Mode 0/1: graph-only, pen 0 transparent,
+  half-size).
 - **`--extra-bottom-row --extra-top-rows` are required for sprites** — they emit
   the sub-cell-Y padding the engine relies on. (Omit them only for tiles.)
 
@@ -324,6 +335,7 @@ stack modest (the forced `REGISTER_SP=0x9800` grows down from there).
 | `jsp_redraw()` | repaint all dirty cells — call once per frame |
 | `DEFINE_SPRITE(name,width_px,height_px,pixels,x,y,type)` | declare a static sprite (size in pixels W×H, multiples of 8) |
 | `jsp_draw_sprite(sp,x,y)` / `jsp_move_sprite(sp,x,y)` | place / move (deferred) |
+| `jsp_draw_sprite_imask(sp,x,y)` / `jsp_move_sprite_imask(sp,x,y)` | place / move an implicit-mask sprite (`_IMASK` builds) |
 | `jsp_sprite_park(sp)` | stop drawing a sprite |
 | `jsp_draw_background_tile(row,col,pix)` | place an 8-byte background tile |
 | `jsp_delete_background_tile(row,col)` | restore the default tile |

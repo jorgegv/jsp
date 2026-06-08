@@ -99,6 +99,11 @@ arithmetic* change between modes.
 |---------|------------|-------------------|--------------|----------------------------------|
 | `LOAD1` | 1 (graph)  | 8                 | none (opaque)| `screen = graph` (overwrite)     |
 | `MASK2` | 2 (mask,graph) | 16            | per-pixel    | `screen = (bg & mask) \| graph`  |
+| `IMASK` | 1 (graph)  | 8                 | pen 0        | `screen = (bg & imask[graph]) \| graph` |
+
+`IMASK` (implicit mask, CPC `_IMASK` modes — see §7) stores graph bytes only like
+`LOAD1`, but composites with transparency like `MASK2`: pen 0 is transparent and
+the mask is derived per byte from a LUT at composite time.
 
 For `MASK2`, each scan-line is a **(mask, graph) byte pair**:
 - **mask** bit = 1 → transparent (keep the background pixel);
@@ -427,6 +432,55 @@ Store the symbol with `jsp_draw_background_tile(row,col, my_tile)` /
 `-g sprite_mask|sprite_load` (model-agnostic). The byte-cell tile (a flat 8-byte
 cell, `JSP_CELL_MODEL=byte`) has no dedicated emitter — its 8 bytes are the §2–§4
 per-line encoding written directly.
+
+---
+
+## 7. IMASK variants (`CPC_MODE0_IMASK`, `CPC_MODE1_IMASK`) — IMPLEMENTED
+
+The implicit-mask modes drop the explicit mask: **pen 0 is transparent** and the
+sprite stores **graph bytes only** (`cs = 8`, same layout as `LOAD1`), so a masked
+sprite is **half the size** of its `MASK2` form (M1 = ZX size, M0 = 2× ZX). The
+per-pixel mask is reconstructed at composite time from a 256-entry LUT
+(`jsp_imask_tbl`, built by `jsp_init` from `JSP_IMASK()` in
+`include/jsp_rottbl_formula.h`): for every graph byte it sets all plane bits of
+each pen-0 (transparent) pixel, so the composite is
+
+```
+screen = (background & jsp_imask_tbl[graph]) | graph
+```
+
+Properties:
+
+- **Asset = the `MASK2` graph stream, with the mask bytes dropped.** The bytes are
+  byte-identical to the graph half of the same `MASK2` asset; pen 0 (= the
+  designated transparent / background colour) encodes as graph `0`, which the LUT
+  maps to "keep background". The 8-line column pad and 8 pre-rows are zero bytes
+  (transparent for free).
+- **Trade-off:** pen 0 cannot be an *opaque* sprite colour (M0 16→15 usable, M1
+  4→3). It is additive to `MASK2`, not a replacement; a build is either a `_IMASK`
+  mode or a plain/`MASK2` mode, never both.
+- **Mode 2 is excluded** (with pen 0 transparent it collapses to `_MONO`).
+- **Kernels:** same four-kernel shape as `MASK2` (mid / nr / lb / rb,
+  `lib/cpc/jsp_draw_imask.asm`); only the graph is shifted through `jsp_rottbl`,
+  the mask comes from the LUT. Verified pixel-identical to the `MASK2` render over
+  a black background at every xrot phase, both modes.
+
+### 7.1 Generating IMASK assets
+
+```sh
+# Mode 1 / Mode 0 only.  Same source art and -m/-f/-b as sprite_mask; pen 0
+# (the -b background / -m mask colour) becomes transparent.
+tools/cpcgfx.pl -i ball.png -x 0 -y 0 --width 16 --height 16 \
+    -m FF0000 -f FFFFFF -b 000000 --mode 1 \
+    -s _ball_imask_m1 -g sprite_imask --extra-bottom-row --extra-top-rows
+```
+
+Define and draw with the `JSP_TYPE_IMASK` type:
+
+```c
+DEFINE_SPRITE( ball, 16, 16, _ball_imask_m1, 0, 0, JSP_TYPE_IMASK );
+jsp_draw_sprite_imask( &ball, x, y );    // or jsp_move_sprite_imask(...)
+```
 
 ---
 

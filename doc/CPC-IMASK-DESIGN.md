@@ -1,6 +1,8 @@
 # CPC Implicit-Mask (`_IMASK`) Sprite Mode — Design Evaluation
 
-Status: **design / proposal** (2026-06-08). Not yet implemented.
+Status: **implemented** (2026-06-08, branch `cpc_implicit_mask`). See
+`doc/CPC-IMASK-IMPLEMENTATION-PLAN.md` for the build order and
+`lib/cpc/jsp_draw_imask.asm` for the kernels.
 
 ## Summary
 
@@ -108,11 +110,17 @@ kernel, plus halved data improves fetch locality. To be confirmed with
 
 ## 5. Special optimisations unlocked
 
-1. **Border-kernel elimination.** The left/right MASK2 border variants exist
-   largely to seed the *mask's* edge bits to transparent. With implicit mask,
-   vacated/edge graph bits are 0 = transparent for free, so only the graph is
-   shifted and the `_IMASK` rotating path needs **no left/right border
-   variants** — only middle + no-rotate.
+1. **Simpler border kernels (not eliminated).** *Correction to an earlier draft:*
+   the left/right border kernels are still needed — they handle the graph
+   *rotation carry* at sprite edges, exactly as LOAD1's `load1lb`/`load1rb` do, so
+   `_IMASK` keeps the same four-kernel shape (mid / nr / lb / rb). What implicit
+   mask removes is the *parallel mask shift* (MASK2 shifts both mask and graph
+   through `jsp_rottbl` and combines both; `_IMASK` shifts only the graph) and the
+   `0xFF` transparent-mask seeding at borders: a sprite's vacated/edge graph bits
+   are 0, so `imask[…]` yields "keep background" there for free. Each `_IMASK`
+   kernel is therefore a simpler, graph-only variant of its MASK2 twin plus one
+   LUT lookup. (The aligned, xrot==0 case still delegates to the no-rotate
+   kernel, as in MASK2.)
 2. **Free transparent padding.** The 8 blank pre-rows, trailing 8 blank lines,
    and the clamped overflow-column trick currently need explicit `0xFF/0x00`
    mask encoding. With implicit mask, zeroed bytes = transparent, so padding is
@@ -161,10 +169,10 @@ Each step is independently testable; small commits per the repo conventions.
 3. **No-rotate kernel** — `jsp_draw_imasknr.asm`:
    `graph → LUT → (bg & m) | g`. Wire into `lib/cpc/jsp_covered.asm` dispatch
    under the new mode guard. *(test: byte-aligned screenshot)*
-4. **Rotating kernel** — `jsp_draw_imask.asm`: graph in+carry via rottbl, then
-   `imask[combined]` for the mask. No mask carry, no left/right border variants.
-   *(test: screenshot regression vs current MASK2 reference — should match
-   pixel-for-pixel)*
+4. **Rotating kernels** — `jsp_draw_imask.asm` (mid/lb/rb): graph in+carry via
+   rottbl, then `imask[combined]` for the mask. No mask carry, no `0xFF` border
+   seeding (but lb/rb still needed for the graph carry). *(test: screenshot
+   regression vs MASK2 reference over a black background — pixel-identical)*
 5. **Geometry/config** — add `CPC_MODE{0,1}_IMASK` to `lib/cpc/jsp_cpc_geom.inc`
    (same PPB/XROT as the non-FAST mode) and the Makefile mode matrix; one new
    test sprite per mode + `tests/refs/` baselines.

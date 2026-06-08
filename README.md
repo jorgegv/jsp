@@ -182,7 +182,7 @@ maintenance targets:
 
 ```bash
 make cpc-run-test TEST=sprite              # build + screenshot Mode 2 in cap32
-make cpc-run-test TEST=sprite MODE=2_fast  # MODE ∈ 2 1 1_mono 0 2_fast 0_fast 1_fast
+make cpc-run-test TEST=sprite MODE=2_fast  # MODE ∈ 2 1 1_mono 0 2_fast 0_fast 1_fast 1_imask 0_imask
 make cpc-run-test TEST=demo                # Mode 2 sprite demo (bounces continuously)
 make cpc-tests                             # build every CPC config + run the regressions
 ```
