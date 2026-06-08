@@ -17,7 +17,7 @@
 // shift in the mode's pixel encoding), so the IN/CARRY macros are selected by
 // the active CPC mode guard; ZX / Mode 2 is the default 1bpp-linear form.
 
-#if defined( CPC_MODE0 )
+#if defined( CPC_MODE0 ) || defined( CPC_MODE0_IMASK )
 
 // ---- Mode 0: 2 px/byte, 4 interleaved planes, single 1-px shift phase -------
 // A Mode-0 byte holds 2 pixels (4 bits each).  Pixel 0 (left) occupies the odd
@@ -33,7 +33,7 @@
 #define JSP_ROTTBL_IN(val,i)    ( ( (val) & 0xAA ) >> 1 )
 #define JSP_ROTTBL_CARRY(val,i) ( ( (val) & 0x55 ) << 1 )
 
-#elif defined( CPC_MODE1 ) || defined( CPC_MODE1_MONO )
+#elif defined( CPC_MODE1 ) || defined( CPC_MODE1_MONO ) || defined( CPC_MODE1_IMASK )
 
 // ---- Mode 1: 4 px/byte, two interleaved nibble-planes ----------------------
 // A Mode-1 byte holds 4 pixels (2 bits each).  Pixel p (0 = leftmost) has its
@@ -61,6 +61,28 @@
 #define JSP_ROTTBL_IN(val,i)    ( ( ( 256 * (val) ) >> (i) ) / 256 )
 #define JSP_ROTTBL_CARRY(val,i) ( ( ( 256 * (val) ) >> (i) ) % 256 )
 
+#endif
+
+// ---------------------------------------------------------------------------
+// Implicit-mask LUT (CPC _IMASK modes): graph byte -> derived mask byte.
+//
+// In an _IMASK sprite, pen 0 is transparent and only the graph bytes are stored;
+// the per-pixel mask is derived at composite time from the graph byte via this
+// 256-entry table (jsp_imask_tbl, built in lib/jsp_init.c).  A pixel is
+// transparent iff ALL its plane bits are 0; the mask sets ALL plane bits of
+// every transparent pixel (so `bg & mask` keeps the background there) and clears
+// them for opaque pixels.  The composite is then `screen = (bg & mask) | graph`.
+//
+// Mode-selected, matching the pixel encodings above.  See doc/CPC-IMASK-*.md.
+//   M1 (nibble planes 0xF0/0x0F): occupancy per pixel = (g | (g>>4) | (g<<4)),
+//      mask = ~occupancy.
+//   M0 (odd/even planes 0xAA/0x55): pixel 0 opaque iff (g&0xAA), pixel 1 iff
+//      (g&0x55); set the whole plane group of each transparent pixel.
+#if defined( CPC_MODE1_IMASK )
+#define JSP_IMASK(g)  ( (uint8_t)( ~( (g) | ( (g) << 4 ) | ( (g) >> 4 ) ) ) )
+#elif defined( CPC_MODE0_IMASK )
+#define JSP_IMASK(g)  ( (uint8_t)( ( ( (g) & 0xAA ) ? 0 : 0xAA ) | \
+                                   ( ( (g) & 0x55 ) ? 0 : 0x55 ) ) )
 #endif
 
 #endif // _JSP_ROTTBL_FORMULA_H

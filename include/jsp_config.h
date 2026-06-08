@@ -32,8 +32,9 @@
 #ifdef JSP_TARGET_CPC
   #if ( defined( CPC_MODE0 ) + defined( CPC_MODE1 ) + defined( CPC_MODE2 ) + \
         defined( CPC_MODE1_MONO ) + defined( CPC_MODE0_FAST ) + \
-        defined( CPC_MODE1_FAST ) + defined( CPC_MODE2_FAST ) ) != 1
-    #error "JSP CPC build: define exactly ONE CPC mode (CPC_MODE0, CPC_MODE1, CPC_MODE2, CPC_MODE1_MONO, CPC_MODE0_FAST, CPC_MODE1_FAST or CPC_MODE2_FAST)"
+        defined( CPC_MODE1_FAST ) + defined( CPC_MODE2_FAST ) + \
+        defined( CPC_MODE0_IMASK ) + defined( CPC_MODE1_IMASK ) ) != 1
+    #error "JSP CPC build: define exactly ONE CPC mode (CPC_MODE0, CPC_MODE1, CPC_MODE2, CPC_MODE1_MONO, CPC_MODE0_FAST, CPC_MODE1_FAST, CPC_MODE2_FAST, CPC_MODE0_IMASK or CPC_MODE1_IMASK)"
   #endif
 
   // ---- CPC cell model: byte-cell (Model A) vs pixel-cell (Model B) ----
@@ -73,13 +74,13 @@
   #define JSP_GRID_ROWS    25
   #define JSP_HAS_ATTR     0
 
-  #if defined( CPC_MODE0 )
+  #if defined( CPC_MODE0 ) || defined( CPC_MODE0_IMASK )
     #define JSP_PPB          2
     #define JSP_SHIFT_PHASES 1
   #elif defined( CPC_MODE0_FAST )
     #define JSP_PPB          2
     #define JSP_SHIFT_PHASES 0    // byte-aligned fast path (no shift table)
-  #elif defined( CPC_MODE1 ) || defined( CPC_MODE1_MONO )
+  #elif defined( CPC_MODE1 ) || defined( CPC_MODE1_MONO ) || defined( CPC_MODE1_IMASK )
     #define JSP_PPB          4
     #define JSP_SHIFT_PHASES 3
   #elif defined( CPC_MODE1_FAST )
