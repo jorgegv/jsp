@@ -82,10 +82,16 @@ $opt_background = uc($opt_background);
 ( $opt_mode == 1 || $opt_mode == 0 )
     or die "cpcgfx.pl: --mode must be 0 or 1\n";
 $opt_gfx_type = 'sprite_mask' if $opt_gfx_type eq 'sprite';
-$opt_gfx_type =~ /^(sprite_(mask|load)|tile)$/
-    or die "--gfx-type must be sprite_mask, sprite_load or tile\n";
-my $is_mask = ($opt_gfx_type eq 'sprite_mask');
-my $is_tile = ($opt_gfx_type eq 'tile');
+$opt_gfx_type =~ /^(sprite_(mask|load|imask)|tile)$/
+    or die "--gfx-type must be sprite_mask, sprite_load, sprite_imask or tile\n";
+my $is_mask  = ($opt_gfx_type eq 'sprite_mask');
+# sprite_imask (implicit-mask, CPC _IMASK modes): pen 0 is transparent and only
+# graph bytes are stored (cs=8, like sprite_load), but transparency IS extracted
+# from the source (like sprite_mask) and lands on pen 0.  So it reads the mask
+# but emits graph-only — a hybrid of the two.
+my $is_imask = ($opt_gfx_type eq 'sprite_imask');
+my $want_transp = ($is_mask || $is_imask);   # extract a transparency grid?
+my $is_tile  = ($opt_gfx_type eq 'tile');
 
 # ---- per-mode geometry -----------------------------------------------------
 # Each 8-px ZX source column splits into $subcols Mode-N cells of $ppc pixels:
@@ -192,7 +198,7 @@ if ($opt_multicolor) {
         foreach my $x (0 .. $opt_width - 1) {
             my $hex = sprintf('%02x%02x%02x', $png->rgb($png->getPixel($opt_xpos+$x, $opt_ypos+$y)));
             my $ink = nearest_cpc_ink($hex);
-            if ($is_mask && $ink == $mask_ink) { $TRANSP[$y][$x] = 1; $PEN[$y][$x] = 0; $transp_raw{$hex} = 1; next; }
+            if ($want_transp && $ink == $mask_ink) { $TRANSP[$y][$x] = 1; $PEN[$y][$x] = 0; $transp_raw{$hex} = 1; next; }
             if (!exists $pen_of_ink{$ink}) {
                 $pen_of_ink{$ink} = $npens; $ink_of_pen[$npens] = $ink; $npens++;
             }
@@ -203,7 +209,7 @@ if ($opt_multicolor) {
     # Warn if an *interior* colour (not the -m mask colour) snapped onto the mask
     # ink and was silently made transparent — a sign the mask colour is too close
     # to content, or the art uses a near-mask colour.
-    if ($is_mask) {
+    if ($want_transp) {
         my @collide = grep { $_ ne lc($opt_mask) } keys %transp_raw;
         warn sprintf("cpcgfx.pl: WARNING: %s: %d interior colour(s) snap to the mask ink (CPC %s) and became transparent: %s\n",
             $opt_input, scalar @collide, $cpc_ink_name{$mask_ink}, join(', ', map { "#$_" } sort @collide)) if @collide;
@@ -229,10 +235,10 @@ if ($opt_multicolor) {
             my $cell = $gfx->{'cells'}[$cr][$cc];
             foreach my $line (0 .. 7) {
                 my $g = $cell->{'bytes'}[$line];
-                my $m = $is_mask ? $cell->{'masks'}[$line] : 0;
+                my $m = $want_transp ? $cell->{'masks'}[$line] : 0;
                 foreach my $px (0 .. 7) {
                     my $y = $cr*8 + $line; my $x = $cc*8 + $px;
-                    if ($is_mask && (($m >> (7-$px)) & 1)) { $TRANSP[$y][$x] = 1; $PEN[$y][$x] = 0; }
+                    if ($want_transp && (($m >> (7-$px)) & 1)) { $TRANSP[$y][$x] = 1; $PEN[$y][$x] = 0; }
                     else { $TRANSP[$y][$x] = 0; $PEN[$y][$x] = (($g >> (7-$px)) & 1); }
                 }
             }
