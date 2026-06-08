@@ -66,17 +66,13 @@ static uint8_t tile_bg[ JSP_CELL_BYTES ];
 // pen2=bright cyan.  Programmed straight to the GA (ROMs off).
 static const uint8_t pal[3] = { 0x54, 0x4b, 0x53 };
 
-// 16x16 ball, drawn at 8 consecutive X (covers every xrot phase) on two rows.
-DEFINE_SPRITE( b0, 16, 16, BALL, 0, 0, BALLTYPE );
-DEFINE_SPRITE( b1, 16, 16, BALL, 0, 0, BALLTYPE );
-DEFINE_SPRITE( b2, 16, 16, BALL, 0, 0, BALLTYPE );
-DEFINE_SPRITE( b3, 16, 16, BALL, 0, 0, BALLTYPE );
-DEFINE_SPRITE( b4, 16, 16, BALL, 0, 0, BALLTYPE );
-DEFINE_SPRITE( b5, 16, 16, BALL, 0, 0, BALLTYPE );
-DEFINE_SPRITE( b6, 16, 16, BALL, 0, 0, BALLTYPE );
-DEFINE_SPRITE( b7, 16, 16, BALL, 0, 0, BALLTYPE );
-
-static struct jsp_sprite_s *balls[8] = { &b0,&b1,&b2,&b3,&b4,&b5,&b6,&b7 };
+// Ball sprites (16x16) — count is NBALLS (default 8); a clustered HEAVY layout
+// (-DHEAVY) stacks them so each covered cell composites many sprites, making the
+// covered-cell kernel dominate the frame (upper-bound kernel benchmark).
+#ifndef NBALLS
+#define NBALLS 8
+#endif
+static struct jsp_sprite_s balls[ NBALLS ];
 
 // Program pens 0..2 from pal[], the rest black, then set the mode register.
 static void cpc_setup( void ) {
@@ -114,9 +110,34 @@ pal_set:
     __endasm;
 }
 
+// The transparent draw call differs only by the type wrapper; in a _IMASK build
+// it's the imask wrapper, otherwise the generic (type set via the descriptor).
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+#define DRAW(sp,xx,yy) jsp_draw_sprite_imask( (sp), (xx), (yy) )
+#else
+#define DRAW(sp,xx,yy) jsp_draw_sprite( (sp), (xx), (yy) )
+#endif
+
+// Per-ball position.  HEAVY: a tight cluster (6 px apart) so the balls overlap
+// heavily and each covered cell composites many sprites — kernel-dominated, the
+// upper bound of the kernel speedup.  Default: a spread row/grid at successive X
+// so every sub-byte xrot phase is exercised without inter-sprite overlap.
+#ifdef HEAVY
+#define BX(i) ( 40 + ( (i) & 3 ) * 6 )
+#define BY(i) ( 40 + ( (i) >> 2 ) * 6 )
+#else
+#ifndef BALLX0
+#define BALLX0 20
+#endif
+#ifndef BALLSTEP
+#define BALLSTEP 25                          // odd step -> walks all xrot phases
+#endif
+#define BX(i) ( BALLX0 + (i) * BALLSTEP )
+#define BY(i) ( 50 + ( (i) & 1 ) * 60 )
+#endif
+
 void main( void ) {
     uint8_t i, r, c;
-    uint16_t x;
 
     cpc_setup();
 
@@ -127,23 +148,13 @@ void main( void ) {
         for ( c = 0; c < JSP_GRID_COLS; c++ )
             jsp_draw_background_tile( r, c, tile_bg );
 
-#ifndef NBALLS
-#define NBALLS 8
-#endif
-#ifndef BALLX0
-#define BALLX0 20
-#endif
-#ifndef BALLSTEP
-#define BALLSTEP 25                          // odd step -> walks all xrot phases
-#endif
-
-// The transparent draw call differs only by the type wrapper; in a _IMASK build
-// it's the imask wrapper, otherwise the generic (type set via DEFINE_SPRITE).
-#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
-#define DRAW(sp,xx,yy) jsp_draw_sprite_imask( (sp), (xx), (yy) )
-#else
-#define DRAW(sp,xx,yy) jsp_draw_sprite( (sp), (xx), (yy) )
-#endif
+    for ( i = 0; i < NBALLS; i++ ) {            // init the ball descriptors
+        balls[i].rows = JSP_SPRITE_ROWS( 16 );
+        balls[i].cols = JSP_SPRITE_COLS( 16 );
+        balls[i].pixels = BALL;
+        balls[i].type_ptr = BALLTYPE;
+        balls[i].flags.initialized = 1;
+    }
 
 #ifdef TIME_LIMITED
     // Perf harness: re-draw all sprites (marks their cells dirty) and recomposite
@@ -152,10 +163,8 @@ void main( void ) {
     {
         uint16_t f;
         for ( f = 0; f < TIME_LIMITED; f++ ) {
-            for ( i = 0; i < NBALLS; i++ ) {
-                x = BALLX0 + i * BALLSTEP;
-                DRAW( balls[i], x, 50 + ( i & 1 ) * 60 );
-            }
+            for ( i = 0; i < NBALLS; i++ )
+                DRAW( &balls[i], BX(i), BY(i) );
             jsp_redraw();
         }
     }
@@ -164,13 +173,8 @@ void main( void ) {
     rst 0
     __endasm;
 #else
-    // Non-overlapping row of balls at successive X so every sub-byte xrot phase
-    // is exercised (the NR / mid / lb / rb kernels) without inter-sprite overlap
-    // muddying the picture.
-    for ( i = 0; i < NBALLS; i++ ) {
-        x = BALLX0 + i * BALLSTEP;
-        DRAW( balls[i], x, 50 + ( i & 1 ) * 60 );
-    }
+    for ( i = 0; i < NBALLS; i++ )
+        DRAW( &balls[i], BX(i), BY(i) );
     jsp_redraw();
     for ( ;; ) ;
 #endif

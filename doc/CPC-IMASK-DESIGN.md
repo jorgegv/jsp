@@ -140,11 +140,27 @@ diluted** at frame level, because this scene's redraw is dominated by the
 background-tile blit and the DTT walk, not the sprite kernel; a sprite/overlap-
 heavy scene would show the kernel saving more strongly.
 
+**Upper bound — a deliberately kernel-heavy scene** (16 sprites clustered 6 px
+apart so each covered cell composites ~10–16 sprites; 3-round, boot-free
+t(3000)−t(1000) = 2000 redraws):
+
+| 2000 redraws, HEAVY | MASK2 | IMASK baseline | IMASK optimised |
+|---------------------|-------|----------------|-----------------|
+| Mode 1 | 31.3 s | 31.5 s | **30.9 s** (−1.3% vs MASK2, −2.0% vs baseline) |
+
+So even when the covered-cell compositor dominates, the frame-level gain is only
+~1–2% (near the ~3% round-to-round noise floor). The per-byte kernel saving is
+real, but the redraw's cost per composited byte-column is dominated by the
+**compositor dispatch** in `jsp_covered.asm` (the pdc / graph-pointer / dst-slot
+computation + `call`/`ret` around each kernel invocation) and the
+background-tile blit + DTT walk — not the kernel's 8-line inner loop. To move the
+frame-level needle further you would optimise the *dispatch*, not the kernel.
+
 > **Measurement caveat (learned the hard way).** cap32 wall-clock is noisy:
 > single runs vary by several percent and occasionally crash (1 s / 4.5 s
 > outliers). An earlier *single-run* reading suggested "23% faster" — that was a
 > noise artifact. Only **interleaved multi-round sampling** with the large-gap
-> boot-free metric gives a trustworthy number; the table above uses that. Always
+> boot-free metric gives a trustworthy number; the tables above use that. Always
 > average ≥3 interleaved rounds and discard sub-10 s (crashed) results.
 
 ## 5. Special optimisations unlocked
