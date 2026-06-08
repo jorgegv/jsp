@@ -142,6 +142,7 @@ E840-EB3F  BAT (768 bytes)
 - `lib/jsp_screen.asm` — `jsp_draw_screen_tile` (8-byte cell blit; register entry `jsp_draw_screen_tile_regs`)
 - `lib/sp1_draw_mask2*.asm` — Masked sprite draw (4 variants: normal, left-border, right-border, no-rotate)
 - `lib/sp1_draw_load1*.asm` — Load-mode sprite draw (4 variants, overwrites background)
+- `lib/cpc/jsp_draw_imask.asm` — CPC implicit-mask draw kernels (mid/nr/lb/rb): graph-only sprites, pen 0 transparent, mask derived per byte from `jsp_imask_tbl` LUT; `screen = (bg & imask[graph]) | graph`. Built only in `CPC_MODE0_IMASK` / `CPC_MODE1_IMASK` builds (replace MASK2 there). See `doc/CPC-IMASK-DESIGN.md`.
 
 The redraw splits work between an assembly DTT-walk hot loop and C
 (per-frame precompute, per-covered-cell compositing); the pixel
