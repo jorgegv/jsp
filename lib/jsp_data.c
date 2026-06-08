@@ -54,6 +54,16 @@
 // rotation tables (one (in-byte,carry) page-pair per shift phase)
 __at( ROTTBL_ADDR ) uint8_t jsp_rottbl[ JSP_SHIFT_PHASES * 2 * 256 ];
 
+// Implicit-mask LUT (CPC _IMASK modes): graph byte -> derived mask byte (see
+// jsp_init_imask_tbl / JSP_IMASK).  Placed 256-aligned in the tail of the
+// reserved rottbl block (M2 sizes it to 3584 B): rottbl uses SHIFT_PHASES*512
+// from ROTTBL_ADDR, so the table sits just above it, still below the 0xC000
+// screen (M1: 0xB800, M0: 0xB400).
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+  #define IMASK_TBL_ADDR ( ROTTBL_ADDR + JSP_SHIFT_PHASES * 2 * 256 )
+__at( IMASK_TBL_ADDR ) uint8_t jsp_imask_tbl[ 256 ];
+#endif
+
 // Background Tiles Table: array of pointers to tile graphics
 __at( BTT_ADDR ) uint8_t *jsp_btt[ JSP_GRID_CELLS ];
 

@@ -195,6 +195,9 @@ void jsp_tile_put( uint8_t row, uint8_t col, uint8_t attr, uint16_t tile );
 //////////////////////////////////////////////////////
 
 extern uint8_t	jsp_rottbl[];
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+extern uint8_t	jsp_imask_tbl[];	// implicit-mask LUT: graph byte -> mask byte
+#endif
 extern uint8_t	*jsp_btt[];
 extern uint8_t	jsp_dtt[];
 extern uint8_t	jsp_ftt[];

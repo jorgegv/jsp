@@ -60,6 +60,19 @@ void jsp_init_rottbl( void ) {
     }
 }
 
+// initialize the implicit-mask LUT (CPC _IMASK modes): for every possible graph
+// byte, precompute the mask that keeps the background under transparent (pen-0)
+// pixels.  Built from the shared JSP_IMASK() formula so the table and the host
+// unit test (tests/cpc/imask_test.c) cannot drift apart.
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+extern uint8_t jsp_imask_tbl[];
+void jsp_init_imask_tbl( void ) {
+    uint16_t val;
+    for ( val = 0; val <= 255; val++ )
+        jsp_imask_tbl[ val ] = JSP_IMASK( val );
+}
+#endif
+
 void jsp_init_background( uint8_t *default_bg_tile ) {
     uint16_t i;
     for ( i = 0; i < JSP_GRID_CELLS; i++ )
@@ -76,6 +89,9 @@ void jsp_init_bat( uint8_t default_attr ) {
 // run all jsp initializations
 void jsp_init( uint8_t *bgtile, uint8_t default_attr ) {
     jsp_init_rottbl();
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+    jsp_init_imask_tbl();
+#endif
     jsp_init_btt();
     jsp_init_dtt();
     jsp_init_ftt();
