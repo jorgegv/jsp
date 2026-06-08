@@ -43,10 +43,42 @@
 	extern _jsp_draw_load1
 	extern _jsp_draw_load1lb
 	extern _jsp_draw_load1rb
+	; The transparent kernel family is MASK2 normally, or IMASK (graph-only,
+	; LUT-derived mask) in _IMASK builds — same signatures, so only the call
+	; target below changes (CALL_MASK_* macros).
+	IF CPC_MODE0_IMASK || CPC_MODE1_IMASK
+	extern _jsp_draw_imask
+	extern _jsp_draw_imasklb
+	extern _jsp_draw_imaskrb
+	ELSE
 	extern _jsp_draw_mask2
 	extern _jsp_draw_mask2lb
 	extern _jsp_draw_mask2rb
 	ENDIF
+	ENDIF
+
+	; Transparent-kernel call macros: IMASK in _IMASK builds, MASK2 otherwise.
+	MACRO CALL_MASK_MID
+	IF CPC_MODE0_IMASK || CPC_MODE1_IMASK
+	call _jsp_draw_imask
+	ELSE
+	call _jsp_draw_mask2
+	ENDIF
+	ENDM
+	MACRO CALL_MASK_LB
+	IF CPC_MODE0_IMASK || CPC_MODE1_IMASK
+	call _jsp_draw_imasklb
+	ELSE
+	call _jsp_draw_mask2lb
+	ENDIF
+	ENDM
+	MACRO CALL_MASK_RB
+	IF CPC_MODE0_IMASK || CPC_MODE1_IMASK
+	call _jsp_draw_imaskrb
+	ELSE
+	call _jsp_draw_mask2rb
+	ENDIF
+	ENDM
 	extern jsp_draw_screen_tile_saddr
 
 	public _jsp_redraw_covered_cell
@@ -285,7 +317,7 @@ cb_fast_mask:
 	call _jsp_draw_load1
 	jp cb_knext
 cb_mid_mask:
-	call _jsp_draw_mask2
+	CALL_MASK_MID
 	jp cb_knext
 cb_lb:
 	ld de,(cc_dst)
@@ -298,7 +330,7 @@ cb_lb:
 	call _jsp_draw_load1lb
 	jp cb_knext
 cb_lb_mask:
-	call _jsp_draw_mask2lb
+	CALL_MASK_LB
 	jp cb_knext
 cb_rb:
 	ld de,(cc_dst)
@@ -311,7 +343,7 @@ cb_rb:
 	call _jsp_draw_load1rb
 	jp cb_knext
 cb_rb_mask:
-	call _jsp_draw_mask2rb
+	CALL_MASK_RB
 	ENDIF			; CPC_MODE*_FAST
 
 cb_knext:
@@ -463,7 +495,7 @@ cc_fast_mask:
 	call _jsp_draw_load1
 	jr cc_comp_next
 cc_mid_mask:
-	call _jsp_draw_mask2
+	CALL_MASK_MID
 	jr cc_comp_next
 
 ;; ---- left border ----
@@ -478,7 +510,7 @@ cc_draw_lb:
 	call _jsp_draw_load1lb
 	jr cc_comp_next
 cc_lb_mask:
-	call _jsp_draw_mask2lb
+	CALL_MASK_LB
 	jr cc_comp_next
 
 ;; ---- right border ----
@@ -493,7 +525,7 @@ cc_draw_rb:
 	call _jsp_draw_load1rb
 	jr cc_comp_next
 cc_rb_mask:
-	call _jsp_draw_mask2rb
+	CALL_MASK_RB
 
 	ENDIF			; CPC_MODE*_FAST
 	ENDIF			; JSP_CELL_MODEL_PIXEL (Model A vs Model B core)

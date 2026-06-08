@@ -36,7 +36,12 @@
 	extern _jsp_frame_sprites
 	extern _jsp_frame_count
 	extern _jsp_rottbl
+	; The transparent sprite type is MASK2 normally, IMASK in _IMASK builds.
+	IF CPC_MODE0_IMASK || CPC_MODE1_IMASK
+	extern _JSP_TYPE_IMASK
+	ELSE
 	extern _JSP_TYPE_MASK2
+	ENDIF
 	extern _jsp_cc_row_active_row
 
 	public _jsp_redraw_begin
@@ -151,7 +156,11 @@ rb_loop:
 	ld (rb_yrot),a
 	ld a,(ix+1)			; cols
 	ld (rb_cols),a
+	IF CPC_MODE0_IMASK || CPC_MODE1_IMASK
+	ld bc,_JSP_TYPE_IMASK		; ismask2 = (type_ptr == JSP_TYPE_IMASK)
+	ELSE
 	ld bc,_JSP_TYPE_MASK2		; ismask2 = (type_ptr == JSP_TYPE_MASK2)
+	ENDIF
 	ld a,(ix+8)
 	cp c
 	jr nz,rb_notmask
@@ -210,12 +219,16 @@ rb_c1:
 	add a,c
 	ld (hl),a
 	inc hl
+	IF CPC_MODE0_IMASK || CPC_MODE1_IMASK
+	ld a,8				; +4 cs = 8 always (_IMASK is graph-only)
+	ELSE
 	ld a,(rb_ismask2)		; +4 cs = ismask2 ? 16 : 8
 	or a
 	ld a,8
 	jr z,rb_cs
 	ld a,16
 rb_cs:
+	ENDIF
 	ld (hl),a
 	inc hl
 	ld a,(rb_ismask2)		; +5 ismask2
@@ -237,12 +250,16 @@ rb_cs:
 	ld (hl),a
 	inc hl
 	ld a,(rb_yrot)			; +10/11 base = pixels - yrot*(cs>>3)
-	ld c,a				; C = disp = yrot (load1)
+	ld c,a				; C = disp = yrot (cs>>3 == 1: load1 / imask)
+	IF CPC_MODE0_IMASK || CPC_MODE1_IMASK
+	; _IMASK cs=8 -> disp = yrot (no doubling)
+	ELSE
 	ld a,(rb_ismask2)
 	or a
 	jr z,rb_base
 	sla c				; mask2: disp = yrot * 2
 rb_base:
+	ENDIF
 	ld a,(ix+6)			; pixels lo - disp  (CPC pixels @ +6)
 	sub c
 	ld (hl),a
@@ -261,12 +278,16 @@ rb_base:
 	rl b				; * 4
 	sla c
 	rl b				; * 8
+	IF CPC_MODE0_IMASK || CPC_MODE1_IMASK
+	; _IMASK cs=8 -> rowstride = (rows+1)*8 (no *16)
+	ELSE
 	ld a,(rb_ismask2)
 	or a
 	jr z,rb_rowstride
 	sla c
 	rl b				; * 16 for mask2
 rb_rowstride:
+	ENDIF
 	;; columns sit a full 8-line cell apart, so the stride is exactly
 	;; (rows+1)*cs (no correction).  The matching 8-line trailing pad per
 	;; column is emitted by tools/gfxgen.pl / cpcgfx.pl (RAGE1-compatible layout).

@@ -88,3 +88,8 @@ uint8_t jsp_current_rottbl_msb;
 //   LOAD1 = graphics only,       8 bytes/cell
 uint8_t JSP_TYPE_MASK2[ 1 ] = { 16 };
 uint8_t JSP_TYPE_LOAD1[ 1 ] = { 8 };
+// IMASK = graphics only (8 bytes/cell, like LOAD1) but composited with implicit
+// transparency (pen 0) via jsp_imask_tbl.  CPC _IMASK modes only.
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+uint8_t JSP_TYPE_IMASK[ 1 ] = { 8 };
+#endif

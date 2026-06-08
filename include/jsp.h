@@ -207,6 +207,9 @@ extern uint8_t  jsp_current_rottbl_msb;
 
 extern uint8_t JSP_TYPE_LOAD1[];
 extern uint8_t JSP_TYPE_MASK2[];
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+extern uint8_t JSP_TYPE_IMASK[];
+#endif
 
 // Sprite registry — walked by jsp_redraw to recomposite all active sprites.
 extern struct jsp_sprite_s *jsp_sprite_registry[ JSP_SPRITE_REGISTRY_SIZE ];
