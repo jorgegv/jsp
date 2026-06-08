@@ -141,7 +141,11 @@ void main( void ) {
     // muddying the picture.  Two rows for M0 (more, narrower cells).
     for ( i = 0; i < NBALLS; i++ ) {
         x = BALLX0 + i * BALLSTEP;
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+        jsp_draw_sprite_imask( balls[i], x, 50 + ( i & 1 ) * 60 );  // wrapper API
+#else
         jsp_draw_sprite( balls[i], x, 50 + ( i & 1 ) * 60 );
+#endif
     }
 
     jsp_redraw();

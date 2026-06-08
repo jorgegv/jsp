@@ -85,6 +85,18 @@ void jsp_draw_sprite_load1( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t 
     jsp_draw_sprite( sp, xpos, ypos );
 }
 
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+void jsp_move_sprite_imask( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos ) {
+    sp->type_ptr = JSP_TYPE_IMASK;
+    jsp_move_sprite( sp, xpos, ypos );
+}
+
+void jsp_draw_sprite_imask( struct jsp_sprite_s *sp, jsp_xcoord_t xpos, uint8_t ypos ) {
+    sp->type_ptr = JSP_TYPE_IMASK;
+    jsp_draw_sprite( sp, xpos, ypos );
+}
+#endif
+
 ///////////////////////////////////////////////////////////
 // Frame-based movement
 ///////////////////////////////////////////////////////////
@@ -102,6 +114,15 @@ void jsp_move_sprite_load1_frame( struct jsp_sprite_s *sp, uint8_t *frame,
     sp->type_ptr = JSP_TYPE_LOAD1;
     jsp_move_sprite( sp, xpos, ypos );
 }
+
+#if defined( CPC_MODE0_IMASK ) || defined( CPC_MODE1_IMASK )
+void jsp_move_sprite_imask_frame( struct jsp_sprite_s *sp, uint8_t *frame,
+                                  jsp_xcoord_t xpos, uint8_t ypos ) {
+    sp->pixels   = frame;
+    sp->type_ptr = JSP_TYPE_IMASK;
+    jsp_move_sprite( sp, xpos, ypos );
+}
+#endif
 
 // Generic frame-based move: uses whatever type_ptr is already set in the sprite.
 void jsp_move_sprite_frame( struct jsp_sprite_s *sp, uint8_t *frame,
