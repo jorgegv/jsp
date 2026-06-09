@@ -113,7 +113,7 @@ Not exercised by the redraw-perf sprite tests, so they do not affect the
 measurement below, but a Model B used for a text/tilemap game would need them:
 
 - `jsp_print_string` 1-cell-per-glyph text (reuse the MONO 1bpp font-expand path).
-- `tools/cpcgfx.pl` pixel-cell **tile** emit mode (sprite asset output is
+- `tools/gfxgen.pl --platform cpc` pixel-cell **tile** emit mode (sprite asset output is
   model-agnostic and already works; only generated background tiles differ).
 - Model-B Mode-1 MONO compositor.
 

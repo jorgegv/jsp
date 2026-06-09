@@ -202,10 +202,11 @@ CPC programs are built with `zcc +cpc` and run/screenshotted headless in the
 
 ## Assets
 
-Two vendored, in-repo PNG → ASM generators (no external dependency):
+One vendored, in-repo PNG → ASM generator (no external dependency), with a
+`--platform` switch selecting the byte format:
 
-- **`tools/cpcgfx.pl --mode 0|1`** — Mode 0 / Mode 1 planar byte format.
-- **`tools/gfxgen.pl`** — the 1bpp byte format used by Mode 2 (and
+- **`tools/gfxgen.pl --platform cpc --mode 0|1`** — Mode 0 / Mode 1 planar byte format.
+- **`tools/gfxgen.pl --platform zx`** — the 1bpp byte format used by Mode 2 (and
   `CPC_MODE1_MONO`, `CPC_MODE2_FAST`).
 
 See [doc/CPC-USAGE.md](doc/CPC-USAGE.md) §7 for invocation examples.

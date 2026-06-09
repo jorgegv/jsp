@@ -290,7 +290,7 @@ rb_rowstride:
 	ENDIF
 	;; columns sit a full 8-line cell apart, so the stride is exactly
 	;; (rows+1)*cs (no correction).  The matching 8-line trailing pad per
-	;; column is emitted by tools/gfxgen.pl / cpcgfx.pl (RAGE1-compatible layout).
+	;; column is emitted by tools/gfxgen.pl --platform cpc (RAGE1-compatible layout).
 	ld (hl),c
 	inc hl
 	ld (hl),b

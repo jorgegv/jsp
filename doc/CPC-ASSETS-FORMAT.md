@@ -5,8 +5,8 @@ that the JSP engine expects for Amstrad CPC builds: background/foreground
 **tiles** and **sprites** (`LOAD1` and `MASK2`), per CPC screen mode.
 
 It describes what the bytes must look like in RAM when the engine reads them —
-not the asset *tool*. The converter (`gfxgen.pl`, or a future per-mode emitter)
-must produce exactly this layout; the shift/mask unit tests
+not the asset *tool*. The converter (`gfxgen.pl --platform cpc`, or a future
+per-mode emitter) must produce exactly this layout; the shift/mask unit tests
 (`make cpc-shift-test-mode<N>`) cross-check the engine's shift tables against it.
 
 > Status: **Mode 2, Mode 1, Mode 1 MONO, Mode 0 and the FAST variants
@@ -47,7 +47,7 @@ So: **the default asset format is the pixel-cell format** — tiles are
 **16-byte (Mode 1) / 32-byte (Mode 0) / 8-byte (Mode 2) column-major** cells, and
 sprites are the same byte-column format as always. The byte-cell tile (a flat
 8-byte cell) is only used when building `JSP_CELL_MODEL=byte`. Generate pixel-cell
-tiles with `tools/cpcgfx.pl --gfx-type tile` (§6); sprites with
+tiles with `tools/gfxgen.pl --platform cpc --gfx-type tile` (§6); sprites with
 `--gfx-type sprite_mask|sprite_load` (unchanged, both models).
 
 The per-mode pixel encoding (below) is the same in both models — only the cell's
@@ -165,7 +165,7 @@ exactly what `make cpc-shift-test-mode<N>` verifies.
 **Pixel encoding.** 8 pixels per byte, 1 bit per pixel, linear. Bit 7 = leftmost
 pixel, bit 0 = rightmost. This is identical to the ZX Spectrum 1bpp byte, so the
 CPC Mode-2 tile and sprite assets are **the same byte format as the ZX assets**
-and the existing `gfxgen.pl` output is reused unchanged (see §2.5).
+and the existing `gfxgen.pl --platform zx` output is reused unchanged (see §2.5).
 
 A 1-pixel right shift is a plain bit shift through the 16-bit window of two
 horizontally-adjacent bytes:
@@ -235,12 +235,12 @@ carry) = 3584 bytes (256-aligned). Coordinate split: `byte_col = x >> 3`,
 
 ### 2.5 Generating Mode-2 assets
 
-Mode 2 == ZX 1bpp, so the existing `gfxgen.pl` invocations emit Mode-2-ready
-bytes directly (see the `## extras` rules in the `Makefile`):
+Mode 2 == ZX 1bpp, so the existing `gfxgen.pl --platform zx` invocations emit
+Mode-2-ready bytes directly (see the `## extras` rules in the `Makefile`):
 
 ```sh
 # MASK2 (mask,graph pairs):
-gfxgen.pl -i assets/ball.png --width 16 --height 16 \
+gfxgen.pl --platform zx -i assets/ball.png --width 16 --height 16 \
     -m FF0000 -f FFFFFF -b 000000 \
     -s _sprite_pixels -g sprite_mask -l columns --extra-bottom-row --extra-top-rows
 
@@ -274,7 +274,7 @@ emitted encoding changes per mode, not the artwork.
 - **MASK2** mask is shifted with the **same** op as the pixels; composite stays
   `screen = (screen & shifted_mask) | shifted_pixels`.
 - **Asset:** two nibble-plane pixel (and, for MASK2, mask) bytes, emitted by the
-  in-repo `tools/cpcgfx.pl` (`--mode 1`) from the same source art.  For 2-colour
+  in-repo `tools/gfxgen.pl --platform cpc` (`--mode 1`) from the same source art.  For 2-colour
   art the low plane is 0 (pen 0/1); `--multicolor` uses all 4 pens (both planes
   carry the per-pixel pen bits) and can emit the matching palette.
 - Validated by `make cpc-shift-test-mode1` (exhaustive combine vs an independent
@@ -310,7 +310,7 @@ a bespoke MONO table.  Concretely:
   Mode-1 scratch cells, then calls the **existing Mode-1 middle kernel**.  Because
   the left scratch is always supplied (zeroed at the sprite's left edge), MONO
   needs only the middle `mask2`/`load1` kernels — no `lb`/`rb` variants.
-- The per-nibble expansion is exactly the `tools/cpcgfx.pl` byte transform:
+- The per-nibble expansion is exactly the `tools/gfxgen.pl --platform cpc` byte transform:
   `graph_hi=g&0xF0`, `graph_lo=(g&0x0F)<<4`; `mask_hi=(m&0xF0)|((m&0xF0)>>4)`,
   `mask_lo=((m&0x0F)<<4)|(m&0x0F)`.
 - `jsp_frame.asm` widens the MONO footprint to `c1 = c0 + (xrot ? 2*cols : 2*cols-1)`
@@ -358,7 +358,7 @@ two-nibble-plane and need no expansion.)
   available (`JSP_CELL_MODEL=byte`, grid 80×25, 1-byte/2-px cell). See §0 and
   `doc/CPC-TILE-SIZE-DESIGN.md`.  Mode 0 is the extreme case (4× fewer cells in
   pixel-cell) and the biggest pixel-cell performance win.
-- **Asset:** emitted by `tools/cpcgfx.pl --mode 0`; mask transparent pixel sets
+- **Asset:** emitted by `tools/gfxgen.pl --platform cpc --mode 0`; mask transparent pixel sets
   all four planes (so the AND keeps the background).
 - Validated by `make cpc-shift-test-mode0` (exhaustive combine + emitted bytes
   vs an independent Mode-0 pixel-array shift) and visually in cap32
@@ -415,15 +415,15 @@ balls byte-aligned over the per-mode grid, verified in cap32).
 
 ---
 
-## 6. Generating tiles (`tools/cpcgfx.pl --gfx-type tile`)
+## 6. Generating tiles (`tools/gfxgen.pl --platform cpc --gfx-type tile`)
 
 The default (pixel-cell) background/foreground tile is a single 8×8-px cell:
 `8/ppb` byte-columns × 8 lines, **column-major** (col 0's 8 bytes, then col 1's),
-graph-only. `tools/cpcgfx.pl --gfx-type tile` emits exactly this:
+graph-only. `tools/gfxgen.pl --platform cpc --gfx-type tile` emits exactly this:
 
 ```sh
 # Mode 1 (16-byte cell = 2 byte-cols × 8 lines), pen 0/1 art:
-tools/cpcgfx.pl -i tile.png -x 0 -y 0 --width 8 --height 8 -s my_tile -g tile --mode 1
+tools/gfxgen.pl --platform cpc -i tile.png -x 0 -y 0 --width 8 --height 8 -s my_tile -g tile --mode 1
 # Mode 0 -> 32-byte cell (4 byte-cols × 8 lines):  --mode 0
 ```
 
@@ -470,7 +470,7 @@ Properties:
 ```sh
 # Mode 1 / Mode 0 only.  Same source art and -m/-f/-b as sprite_mask; pen 0
 # (the -b background / -m mask colour) becomes transparent.
-tools/cpcgfx.pl -i ball.png -x 0 -y 0 --width 16 --height 16 \
+tools/gfxgen.pl --platform cpc -i ball.png -x 0 -y 0 --width 16 --height 16 \
     -m FF0000 -f FFFFFF -b 000000 --mode 1 \
     -s _ball_imask_m1 -g sprite_imask --extra-bottom-row --extra-top-rows
 ```

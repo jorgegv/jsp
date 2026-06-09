@@ -494,43 +494,44 @@ cpc-cell-model-archive:
 	done
 
 ## ============================================================================
-## Sprite assets (generated from assets/*.png via vendored tools/gfxgen.pl +
-## tools/cpcgfx.pl).  ZX 1bpp mask2/load1 byte format; CPC Mode 2 reuses the ZX
-## files unchanged; Mode 0/1 are re-quantised planar encodings of the same art.
+## Sprite assets (generated from assets/*.png via the unified vendored
+## tools/gfxgen.pl: --platform zx for the ZX 1bpp mask2/load1 byte format,
+## --platform cpc for the CPC paths).  CPC Mode 2 reuses the ZX files unchanged;
+## Mode 0/1 are re-quantised planar encodings of the same art.
 ## ============================================================================
 
 $(TESTS_DIR)/test_sprite_mask2.asm:
-	tools/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl --platform zx -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 \
 		--code-type asm -s _test_sprite_mask2_pixels \
 		-g sprite_mask -l columns --extra-bottom-row --extra-top-rows > $@
 
 $(TESTS_DIR)/test_sprite_load1.asm:
-	tools/gfxgen.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl --platform zx -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 \
 		--code-type asm -s _test_sprite_load1_pixels \
 		-g sprite_load -l columns --extra-bottom-row --extra-top-rows > $@
 
 $(TESTS_DIR)/test_sprite_mask2_m1.asm:
-	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl --platform cpc -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 --mode 1 \
 		-s _test_sprite_mask2_m1_pixels \
 		-g sprite_mask --extra-bottom-row --extra-top-rows > $@
 
 $(TESTS_DIR)/test_sprite_load1_m1.asm:
-	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl --platform cpc -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 --mode 1 \
 		-s _test_sprite_load1_m1_pixels \
 		-g sprite_load --extra-bottom-row --extra-top-rows > $@
 
 $(TESTS_DIR)/test_sprite_mask2_m0.asm:
-	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl --platform cpc -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 --mode 0 \
 		-s _test_sprite_mask2_m0_pixels \
 		-g sprite_mask --extra-bottom-row --extra-top-rows > $@
 
 $(TESTS_DIR)/test_sprite_load1_m0.asm:
-	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl --platform cpc -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 --mode 0 \
 		-s _test_sprite_load1_m0_pixels \
 		-g sprite_load --extra-bottom-row --extra-top-rows > $@
@@ -538,13 +539,13 @@ $(TESTS_DIR)/test_sprite_load1_m0.asm:
 ## Implicit-mask balls (graph-only, pen 0 transparent): same art as mask2, half
 ## the size.  CPC _IMASK modes (sprite_imask gfx-type).
 $(TESTS_DIR)/test_sprite_imask_m1.asm:
-	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl --platform cpc -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 --mode 1 \
 		-s _test_sprite_imask_m1_pixels \
 		-g sprite_imask --extra-bottom-row --extra-top-rows > $@
 
 $(TESTS_DIR)/test_sprite_imask_m0.asm:
-	tools/cpcgfx.pl -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl --platform cpc -i assets/ball.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -f FFFFFF -b 000000 --mode 0 \
 		-s _test_sprite_imask_m0_pixels \
 		-g sprite_imask --extra-bottom-row --extra-top-rows > $@
@@ -554,13 +555,13 @@ $(TESTS_DIR)/test_sprite_imask_m0.asm:
 ## the nearest CPC ink; --palette-symbol also emits the Gate-Array palette the
 ## test harness programs (red FF0000 = transparent mask, black = pen 0).
 $(TESTS_DIR)/test_ball_m1.asm:
-	tools/cpcgfx.pl -i assets/ball_m1.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl --platform cpc -i assets/ball_m1.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -b 000000 --mode 1 --multicolor \
 		-s _ball_m1_pixels --palette-symbol _ball_m1_palette \
 		-g sprite_mask --extra-bottom-row --extra-top-rows > $@
 
 $(TESTS_DIR)/test_ball_m0.asm:
-	tools/cpcgfx.pl -i assets/ball_m0.png -x 0 -y 0 --width 16 --height 16 \
+	tools/gfxgen.pl --platform cpc -i assets/ball_m0.png -x 0 -y 0 --width 16 --height 16 \
 		-m FF0000 -b 000000 --mode 0 --multicolor \
 		-s _ball_m0_pixels --palette-symbol _ball_m0_palette \
 		-g sprite_mask --extra-bottom-row --extra-top-rows > $@

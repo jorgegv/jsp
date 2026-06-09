@@ -245,16 +245,17 @@ encoding). Build tiles with the asset tool (§7), or by hand for simple shapes.
 
 ## 7. Make your own sprites and tiles (from PNG)
 
-JSP ships two vendored, in-repo generators (no external dependency):
+JSP ships one vendored, in-repo generator (no external dependency), with a
+`--platform` switch selecting the byte format:
 
-- **`tools/cpcgfx.pl --mode 0|1`** — emits the Mode 0 / Mode 1 planar byte format.
-- **`tools/gfxgen.pl`** — emits the 1bpp byte format used by **Mode 2** (and
+- **`tools/gfxgen.pl --platform cpc --mode 0|1`** — emits the Mode 0 / Mode 1 planar byte format.
+- **`tools/gfxgen.pl --platform zx`** — emits the 1bpp byte format used by **Mode 2** (and
   `CPC_MODE1_MONO`, `CPC_MODE2_FAST`).
 
 Example — convert a 16×16 region of a PNG into a Mode-1 masked sprite:
 
 ```sh
-tools/cpcgfx.pl -i art/ball.png -x 0 -y 0 --width 16 --height 16 \
+tools/gfxgen.pl --platform cpc -i art/ball.png -x 0 -y 0 --width 16 --height 16 \
     -m FF0000 -f FFFFFF -b 000000 --mode 1 \
     -s _ball_pixels -g sprite_mask --extra-bottom-row --extra-top-rows > ball.asm
 ```
@@ -269,14 +270,14 @@ tools/cpcgfx.pl -i art/ball.png -x 0 -y 0 --width 16 --height 16 \
 - **`--extra-bottom-row --extra-top-rows` are required for sprites** — they emit
   the sub-cell-Y padding the engine relies on. (Omit them only for tiles.)
 
-For Mode 2, call `tools/gfxgen.pl` with the same `-i/-x/-y/--width/--height/-m/-f/-b`
+For Mode 2, call `tools/gfxgen.pl --platform zx` with the same `-i/-x/-y/--width/--height/-m/-f/-b`
 options plus `--code-type asm -l columns -g sprite_mask|sprite_load
 --extra-bottom-row --extra-top-rows`. The repository `Makefile` (`$(TESTS_DIR)/...`
 asset rules) shows the exact invocations for all modes.
 
 ### Multicolour sprites/tiles (Mode 0 = 16 pens, Mode 1 = 4 pens)
 
-By default `cpcgfx.pl` maps 2-colour art (background → pen 0, foreground → pen 1).
+By default `--platform cpc` maps 2-colour art (background → pen 0, foreground → pen 1).
 Add **`--multicolor`** to use the full palette: every PNG pixel is mapped to the
 nearest of the 27 CPC hardware inks and assigned a pen (pen 0 = the `-b`
 background ink, the `-m` mask ink stays transparent, the rest get pens 1, 2, …
@@ -288,7 +289,7 @@ linkable array of Gate-Array ink bytes (`0x40 | hw_ink`, padded to the mode's pe
 count) that the harness writes straight to the gate array:
 
 ```sh
-tools/cpcgfx.pl -i art/ball.png --width 16 --height 16 \
+tools/gfxgen.pl --platform cpc -i art/ball.png --width 16 --height 16 \
     -m FF0000 -b 000000 --mode 0 --multicolor \
     -s _ball_pixels --palette-symbol _ball_palette \
     -g sprite_mask --extra-bottom-row --extra-top-rows > ball.asm
@@ -303,7 +304,7 @@ and `…_mode1.c` are worked examples (assets `assets/ball_m0.png` / `ball_m1.pn
 > `--multicolor` works for both **sprites** (`-g sprite_mask` / `sprite_load`) and
 > **background tiles** (`-g tile`) — the engine's tile blit is pen-agnostic, so a
 > multi-pen tile renders like any other (verified in pixel-cell Mode 1).
-> (`gfxgen.pl` / Mode 2 remain inherently 2-colour.)
+> (`--platform zx` / Mode 2 remain inherently 2-colour.)
 
 ---
 

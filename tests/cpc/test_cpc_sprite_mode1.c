@@ -8,7 +8,7 @@
 // settles into a still final frame (deterministic for screenshots).
 //
 // The ball asset is the Mode-1 two-nibble-plane re-encoding of the same source
-// art (tools/cpcgfx.pl): a 16-px-wide ball is 4 Mode-1 cells wide, so the sprite
+// art (tools/gfxgen.pl --platform cpc): a 16-px-wide ball is 4 Mode-1 cells wide, so the sprite
 // descriptors use cols=4 (vs cols=2 in Mode 2).  Sub-byte X positions exercise
 // the Mode-1 nibble shift table + the shared table-driven kernels.
 //
@@ -19,7 +19,7 @@
 
 extern uint8_t test_sprite_mask2_m1_pixels[];
 // Multicolour ball (4-pen Mode-1 asset) + its emitted Gate-Array palette
-// (tools/cpcgfx.pl --multicolor --palette-symbol).  The screen palette below is
+// (tools/gfxgen.pl --platform cpc --multicolor --palette-symbol).  The screen palette below is
 // programmed straight from this array, so pen 0 = black, and the ball's blue /
 // green body + white highlight show in their true colours.
 extern uint8_t ball_m1_pixels[];
@@ -79,7 +79,7 @@ static uint8_t tile_blank[8]  = { 0,0,0,0,0,0,0,0 };
 #endif
 
 // Set Mode 1 + program the 4 pens straight from the multicolour ball's emitted
-// palette (cpcgfx.pl --palette-symbol _ball_m1_palette): pen0=black, pen1=blue,
+// palette (gfxgen.pl --platform cpc --palette-symbol _ball_m1_palette): pen0=black, pen1=blue,
 // pen2=green, pen3=white.  Both ROMs off (0x8D = RMR mode 1, ROMs off) so
 // 0x0000-0xBFFF is RAM (code at 0x1200 stays visible).
 static void cpc_setup_mode1( void ) {

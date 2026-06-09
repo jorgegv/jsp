@@ -196,7 +196,7 @@ attribute byte per cell: colour is encoded in the **pixel bits themselves**
 (palette index per pixel, planar-in-byte), interpreted through the gate-array
 palette.  So on CPC the **BAT is dropped**, `jsp_apply_sprite_color()` is a no-op,
 and the redraw paths skip the attribute store — colour is baked into the
-sprite/tile pixel data by the asset converter (`tools/cpcgfx.pl`).  Mode 0 (16)
+sprite/tile pixel data by the asset converter (`tools/gfxgen.pl --platform cpc`).  Mode 0 (16)
 and Mode 1 (4) carry a real per-pixel palette index; Mode 2 (1 bpp) is
 monochrome-per-screen (ink/paper from palette registers), exactly like
 ZX-without-attributes.  A CPC test harness must therefore **set the screen mode
